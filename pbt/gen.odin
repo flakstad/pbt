@@ -823,6 +823,67 @@ non_empty_query_component_ascii :: proc(max_len: int = -1) -> Gen(Query_Componen
 	return query_component_ascii(1, max_len)
 }
 
+JSON_String_Literal_ASCII_Input :: struct {
+	min_len: int,
+	max_len: int,
+}
+
+json_string_literal_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(JSON_String_Literal_ASCII_Input, string) {
+	return {
+		input = {min_len = min_len, max_len = max_len},
+		produce = proc(t: ^T, input: JSON_String_Literal_ASCII_Input) -> string {
+			min_len := input.min_len
+			if min_len < 0 {
+				min_len = 0
+			}
+			max_len := input.max_len
+			if max_len < min_len {
+				max_len = math.max(min_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			length := min_len + int(choice(t, u64(max_len - min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 _-."
+			values := make([]byte, length + 2, t.value_allocator)
+			values[0] = '"'
+			for i in 0 ..< length {
+				index := int(choice(t, u64(len(chars))))
+				values[i + 1] = chars[index]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			values[len(values) - 1] = '"'
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_len, length, element_ends)
+			}
+			return string(values)
+		},
+	}
+}
+
+JSON_Bool_Literal_Input :: struct {}
+
+json_bool_literal :: proc() -> Gen(JSON_Bool_Literal_Input, string) {
+	return {
+		input = {},
+		produce = proc(t: ^T, _: JSON_Bool_Literal_Input) -> string {
+			if draw(t, boolean()) {
+				return "true"
+			}
+			return "false"
+		},
+	}
+}
+
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
 	if length <= min_len {
 		return
