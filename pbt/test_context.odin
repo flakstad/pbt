@@ -18,7 +18,11 @@ T :: struct {
 	choice_count:    int,
 	choice_extra:    [dynamic]u64,
 	choice_marks:    [dynamic]Choice_Mark,
+	choice_shrink_hints: [dynamic]Choice_Shrink_Hint,
+	choice_shrink_candidates: [dynamic]Choice_Shrink_Candidate,
+	choice_shrink_values: [dynamic]u64,
 	capture_choice_marks: bool,
+	capture_shrink_hints: bool,
 	events:          [dynamic]Event,
 	capture_events:  bool,
 	notes:           [dynamic]string,
@@ -35,6 +39,9 @@ T :: struct {
 Test_Case :: struct {
 	choices: [dynamic]u64,
 	choice_marks: [dynamic]Choice_Mark,
+	choice_shrink_hints: [dynamic]Choice_Shrink_Hint,
+	choice_shrink_candidates: [dynamic]Choice_Shrink_Candidate,
+	choice_shrink_values: [dynamic]u64,
 	events:  [dynamic]Event,
 	notes:   [dynamic]string,
 	labels:  [dynamic]string,
@@ -44,6 +51,18 @@ Test_Case :: struct {
 Choice_Mark :: struct {
 	index:        int,
 	length_index: int,
+}
+
+Choice_Shrink_Hint :: struct {
+	start:           int,
+	count:           int,
+	candidate_start: int,
+	candidate_count: int,
+}
+
+Choice_Shrink_Candidate :: struct {
+	start: int,
+	count: int,
 }
 
 Event :: struct {
@@ -77,6 +96,9 @@ test_init :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_str
 	mem.dynamic_arena_init(&t.value_arena, allocator, allocator, VALUE_ARENA_BLOCK_SIZE, VALUE_ARENA_OUT_OF_BAND_SIZE, VALUE_ARENA_ALIGNMENT)
 	t.value_allocator = mem.dynamic_arena_allocator(&t.value_arena)
 	t.choice_marks.allocator = allocator
+	t.choice_shrink_hints.allocator = allocator
+	t.choice_shrink_candidates.allocator = allocator
+	t.choice_shrink_values.allocator = allocator
 	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
 }
 
@@ -87,6 +109,9 @@ test_destroy :: proc(t: ^T) {
 	delete(t.coverage_requirements)
 	mem.dynamic_arena_destroy(&t.value_arena)
 	delete(t.choice_marks)
+	delete(t.choice_shrink_hints)
+	delete(t.choice_shrink_candidates)
+	delete(t.choice_shrink_values)
 	delete(t.choice_extra)
 }
 
@@ -96,6 +121,15 @@ test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_st
 	destroy_strings_keep_storage(&t.labels)
 	clear(&t.coverage_requirements)
 	clear(&t.choice_marks)
+	if len(t.choice_shrink_hints) > 0 {
+		clear(&t.choice_shrink_hints)
+	}
+	if len(t.choice_shrink_candidates) > 0 {
+		clear(&t.choice_shrink_candidates)
+	}
+	if len(t.choice_shrink_values) > 0 {
+		clear(&t.choice_shrink_values)
+	}
 	clear(&t.choice_extra)
 	mem.dynamic_arena_reset(&t.value_arena)
 
@@ -110,6 +144,7 @@ test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_st
 	t.discard_message = ""
 	t.capture_events = capture_events
 	t.capture_choice_marks = false
+	t.capture_shrink_hints = false
 }
 
 choice :: proc(t: ^T, upper_exclusive: u64) -> u64 {
@@ -155,6 +190,36 @@ mark_choice_boundary_with_length :: proc(t: ^T, length_index: int) {
 	append(&t.choice_marks, Choice_Mark{index = t.choice_count, length_index = length_index})
 }
 
+choice_cursor :: proc(t: ^T) -> int {
+	return t.choice_count
+}
+
+record_choice_shrink_hint :: proc(t: ^T, start, count: int, replacement: []u64) {
+	if !t.capture_shrink_hints {
+		return
+	}
+	if start < 0 || count <= 0 || start + count > t.choice_count {
+		return
+	}
+
+	value_start := len(t.choice_shrink_values)
+	for value in replacement {
+		append(&t.choice_shrink_values, value)
+	}
+
+	candidate_start := len(t.choice_shrink_candidates)
+	append(&t.choice_shrink_candidates, Choice_Shrink_Candidate {
+		start = value_start,
+		count = len(replacement),
+	})
+	append(&t.choice_shrink_hints, Choice_Shrink_Hint {
+		start = start,
+		count = count,
+		candidate_start = candidate_start,
+		candidate_count = 1,
+	})
+}
+
 copy_current_choices :: proc(t: ^T, allocator := context.allocator) -> [dynamic]u64 {
 	dst := make([dynamic]u64, 0, t.choice_count, allocator)
 	inline_count := t.choice_count
@@ -192,6 +257,34 @@ copy_choice_marks :: proc(src: []Choice_Mark, allocator := context.allocator) ->
 	dst := make([dynamic]Choice_Mark, 0, len(src), allocator)
 	for mark in src {
 		append(&dst, mark)
+	}
+	return dst
+}
+
+copy_current_choice_shrink_hints :: proc(t: ^T, allocator := context.allocator) -> [dynamic]Choice_Shrink_Hint {
+	return copy_choice_shrink_hints(t.choice_shrink_hints[:], allocator)
+}
+
+copy_current_choice_shrink_candidates :: proc(t: ^T, allocator := context.allocator) -> [dynamic]Choice_Shrink_Candidate {
+	return copy_choice_shrink_candidates(t.choice_shrink_candidates[:], allocator)
+}
+
+copy_current_choice_shrink_values :: proc(t: ^T, allocator := context.allocator) -> [dynamic]u64 {
+	return copy_choices(t.choice_shrink_values[:], allocator)
+}
+
+copy_choice_shrink_hints :: proc(src: []Choice_Shrink_Hint, allocator := context.allocator) -> [dynamic]Choice_Shrink_Hint {
+	dst := make([dynamic]Choice_Shrink_Hint, 0, len(src), allocator)
+	for hint in src {
+		append(&dst, hint)
+	}
+	return dst
+}
+
+copy_choice_shrink_candidates :: proc(src: []Choice_Shrink_Candidate, allocator := context.allocator) -> [dynamic]Choice_Shrink_Candidate {
+	dst := make([dynamic]Choice_Shrink_Candidate, 0, len(src), allocator)
+	for candidate in src {
+		append(&dst, candidate)
 	}
 	return dst
 }
@@ -358,6 +451,9 @@ destroy_test_case :: proc(tc: ^Test_Case) {
 	destroy_events(&tc.events)
 	destroy_strings(&tc.notes)
 	destroy_strings(&tc.labels)
+	delete(tc.choice_shrink_values)
+	delete(tc.choice_shrink_candidates)
+	delete(tc.choice_shrink_hints)
 	delete(tc.choice_marks)
 	delete(tc.choices)
 }

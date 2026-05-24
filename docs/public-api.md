@@ -236,7 +236,8 @@ so recursive values shrink toward a base case as size decreases.
 
 Likely next generator work:
 
-- domain-specific shrink hooks
+- richer built-in domain generators
+- more depth controls for recursive values
 
 ## Shrinking And Replay
 
@@ -253,14 +254,26 @@ Replay :: struct {
 check_replay :: proc(name: string, property: Property, replay: Replay) -> Check_Result
 ```
 
-Later, custom shrink hooks can be added for types where domain-specific
-shrinking is important.
+Custom generators can add domain-aware shrink hints when one generated value has
+a simpler replay encoding than the generic choice shrinker can infer:
 
-The current choice-stream shrinker removes unused choices, tries marked
-command-boundary ranges for stateful properties, reduces the generated command
-sequence length when removing a whole stateful command, removes contiguous
-choice chunks, tries zeroed suffixes to simplify generated payload contents, and
-then lowers individual choice values.
+```odin
+start := pbt.choice_cursor(t)
+// draw one or more choices
+replacement := [?]u64{0, simpler_choice}
+pbt.record_choice_shrink_hint(t, start, pbt.choice_cursor(t) - start, replacement[:])
+```
+
+Hints are low-level by design: they replace a range of replay choices with
+another range of replay choices. The shrinker only keeps a hint candidate when
+replaying it still fails, so incorrect or over-eager hints cannot create false
+counterexamples.
+
+The current choice-stream shrinker removes unused choices, tries domain-specific
+choice-range hints, tries marked command-boundary ranges for stateful
+properties, reduces the generated command sequence length when removing a whole
+stateful command, removes contiguous choice chunks, tries zeroed suffixes to
+simplify generated payload contents, and then lowers individual choice values.
 
 Deterministic choices, such as a fixed-size generator whose bound has only one
 possible value, are not recorded in the replay stream. This keeps replay choices

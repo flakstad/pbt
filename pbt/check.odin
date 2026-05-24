@@ -142,6 +142,9 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 				result.shrunk_test = Test_Case {
 					choices = copy_choices(tc.choices[:]),
 					choice_marks = copy_choice_marks(tc.choice_marks[:]),
+					choice_shrink_hints = copy_choice_shrink_hints(tc.choice_shrink_hints[:]),
+					choice_shrink_candidates = copy_choice_shrink_candidates(tc.choice_shrink_candidates[:]),
+					choice_shrink_values = copy_choices(tc.choice_shrink_values[:]),
 					events = copy_events(tc.events[:]),
 					notes = copy_strings(tc.notes[:]),
 					labels = copy_strings(tc.labels[:]),
@@ -180,6 +183,9 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 		shrunk_test = Test_Case {
 			choices = copy_choices(tc.choices[:]),
 			choice_marks = copy_choice_marks(tc.choice_marks[:]),
+			choice_shrink_hints = copy_choice_shrink_hints(tc.choice_shrink_hints[:]),
+			choice_shrink_candidates = copy_choice_shrink_candidates(tc.choice_shrink_candidates[:]),
+			choice_shrink_values = copy_choices(tc.choice_shrink_values[:]),
 			events = copy_events(tc.events[:]),
 			notes = copy_strings(tc.notes[:]),
 			labels = copy_strings(tc.labels[:]),
@@ -258,6 +264,7 @@ run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64
 run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false) -> Test_Case {
 	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
 	t.capture_choice_marks = capture_choice_marks
+	t.capture_shrink_hints = capture_choice_marks
 
 	result := property(t)
 	if t.force_discard && result.status == .Pass {
@@ -274,6 +281,9 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 		tc.choices = copy_current_choices(t)
 		if result.status == .Fail || result.status == .Error {
 			tc.choice_marks = copy_current_choice_marks(t)
+			tc.choice_shrink_hints = copy_current_choice_shrink_hints(t)
+			tc.choice_shrink_candidates = copy_current_choice_shrink_candidates(t)
+			tc.choice_shrink_values = copy_current_choice_shrink_values(t)
 		}
 		tc.events = copy_events(t.events[:])
 		tc.notes = copy_strings(t.notes[:])
@@ -302,6 +312,9 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 	best := Test_Case {
 		choices = copy_choices(choices),
 		choice_marks = copy_choice_marks(initial.choice_marks[:]),
+		choice_shrink_hints = copy_choice_shrink_hints(initial.choice_shrink_hints[:]),
+		choice_shrink_candidates = copy_choice_shrink_candidates(initial.choice_shrink_candidates[:]),
+		choice_shrink_values = copy_choices(initial.choice_shrink_values[:]),
 		events = copy_events(initial.events[:]),
 		notes = copy_strings(initial.notes[:]),
 		labels = copy_strings(initial.labels[:]),
@@ -318,6 +331,11 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 		changed = false
 
 		if len(best.choices) > 0 && try_candidate(&runner, property, &best, best.choices[:len(best.choices) - 1], seed, size, &attempts, options.max_shrinks, preserved_labels) {
+			changed = true
+			continue
+		}
+
+		if shrink_choice_hints(&runner, property, &best, seed, size, &attempts, options.max_shrinks, preserved_labels) {
 			changed = true
 			continue
 		}
@@ -346,6 +364,40 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 	}
 
 	return {test = best, attempts = attempts}
+}
+
+shrink_choice_hints :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
+	if len(best.choice_shrink_hints) == 0 {
+		return false
+	}
+
+	for hint_index := len(best.choice_shrink_hints) - 1; hint_index >= 0; hint_index -= 1 {
+		hint := best.choice_shrink_hints[hint_index]
+		if hint.start < 0 || hint.count <= 0 || hint.start + hint.count > len(best.choices) {
+			continue
+		}
+
+		for i in 0 ..< hint.candidate_count {
+			candidate_index := hint.candidate_start + i
+			if candidate_index < 0 || candidate_index >= len(best.choice_shrink_candidates) {
+				continue
+			}
+			candidate_range := best.choice_shrink_candidates[candidate_index]
+			if candidate_range.start < 0 || candidate_range.count < 0 || candidate_range.start + candidate_range.count > len(best.choice_shrink_values) {
+				continue
+			}
+
+			candidate := choices_replacing_range(best.choices[:], hint.start, hint.count, best.choice_shrink_values[candidate_range.start:candidate_range.start + candidate_range.count])
+			if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts, required_labels) {
+				return true
+			}
+			if attempts^ >= max_attempts {
+				return false
+			}
+		}
+	}
+
+	return false
 }
 
 shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
@@ -471,9 +523,15 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 		}
 		actual_choices := copy_choices(tc.choices[:])
 		actual_marks := copy_choice_marks(tc.choice_marks[:])
+		actual_hints := copy_choice_shrink_hints(tc.choice_shrink_hints[:])
+		actual_hint_candidates := copy_choice_shrink_candidates(tc.choice_shrink_candidates[:])
+		actual_hint_values := copy_choices(tc.choice_shrink_values[:])
 		destroy_test_case(best)
 		best.choices = actual_choices
 		best.choice_marks = actual_marks
+		best.choice_shrink_hints = actual_hints
+		best.choice_shrink_candidates = actual_hint_candidates
+		best.choice_shrink_values = actual_hint_values
 		best.events = copy_events(tc.events[:])
 		best.notes = copy_strings(tc.notes[:])
 		best.labels = copy_strings(tc.labels[:])
@@ -516,6 +574,20 @@ choices_without_range :: proc(src: []u64, start, count: int, allocator := contex
 			continue
 		}
 		append(&dst, value)
+	}
+	return dst
+}
+
+choices_replacing_range :: proc(src: []u64, start, count: int, replacement: []u64, allocator := context.allocator) -> [dynamic]u64 {
+	dst := make([dynamic]u64, 0, len(src) - count + len(replacement), allocator)
+	for i in 0 ..< start {
+		append(&dst, src[i])
+	}
+	for value in replacement {
+		append(&dst, value)
+	}
+	for i in start + count ..< len(src) {
+		append(&dst, src[i])
 	}
 	return dst
 }

@@ -237,6 +237,28 @@ fixed_array_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+domain_encoded_number :: proc(t: ^T) -> int {
+	start := choice_cursor(t)
+	encoding := choice(t, 2)
+	if encoding == 0 {
+		return int(choice(t, 10))
+	}
+
+	tens := choice(t, 10)
+	ones := choice(t, 10)
+	value := int(tens * 10 + ones)
+	if value < 10 {
+		replacement := [?]u64{0, u64(value)}
+		record_choice_shrink_hint(t, start, choice_cursor(t) - start, replacement[:])
+	}
+	return value
+}
+
+domain_encoded_failure_property :: proc(t: ^T) -> Result {
+	value := domain_encoded_number(t)
+	return assert(value != 7, "domain value should not be seven")
+}
+
 labelled_failure_property :: proc(t: ^T) -> Result {
 	marker := choice(t, 2)
 	_ = choice(t, 10)
@@ -1085,6 +1107,19 @@ test_fixed_size_generator_replay_stays_aligned :: proc(t: ^testing.T) {
 	testing.expect_value(t, replayed.result.status, Status.Fail)
 	testing.expect_value(t, replayed.result.message, "bad fixed array")
 	testing.expect_value(t, len(replayed.choices), 3)
+}
+
+@(test)
+test_shrinker_uses_domain_choice_hints :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 0, 7}
+	result := shrink_case(domain_encoded_failure_property, choices[:], 1, 10, default_options({max_shrinks = 8}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "domain value should not be seven")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(0))
+	testing.expect_value(t, result.choices[1], u64(7))
 }
 
 @(test)

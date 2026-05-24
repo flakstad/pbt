@@ -63,25 +63,26 @@ has the first useful version of this:
 
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
-mostly about depth and domain-specific shrinking rather than basic shape.
+mostly about depth controls and richer built-in domain generators rather than
+basic shape.
 
 ### Shrinking
 
 The current shrinker minimizes the choice stream. That gives broad shrinking
-without every generator needing a custom shrinker. It is a good foundation, but
-not enough long-term.
+without every generator needing a custom shrinker. Custom generators can also
+record domain-specific choice-range shrink hints for values that have a simpler
+alternate replay encoding.
 
-It now tries marked command-boundary ranges for stateful properties, reducing
-the generated command-sequence length when a whole command is removed. It also
-removes chunks from the choice stream, tries zeroed suffixes for simpler
-array/string/payload contents, and lowers individual choice values. When a
-replay candidate consumes fewer choices than it was given, the shrinker keeps
-only the consumed choices, producing cleaner replay strings. `Check_Result`
-also records shrink attempts and shrink duration.
+It now tries domain-specific choice hints and marked command-boundary ranges for
+stateful properties, reducing the generated command-sequence length when a whole
+command is removed. It also removes chunks from the choice stream, tries zeroed
+suffixes for simpler array/string/payload contents, and lowers individual choice
+values. When a replay candidate consumes fewer choices than it was given, the
+shrinker keeps only the consumed choices, producing cleaner replay strings.
+`Check_Result` also records shrink attempts and shrink duration.
 
 Useful additions:
 
-- generator-specific shrink hooks for domain types
 - more structure-aware array/string shrinking
 - richer coverage-aware shrinking beyond preserving original failure labels
 
