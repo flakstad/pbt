@@ -120,6 +120,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	token_hex := draw(t, hex_string(1, 4))
 	upper_hex := draw(t, non_empty_hex_string(4, true))
 	identifier := draw(t, identifier_ascii(1, 8))
+	path_segment := draw(t, path_segment_ascii(1, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -155,6 +156,8 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		hex_is_upper(upper_hex) &&
 		len(identifier) >= 1 && len(identifier) <= 8 &&
 		identifier_is_ascii(identifier) &&
+		len(path_segment) >= 1 && len(path_segment) <= 8 &&
+		path_segment_is_ascii(path_segment) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -184,7 +187,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 			len(credentials.name) >= 1 && len(credentials.name) <= 4 &&
 			credentials.retries >= 0 && credentials.retries <= 3 &&
 			(credentials.active || !credentials.active) &&
-			recursive_leaf_count >= 1 && recursive_leaf_count <= 16,
+			recursive_leaf_count >= 1 && recursive_leaf_count <= 128,
 		"expected generator catalog values",
 	)
 }
@@ -225,6 +228,24 @@ identifier_is_ascii :: proc(value: string) -> bool {
 			continue
 		}
 		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') {
+			return false
+		}
+	}
+	return len(value) > 0
+}
+
+path_segment_is_ascii :: proc(value: string) -> bool {
+	for ch, i in value {
+		if ch == '/' || ch == '\\' {
+			return false
+		}
+		if i == 0 {
+			if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-') {
+				return false
+			}
+			continue
+		}
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.') {
 			return false
 		}
 	}

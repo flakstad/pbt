@@ -26,6 +26,8 @@ The current core is in a reasonable place:
   protocol testing.
 - `identifier_ascii` covers common generated names for fields, flags, commands,
   and fixtures.
+- `path_segment_ascii` covers reusable path/key segments without choosing a
+  filesystem or URL policy for the caller.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
@@ -69,8 +71,8 @@ has the first useful version of this:
 
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
-mostly about richer built-in domain generators for paths and structured
-protocol data rather than basic shape.
+mostly about richer built-in domain generators for structured protocol data
+rather than basic shape.
 
 ### Shrinking
 

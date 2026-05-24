@@ -567,6 +567,57 @@ identifier_ascii :: proc(min_len: int = 1, max_len: int = -1) -> Gen(Identifier_
 	}
 }
 
+Path_Segment_ASCII_Input :: struct {
+	min_len: int,
+	max_len: int,
+}
+
+path_segment_ascii :: proc(min_len: int = 1, max_len: int = -1) -> Gen(Path_Segment_ASCII_Input, string) {
+	return {
+		input = {min_len = min_len, max_len = max_len},
+		produce = proc(t: ^T, input: Path_Segment_ASCII_Input) -> string {
+			min_len := input.min_len
+			if min_len < 1 {
+				min_len = 1
+			}
+			max_len := input.max_len
+			if max_len < min_len {
+				max_len = math.max(min_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			length := min_len + int(choice(t, u64(max_len - min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			first_chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+			rest_chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-"
+			values := make([]byte, length, t.value_allocator)
+			first_index := int(choice(t, u64(len(first_chars))))
+			values[0] = first_chars[first_index]
+			if len(element_ends) > 0 {
+				element_ends[1] = choice_cursor(t)
+			}
+			for i in 1 ..< length {
+				index := int(choice(t, u64(len(rest_chars))))
+				values[i] = rest_chars[index]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_len, length, element_ends)
+			}
+			return string(values)
+		},
+	}
+}
+
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
 	if length <= min_len {
 		return
