@@ -1067,6 +1067,81 @@ json_object_field_subset_ascii :: proc(fields: []string, min_fields: int = 0, ma
 	}
 }
 
+JSON_Value_Kind :: enum {
+	String,
+	Int,
+	Bool,
+	Null,
+}
+
+JSON_Field_ASCII :: struct {
+	name:           string,
+	kind:           JSON_Value_Kind,
+	min_int:        int,
+	max_int:        int,
+	max_string_len: int,
+}
+
+json_string_field_ascii :: proc(name: string, max_string_len: int = 16) -> JSON_Field_ASCII {
+	return {name = name, kind = .String, max_string_len = max_string_len}
+}
+
+json_int_field_ascii :: proc(name: string, min: int = -1000, max: int = 1000) -> JSON_Field_ASCII {
+	return {name = name, kind = .Int, min_int = min, max_int = max}
+}
+
+json_bool_field_ascii :: proc(name: string) -> JSON_Field_ASCII {
+	return {name = name, kind = .Bool}
+}
+
+json_null_field_ascii :: proc(name: string) -> JSON_Field_ASCII {
+	return {name = name, kind = .Null}
+}
+
+JSON_Object_Schema_ASCII_Input :: struct {
+	fields: []JSON_Field_ASCII,
+}
+
+json_object_schema_ascii :: proc(fields: []JSON_Field_ASCII) -> Gen(JSON_Object_Schema_ASCII_Input, string) {
+	return {
+		input = {fields = fields},
+		produce = proc(t: ^T, input: JSON_Object_Schema_ASCII_Input) -> string {
+			values := make([dynamic]byte, 0, 2 + len(input.fields) * 24, t.value_allocator)
+			append(&values, '{')
+			for field, i in input.fields {
+				if i > 0 {
+					append(&values, ',')
+				}
+				append_json_quoted_ascii_content(&values, field.name)
+				append(&values, ':')
+				append_json_schema_value(t, &values, field)
+			}
+			append(&values, '}')
+			return string(values[:])
+		},
+	}
+}
+
+append_json_schema_value :: proc(t: ^T, dst: ^[dynamic]byte, field: JSON_Field_ASCII) {
+	switch field.kind {
+	case .String:
+		max_string_len := field.max_string_len
+		if max_string_len < 0 {
+			max_string_len = 0
+		}
+		value := draw(t, json_string_literal_ascii(0, max_string_len))
+		append_string_bytes(dst, value)
+	case .Int:
+		value := draw(t, json_int_literal(field.min_int, field.max_int))
+		append_string_bytes(dst, value)
+	case .Bool:
+		value := draw(t, json_bool_literal())
+		append_string_bytes(dst, value)
+	case .Null:
+		append_string_bytes(dst, "null")
+	}
+}
+
 JSON_Array_ASCII_Input :: struct {
 	min_items:      int,
 	max_items:      int,

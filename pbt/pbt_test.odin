@@ -138,6 +138,13 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	json_fields := [?]string{"sku", "quantity", "active"}
 	json_schema_body := draw(t, json_object_fields_ascii(json_fields[:], 8))
 	json_subset_body := draw(t, json_object_field_subset_ascii(json_fields[:], 1, 2, 8))
+	json_typed_fields := [?]JSON_Field_ASCII {
+		json_string_field_ascii("sku", 8),
+		json_int_field_ascii("quantity", 1, 99),
+		json_bool_field_ascii("active"),
+		json_null_field_ascii("deleted_at"),
+	}
+	json_typed_body := draw(t, json_object_schema_ascii(json_typed_fields[:]))
 	json_items := draw(t, json_array_ascii(0, 4, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
@@ -195,6 +202,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		json_object_has_fields(json_schema_body, json_fields[:]) &&
 		json_object_field_count(json_subset_body) >= 1 &&
 		json_object_field_count(json_subset_body) <= 2 &&
+		json_object_schema_is_typed(json_typed_body) &&
 		json_array_is_simple_ascii(json_items) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
@@ -448,6 +456,17 @@ json_object_field_count :: proc(value: string) -> int {
 		}
 	}
 	return count
+}
+
+json_object_schema_is_typed :: proc(value: string) -> bool {
+	if !json_object_is_simple_ascii(value) {
+		return false
+	}
+	return strings.contains(value, "\"sku\":\"") &&
+		strings.contains(value, "\"quantity\":") &&
+		!strings.contains(value, "\"quantity\":\"") &&
+		(strings.contains(value, "\"active\":true") || strings.contains(value, "\"active\":false")) &&
+		strings.contains(value, "\"deleted_at\":null")
 }
 
 json_array_is_simple_ascii :: proc(value: string) -> bool {

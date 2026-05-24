@@ -217,6 +217,11 @@ json_int_literal :: proc(min := -1000, max := 1000) -> Gen(JSON_Int_Literal_Inpu
 json_object_ascii :: proc(min_fields := 0, max_fields := -1, max_key_len := 12, max_string_len := 16) -> Gen(JSON_Object_ASCII_Input, string)
 json_object_fields_ascii :: proc(fields: []string, max_string_len := 16) -> Gen(JSON_Object_Fields_ASCII_Input, string)
 json_object_field_subset_ascii :: proc(fields: []string, min_fields := 0, max_fields := -1, max_string_len := 16) -> Gen(JSON_Object_Field_Subset_ASCII_Input, string)
+json_string_field_ascii :: proc(name: string, max_string_len := 16) -> JSON_Field_ASCII
+json_int_field_ascii :: proc(name: string, min := -1000, max := 1000) -> JSON_Field_ASCII
+json_bool_field_ascii :: proc(name: string) -> JSON_Field_ASCII
+json_null_field_ascii :: proc(name: string) -> JSON_Field_ASCII
+json_object_schema_ascii :: proc(fields: []JSON_Field_ASCII) -> Gen(JSON_Object_Schema_ASCII_Input, string)
 json_array_ascii :: proc(min_items := 0, max_items := -1, max_string_len := 16) -> Gen(JSON_Array_ASCII_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
@@ -550,6 +555,18 @@ res := pbt.http_post_json(t, "http://127.0.0.1:8080/cart/items", body)
 
 Use `json_object_field_subset_ascii` when a property should explore missing or
 optional fields while staying within a known schema key set.
+
+Use `json_object_schema_ascii` when the generated values should match simple
+per-field JSON kinds:
+
+```odin
+schema := [?]pbt.JSON_Field_ASCII {
+    pbt.json_string_field_ascii("sku", 16),
+    pbt.json_int_field_ascii("quantity", 1, 100),
+    pbt.json_bool_field_ascii("active"),
+}
+body := pbt.draw(t, pbt.json_object_schema_ascii(schema[:]))
+```
 
 `http_request` remains available for fully custom methods, headers, curl path,
 and body handling.
