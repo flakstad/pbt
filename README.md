@@ -68,6 +68,9 @@ minimal Gransk-facing runner executable.
 See [docs/statechart-model-example.md](docs/statechart-model-example.md) for a
 statechart-backed stateful model example.
 
+See [docs/line-protocol-example.md](docs/line-protocol-example.md) for a
+persistent subprocess adapter example.
+
 See [BENCHMARKS.md](BENCHMARKS.md) for performance measurement commands and
 current benchmark coverage.
 

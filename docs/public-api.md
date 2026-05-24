@@ -469,6 +469,7 @@ res := pbt.line_protocol_call(t, &client, request_json)
 Each response is one newline-terminated line from target stdout. This is the
 first persistent adapter path and is intended for small wrappers around
 libraries in Go, Python, JavaScript/TypeScript, Clojure, Odin, and shell.
+See `examples/line_protocol_runner` for a runnable property using this shape.
 
 Line-delimited JSON is a good transport because it is easy to implement in Go,
 Clojure, Python, JavaScript/TypeScript, Odin, and shell wrappers.
