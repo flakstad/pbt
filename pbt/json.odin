@@ -82,10 +82,7 @@ check_result_text :: proc(result: Check_Result) -> string {
 	if len(result.coverage) > 0 {
 		strings.write_string(&builder, "coverage:\n")
 		for item in result.coverage {
-			percent := 0.0
-			if result.num_tests > 0 {
-				percent = f64(item.count) * 100.0 / f64(result.num_tests)
-			}
+			percent := coverage_percent(item, result.num_tests)
 			strings.write_string(&builder, fmt.tprintf("  %s: %d (%.2f%%", item.label, item.count, percent))
 			if item.required_percent > 0 {
 				strings.write_string(&builder, fmt.tprintf(", required %.2f%%", item.required_percent))
@@ -362,10 +359,7 @@ json_write_coverage :: proc(builder: ^strings.Builder, coverage: []Coverage_Labe
 		if i > 0 {
 			strings.write_string(builder, ",")
 		}
-		percent := 0.0
-		if num_tests > 0 {
-			percent = f64(item.count) * 100.0 / f64(num_tests)
-		}
+		percent := coverage_percent(item, num_tests)
 		ok := item.required_percent <= 0 || percent >= item.required_percent
 
 		strings.write_string(builder, "{")

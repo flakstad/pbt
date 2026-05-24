@@ -264,9 +264,9 @@ output.
 
 `label`, `classify`, and `collect` aggregate coverage data across successful
 generated tests. `cover` additionally records a minimum required percentage; a
-completed check reports `Error` with `coverage requirement not met` when a
-requirement is missed. Coverage summaries are included in JSON so Gransk can
-show distribution and unmet requirement details.
+completed check reports `Error` with `coverage_not_met` and a message naming
+the first missed label and observed percentage. Coverage summaries are included
+in JSON so Gransk can show distribution and unmet requirement details.
 
 `note` records explanatory text separately from adapter/state-machine events.
 That keeps human context visible without making notes look like target actions

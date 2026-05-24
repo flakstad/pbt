@@ -157,7 +157,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 	if !coverage_requirements_met(result.coverage[:], result.num_tests) {
 		result.status = .Error
 		result.code = "coverage_not_met"
-		result.message = "coverage requirement not met"
+		result.message = coverage_failure_message(result.coverage[:], result.num_tests)
 	}
 	result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	return result
@@ -450,19 +450,41 @@ merge_case_coverage :: proc(coverage: ^[dynamic]Coverage_Label, labels: []string
 }
 
 coverage_requirements_met :: proc(coverage: []Coverage_Label, num_tests: int) -> bool {
-	if num_tests <= 0 {
-		return true
+	return coverage_unmet_index(coverage, num_tests) < 0
+}
+
+coverage_failure_message :: proc(coverage: []Coverage_Label, num_tests: int) -> string {
+	index := coverage_unmet_index(coverage, num_tests)
+	if index < 0 {
+		return "coverage requirement not met"
 	}
-	for item in coverage {
+
+	item := coverage[index]
+	percent := coverage_percent(item, num_tests)
+	return fmt.tprintf("coverage requirement not met: %s %.2f%% < required %.2f%%", item.label, percent, item.required_percent)
+}
+
+coverage_unmet_index :: proc(coverage: []Coverage_Label, num_tests: int) -> int {
+	if num_tests <= 0 {
+		return -1
+	}
+	for item, i in coverage {
 		if item.required_percent <= 0 {
 			continue
 		}
-		percent := f64(item.count) * 100.0 / f64(num_tests)
+		percent := coverage_percent(item, num_tests)
 		if percent < item.required_percent {
-			return false
+			return i
 		}
 	}
-	return true
+	return -1
+}
+
+coverage_percent :: proc(item: Coverage_Label, num_tests: int) -> f64 {
+	if num_tests <= 0 {
+		return 0.0
+	}
+	return f64(item.count) * 100.0 / f64(num_tests)
 }
 
 coverage_index :: proc(coverage: []Coverage_Label, label: string) -> int {

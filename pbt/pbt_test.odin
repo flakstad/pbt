@@ -681,7 +681,7 @@ test_unmet_coverage_requirement_fails_check :: proc(t: ^testing.T) {
 
 	testing.expect_value(t, result.status, Status.Error)
 	testing.expect_value(t, result.code, "coverage_not_met")
-	testing.expect_value(t, result.message, "coverage requirement not met")
+	testing.expect_value(t, result.message, "coverage requirement not met: impossible 0.00% < required 1.00%")
 	impossible_index := coverage_index(result.coverage[:], "impossible")
 	testing.expect(t, impossible_index >= 0)
 	testing.expect_value(t, result.coverage[impossible_index].count, 0)
