@@ -109,7 +109,6 @@ test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_st
 
 choice :: proc(t: ^T, upper_exclusive: u64) -> u64 {
 	if upper_exclusive <= 1 {
-		record_choice(t, 0)
 		return 0
 	}
 

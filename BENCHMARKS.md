@@ -118,8 +118,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           25.79
-  avg ns/unit:            26.33
+  best ns/unit:           22.45
+  avg ns/unit:            22.62
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -128,8 +128,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           132.97
-  avg ns/unit:            134.83
+  best ns/unit:           134.43
+  avg ns/unit:            141.29
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -138,8 +138,8 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           149.35
-  avg ns/unit:            151.54
+  best ns/unit:           153.60
+  avg ns/unit:            156.17
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -148,28 +148,28 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3847.53
-  avg ns/unit:            3872.11
+  best ns/unit:           3853.27
+  avg ns/unit:            3880.71
   alloc calls max:        430000
   resize calls max:       10000
   free calls max:         430000
-  bytes req max:          43320000
+  bytes req max:          43240000
 
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           312.97
-  avg ns/unit:            318.81
+  best ns/unit:           315.70
+  avg ns/unit:            318.24
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
-  bytes req max:          1680000
+  bytes req max:          1600000
 
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           2542.00
-  avg ns/unit:            3341.80
+  best ns/unit:           2458.00
+  avg ns/unit:            2858.60
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -178,12 +178,12 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           331375.00
-  avg ns/unit:            336033.40
-  alloc calls max:        3011
+  best ns/unit:           12791.00
+  avg ns/unit:            13758.20
+  alloc calls max:        124
   resize calls max:       0
-  free calls max:         3011
-  bytes req max:          262776
+  free calls max:         124
+  bytes req max:          14032
 ```
 
 The integer hot path is now allocation-free for short choice streams because
@@ -204,4 +204,6 @@ case to a small fixed cost per `check` run while preserving failure/replay
 diagnostics. Shrinking reuses a candidate runner context and can delete chunks
 from the choice stream, which helps remove irrelevant sequence choices while
 keeping the final replay stream to the choices actually consumed by the failing
-case.
+case. Deterministic choices are no longer recorded, which keeps fixed-size
+generators replay-aligned and substantially reduces shrink work for payloads
+that include fixed-size arrays or strings.

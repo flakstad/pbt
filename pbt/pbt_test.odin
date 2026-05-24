@@ -203,6 +203,14 @@ marked_command_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+fixed_array_failure_property :: proc(t: ^T) -> Result {
+	values := draw(t, array(int_range(0, 10), 3, 3))
+	if values[0] == 3 && (values[1] == 7 || values[2] == 7) {
+		return fail("bad fixed array")
+	}
+	return pass()
+}
+
 records_structured_event :: proc(t: ^T) -> Result {
 	record_event(t, "process", "cart add", "ok", "exit=0")
 	note(t, "about to fail")
@@ -973,6 +981,23 @@ test_shrinker_removes_marked_command_range :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(result.choices), 2)
 	testing.expect_value(t, result.choices[0], u64(3))
 	testing.expect_value(t, result.choices[1], u64(7))
+}
+
+@(test)
+test_fixed_size_generator_replay_stays_aligned :: proc(t: ^testing.T) {
+	choices := [?]u64{3, 1, 7}
+	first := run_case(fixed_array_failure_property, 1, 10, choices[:], true, true)
+	defer destroy_test_case(&first)
+
+	replayed := run_case(fixed_array_failure_property, 1, 10, first.choices[:], true, true)
+	defer destroy_test_case(&replayed)
+
+	testing.expect_value(t, first.result.status, Status.Fail)
+	testing.expect_value(t, first.result.message, "bad fixed array")
+	testing.expect_value(t, len(first.choices), 3)
+	testing.expect_value(t, replayed.result.status, Status.Fail)
+	testing.expect_value(t, replayed.result.message, "bad fixed array")
+	testing.expect_value(t, len(replayed.choices), 3)
 }
 
 @(test)

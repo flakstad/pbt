@@ -258,6 +258,10 @@ command-boundary ranges for stateful properties, removes contiguous choice
 chunks, tries zeroed suffixes to simplify generated payload contents, and then
 lowers individual choice values.
 
+Deterministic choices, such as a fixed-size generator whose bound has only one
+possible value, are not recorded in the replay stream. This keeps replay choices
+aligned with the decisions that can actually vary.
+
 ## Diagnostics
 
 Properties need low-friction ways to add useful failure context:
