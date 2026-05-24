@@ -118,8 +118,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           33.48
-  avg ns/unit:            33.66
+  best ns/unit:           31.57
+  avg ns/unit:            32.69
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -128,8 +128,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           138.02
-  avg ns/unit:            140.84
+  best ns/unit:           141.36
+  avg ns/unit:            143.86
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -138,8 +138,8 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           159.97
-  avg ns/unit:            161.55
+  best ns/unit:           160.38
+  avg ns/unit:            161.09
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -148,8 +148,8 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3788.01
-  avg ns/unit:            3845.05
+  best ns/unit:           3821.43
+  avg ns/unit:            3856.46
   alloc calls max:        250000
   resize calls max:       10000
   free calls max:         250000
@@ -158,8 +158,8 @@ stateful 20-step captured trace
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           330.10
-  avg ns/unit:            332.59
+  best ns/unit:           314.00
+  avg ns/unit:            322.44
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -168,8 +168,8 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           2875.00
-  avg ns/unit:            3566.40
+  best ns/unit:           2958.00
+  avg ns/unit:            3525.20
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -178,8 +178,8 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           14250.00
-  avg ns/unit:            15258.40
+  best ns/unit:           14958.00
+  avg ns/unit:            16425.00
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124
@@ -208,6 +208,6 @@ keeping the final replay stream to the choices actually consumed by the failing
 case. Deterministic choices are no longer recorded, which keeps fixed-size
 generators replay-aligned and substantially reduces shrink work for payloads
 that include fixed-size arrays or strings. Domain-specific choice-range shrink
-hints and built-in array/string length hints are captured only for
+hints and built-in array/string range-removal hints are captured only for
 failing/shrinking runs, so normal passing checks keep the same zero-allocation
 behavior.

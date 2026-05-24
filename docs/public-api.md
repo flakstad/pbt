@@ -270,7 +270,7 @@ replaying it still fails, so incorrect or over-eager hints cannot create false
 counterexamples.
 
 The current choice-stream shrinker removes unused choices, tries domain-specific
-choice-range hints, uses built-in length hints to shorten array/string suffixes
+choice-range hints, uses built-in length hints to remove array/string ranges
 while preserving retained element choices, tries marked command-boundary ranges
 for stateful properties, reduces the generated command sequence length when
 removing a whole stateful command, removes contiguous choice chunks, tries

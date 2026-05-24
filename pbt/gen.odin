@@ -260,7 +260,7 @@ array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1
 					element_ends[i + 1] = choice_cursor(t)
 				}
 			}
-			record_collection_suffix_shrink_hints(t, start, input.min_len, length, element_ends)
+			record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
 			return values
 		},
 	}
@@ -331,7 +331,7 @@ string_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(String_ASCII_In
 					element_ends[i + 1] = choice_cursor(t)
 				}
 			}
-			record_collection_suffix_shrink_hints(t, start, input.min_len, length, element_ends)
+			record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
 			return string(bytes)
 		},
 	}
@@ -375,7 +375,7 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 					element_ends[i + 1] = choice_cursor(t)
 				}
 			}
-			record_collection_suffix_shrink_hints(t, start, input.min_len, length, element_ends)
+			record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
 			return string(bytes)
 		},
 	}
@@ -385,27 +385,47 @@ non_empty_string_alphabet :: proc(alphabet: string, max_len: int = -1) -> Gen(St
 	return string_alphabet(alphabet, 1, max_len)
 }
 
-record_collection_suffix_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
+record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
 	if !t.capture_shrink_hints || len(element_ends) == 0 || length <= min_len {
 		return
 	}
 
-	record_collection_length_shrink_hint(t, start, min_len, length, min_len, element_ends)
+	record_collection_remove_range_hint(t, start, min_len, length, min_len, length - min_len, element_ends)
 	if length - 1 > min_len {
-		record_collection_length_shrink_hint(t, start, min_len, length, length - 1, element_ends)
+		record_collection_remove_range_hint(t, start, min_len, length, length - 1, 1, element_ends)
+	}
+	record_collection_prefix_hint(t, start, min_len, length, element_ends)
+	if length > 1 {
+		record_collection_remove_range_hint(t, start, min_len, length, 0, 1, element_ends)
 	}
 }
 
-record_collection_length_shrink_hint :: proc(t: ^T, start, min_len, length, new_length: int, element_ends: []int) {
+record_collection_prefix_hint :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
+	new_length := min_len
+	if new_length == 0 && length > 0 {
+		new_length = 1
+	}
+	remove_count := length - new_length
+	record_collection_remove_range_hint(t, start, min_len, length, 0, remove_count, element_ends)
+}
+
+record_collection_remove_range_hint :: proc(t: ^T, start, min_len, length, remove_start, remove_count: int, element_ends: []int) {
+	if remove_count <= 0 || remove_start < 0 || remove_start + remove_count > length {
+		return
+	}
+
+	new_length := length - remove_count
 	if new_length < min_len || new_length >= length {
 		return
 	}
 
 	end := choice_cursor(t)
-	retained_choice_count := element_ends[new_length] - element_ends[0]
-	replacement := make([dynamic]u64, 0, 1 + retained_choice_count, t.value_allocator)
+	retained_prefix_count := element_ends[remove_start] - element_ends[0]
+	retained_suffix_count := element_ends[length] - element_ends[remove_start + remove_count]
+	replacement := make([dynamic]u64, 0, 1 + retained_prefix_count + retained_suffix_count, t.value_allocator)
 	append(&replacement, u64(new_length - min_len))
-	append_choice_range(&replacement, t, element_ends[0], retained_choice_count)
+	append_choice_range(&replacement, t, element_ends[0], retained_prefix_count)
+	append_choice_range(&replacement, t, element_ends[remove_start + remove_count], retained_suffix_count)
 	record_choice_shrink_hint(t, start, end - start, replacement[:])
 }
 

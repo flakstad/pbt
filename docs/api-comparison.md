@@ -73,8 +73,8 @@ without every generator needing a custom shrinker. Custom generators can also
 record domain-specific choice-range shrink hints for values that have a simpler
 alternate replay encoding.
 
-It now tries domain-specific choice hints, built-in length hints for shortening
-array/string suffixes while preserving retained element choices, and marked
+It now tries domain-specific choice hints, built-in length hints for removing
+array/string ranges while preserving retained element choices, and marked
 command-boundary ranges for stateful properties, reducing the generated
 command-sequence length when a whole command is removed. It also removes chunks
 from the choice stream, tries zeroed suffixes for simpler array/string/payload
@@ -85,7 +85,7 @@ and shrink duration.
 
 Useful additions:
 
-- structure-aware collection shrinking beyond suffix removal
+- deeper structure-aware collection shrinking
 - richer coverage-aware shrinking beyond preserving original failure labels
 
 ### Result And Counterexample Diagnostics

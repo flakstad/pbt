@@ -253,6 +253,26 @@ string_suffix_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+array_contains_failure_property :: proc(t: ^T) -> Result {
+	values := draw(t, array(int_range(0, 9), 0, 4))
+	for value in values {
+		if value == 7 {
+			return fail("array contains bad value")
+		}
+	}
+	return pass()
+}
+
+string_contains_failure_property :: proc(t: ^T) -> Result {
+	value := draw(t, string_alphabet("az", 0, 4))
+	for ch in value {
+		if ch == 'z' {
+			return fail("string contains bad byte")
+		}
+	}
+	return pass()
+}
+
 domain_encoded_number :: proc(t: ^T) -> int {
 	start := choice_cursor(t)
 	encoding := choice(t, 2)
@@ -1151,6 +1171,32 @@ test_shrinker_shortens_string_suffix_with_length_hint :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.choices[0], u64(2))
 	testing.expect_value(t, result.choices[1], u64(0))
 	testing.expect_value(t, result.choices[2], u64(1))
+}
+
+@(test)
+test_shrinker_removes_array_prefix_with_length_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{3, 1, 2, 7}
+	result := shrink_case(array_contains_failure_property, choices[:], 1, 10, default_options({max_shrinks = 8}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "array contains bad value")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(7))
+}
+
+@(test)
+test_shrinker_removes_string_prefix_with_length_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{3, 0, 0, 1}
+	result := shrink_case(string_contains_failure_property, choices[:], 1, 10, default_options({max_shrinks = 8}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "string contains bad byte")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(1))
 }
 
 @(test)
