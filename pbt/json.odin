@@ -13,6 +13,7 @@ check_result_json :: proc(result: Check_Result) -> string {
 	json_field_int(&builder, "schema_version", 1, false)
 	json_field_string(&builder, "name", result.name, false)
 	json_field_string(&builder, "status", status_string(result.status), false)
+	json_field_string(&builder, "code", result.code, false)
 	json_field_u64(&builder, "seed", result.seed, false)
 	json_field_int(&builder, "num_tests", result.num_tests, false)
 	json_field_int(&builder, "num_discards", result.num_discards, false)
@@ -55,6 +56,9 @@ check_result_text :: proc(result: Check_Result) -> string {
 	strings.builder_init(&builder)
 
 	strings.write_string(&builder, fmt.tprintf("%s: %s\n", result.name, status_string(result.status)))
+	if len(result.code) > 0 {
+		strings.write_string(&builder, fmt.tprintf("code: %s\n", result.code))
+	}
 	strings.write_string(&builder, fmt.tprintf("tests: %d, discards: %d, duration: %d ns\n", result.num_tests, result.num_discards, result.duration_ns))
 	if len(result.message) > 0 {
 		strings.write_string(&builder, fmt.tprintf("message: %s\n", result.message))

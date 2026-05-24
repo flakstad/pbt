@@ -275,6 +275,7 @@ test_check_finds_and_shrinks_failure :: proc(t: ^testing.T) {
 	defer destroy_check_result(&result)
 
 	testing.expect_value(t, result.status, Status.Fail)
+	testing.expect_value(t, result.code, "property_failed")
 	testing.expect(t, len(result.replay.choices) > 0)
 	testing.expect_value(t, result.replay.choices[0], u64(50))
 
@@ -304,6 +305,7 @@ test_check_result_json_contains_replay :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"tool\":\"pbt\""))
 	testing.expect(t, strings.contains(json, "\"schema_version\":1"))
 	testing.expect(t, strings.contains(json, "\"status\":\"fail\""))
+	testing.expect(t, strings.contains(json, "\"code\":\"property_failed\""))
 	testing.expect(t, strings.contains(json, "\"duration_ns\""))
 	testing.expect(t, strings.contains(json, "\"shrink_attempts\""))
 	testing.expect(t, strings.contains(json, "\"shrink_duration_ns\""))
@@ -322,6 +324,7 @@ test_check_result_json_contains_replay :: proc(t: ^testing.T) {
 	text := check_result_text(result)
 	defer delete(text)
 	testing.expect(t, strings.contains(text, "large values fail: fail"))
+	testing.expect(t, strings.contains(text, "code: property_failed"))
 	testing.expect(t, strings.contains(text, "replay: --replay-seed 123 --replay-choices 50"))
 	testing.expect(t, strings.contains(text, "shrink:"))
 }
@@ -465,6 +468,7 @@ test_unmet_coverage_requirement_fails_check :: proc(t: ^testing.T) {
 	defer destroy_check_result(&result)
 
 	testing.expect_value(t, result.status, Status.Error)
+	testing.expect_value(t, result.code, "coverage_not_met")
 	testing.expect_value(t, result.message, "coverage requirement not met")
 	impossible_index := coverage_index(result.coverage[:], "impossible")
 	testing.expect(t, impossible_index >= 0)
@@ -583,10 +587,43 @@ test_check_property_from_args_selects_named_property :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
+test_check_property_from_args_selects_unique_substring :: proc(t: ^testing.T) {
 	properties := [?]Property_Case{
 		{name = "sum", property = sum_is_commutative},
 		{name = "collections", property = collections_are_generated_in_case_arena},
+	}
+	args := [?]string{"--property", "collect", "--num-tests", "5", "--seed", "88"}
+
+	result := check_property_from_args(properties[:], args[:])
+	defer destroy_check_result(&result)
+
+	testing.expect_value(t, result.name, "collections")
+	testing.expect_value(t, result.status, Status.Pass)
+}
+
+@(test)
+test_check_property_from_args_rejects_ambiguous_substring :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "small sum", property = sum_is_commutative},
+		{name = "large sum", property = sum_is_commutative},
+	}
+	args := [?]string{"--property", "sum"}
+
+	result := check_property_from_args(properties[:], args[:])
+	defer destroy_check_result(&result)
+
+	testing.expect_value(t, result.status, Status.Error)
+	testing.expect_value(t, result.code, "multiple_properties_matched")
+	testing.expect_value(t, result.message, "multiple properties matched")
+}
+
+@(test)
+test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
+	core_tag := [?]string{"core"}
+	collection_tag := [?]string{"collection", "arena"}
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative, description = "addition law", tags = core_tag[:]},
+		{name = "collections", property = collections_are_generated_in_case_arena, description = "generated collections", tags = collection_tag[:]},
 	}
 
 	json := properties_json(properties[:])
@@ -595,5 +632,8 @@ test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"tool\":\"pbt\""))
 	testing.expect(t, strings.contains(json, "\"schema_version\":1"))
 	testing.expect(t, strings.contains(json, "\"name\":\"sum\""))
+	testing.expect(t, strings.contains(json, "\"description\":\"addition law\""))
+	testing.expect(t, strings.contains(json, "\"tags\":[\"core\"]"))
 	testing.expect(t, strings.contains(json, "\"name\":\"collections\""))
+	testing.expect(t, strings.contains(json, "\"tags\":[\"collection\",\"arena\"]"))
 }

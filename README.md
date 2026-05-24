@@ -44,6 +44,8 @@ The current implementation includes:
 - `check_from_args` for normal runs and replay runs from one CLI path
 - `Property_Case` and `check_property_from_args` for multi-property runners
 - `properties_json` and `--list-properties` detection for runner discovery
+- property descriptions/tags in discovery output
+- stable result codes for machine-readable Gransk handling
 
 Run the tests with:
 

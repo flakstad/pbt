@@ -5,6 +5,9 @@ import "core:os"
 
 import pbt "../../pbt"
 
+STRING_TAGS := [?]string{"string", "unit"}
+BOUNDARY_TAGS := [?]string{"integer", "shrinking"}
+
 reverse_twice_property :: proc(t: ^pbt.T) -> pbt.Result {
 	value := pbt.draw(t, pbt.string_alphabet("abcdef", 0, 20))
 	reversed := reverse_string(value)
@@ -20,8 +23,8 @@ small_numbers_property :: proc(t: ^pbt.T) -> pbt.Result {
 
 main :: proc() {
 	properties := [?]pbt.Property_Case {
-		{name = "reverse twice", property = reverse_twice_property},
-		{name = "small numbers", property = small_numbers_property},
+		{name = "reverse twice", property = reverse_twice_property, description = "reversing a string twice returns the original value", tags = STRING_TAGS[:]},
+		{name = "small numbers", property = small_numbers_property, description = "intentional failing integer boundary example", tags = BOUNDARY_TAGS[:]},
 	}
 
 	args := os.args[1:]

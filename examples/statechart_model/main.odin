@@ -6,6 +6,8 @@ import "core:os"
 import pbt "../../pbt"
 import sc "../../../statecharts"
 
+STATECHART_TAGS := [?]string{"stateful", "statechart"}
+
 Door_State :: enum {
 	Closed,
 	Open,
@@ -68,7 +70,7 @@ door_property :: proc(t: ^pbt.T) -> pbt.Result {
 
 main :: proc() {
 	properties := [?]pbt.Property_Case {
-		{name = "door statechart", property = door_property},
+		{name = "door statechart", property = door_property, description = "statechart model checked against a buggy door target", tags = STATECHART_TAGS[:]},
 	}
 
 	args := os.args[1:]

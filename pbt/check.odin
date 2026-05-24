@@ -30,6 +30,7 @@ Coverage_Label :: struct {
 Check_Result :: struct {
 	name:         string,
 	status:       Status,
+	code:         string,
 	seed:         u64,
 	num_tests:    int,
 	num_discards: int,
@@ -75,6 +76,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 	result := Check_Result {
 		name = name,
 		status = .Pass,
+		code = "ok",
 		seed = opts.seed,
 	}
 
@@ -99,6 +101,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 			destroy_test_case(&tc)
 			if discards > opts.max_discards {
 				result.status = .Error
+				result.code = "too_many_discards"
 				result.message = "too many discarded tests"
 				result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 				return result
@@ -109,6 +112,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 			tc = captured
 
 			result.status = tc.result.status
+			result.code = result_code_for_status(tc.result.status)
 			result.message = tc.result.message
 			result.failing_test = tc
 			if opts.shrink {
@@ -136,6 +140,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 
 	if !coverage_requirements_met(result.coverage[:], result.num_tests) {
 		result.status = .Error
+		result.code = "coverage_not_met"
 		result.message = "coverage requirement not met"
 	}
 	result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
@@ -149,6 +154,7 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 	result := Check_Result {
 		name = name,
 		status = tc.result.status,
+		code = result_code_for_status(tc.result.status),
 		seed = replay.seed,
 		num_tests = 1,
 		failing_test = tc,
@@ -166,6 +172,20 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 	}
 	result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	return result
+}
+
+result_code_for_status :: proc(status: Status) -> string {
+	switch status {
+	case .Pass:
+		return "ok"
+	case .Fail:
+		return "property_failed"
+	case .Discard:
+		return "property_discarded"
+	case .Error:
+		return "property_error"
+	}
+	return "unknown"
 }
 
 destroy_check_result :: proc(result: ^Check_Result) {

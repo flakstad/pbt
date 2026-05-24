@@ -115,6 +115,7 @@ Check_Options :: struct {
 Check_Result :: struct {
     name: string,
     status: Status,
+    code: string,
     seed: u64,
     num_tests: int,
     num_discards: int,
@@ -283,9 +284,10 @@ pbt.exit_with_check_result(result)
 Multi-property runners should expose named properties:
 
 ```odin
+tags := [?]string{"stateful", "cart"}
 properties := [?]pbt.Property_Case{
-    {name = "cart total", property = cart_total_property},
-    {name = "cart stateful", property = cart_stateful_property},
+    {name = "cart total", property = cart_total_property, description = "total is stable"},
+    {name = "cart stateful", property = cart_stateful_property, description = "cart command model", tags = tags[:]},
 }
 result := pbt.check_property_from_args(properties[:], os.args[1:])
 pbt.exit_with_check_result(result)
@@ -293,6 +295,9 @@ pbt.exit_with_check_result(result)
 
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.
+Discovery JSON includes property names, descriptions, and tags. `--property`
+first matches an exact property name, then falls back to a unique substring
+match. Ambiguous or missing matches return stable error codes.
 
 JSON is the default machine-readable output. Human-oriented runner output can
 use:
@@ -497,6 +502,8 @@ The result payload should include:
 - `schema_version`
 - property name
 - pass/fail/error/discard status
+- stable result code such as `ok`, `property_failed`, `property_not_found`,
+  `multiple_properties_matched`, `coverage_not_met`, or `too_many_discards`
 - seed
 - duration in nanoseconds
 - shrink attempts and shrink duration

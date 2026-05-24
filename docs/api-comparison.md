@@ -14,6 +14,8 @@ The current core is in a reasonable place:
 - seed + choice-stream replay is useful for Gransk and external targets.
 - default-on shrinking is the right default.
 - JSON output and property discovery make the library usable as a Gransk engine.
+- `Check_Result.code` provides stable machine-readable result codes in addition
+  to human messages.
 - `label`, `classify`, `collect`, and `cover` now aggregate coverage data in
   `Check_Result` and JSON output.
 - size-aware generators now cover the basic QuickCheck/test.check shape:
@@ -84,11 +86,10 @@ notes, labels, messages, JSON, and compact text output, but still needs:
 ### Runner Integration
 
 The runner API is already useful for Gransk. `--json` and `--text` output modes
-are supported by the shared CLI helpers. Still missing:
+are supported by the shared CLI helpers, discovery includes property metadata,
+and `--property` supports exact or unique substring matching. Still missing:
 
-- `--property` pattern matching or multiple property execution
-- stable machine-readable error codes
-- optional per-property metadata
+- multiple property execution in one runner invocation
 
 ## Performance Notes
 

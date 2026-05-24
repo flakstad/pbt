@@ -69,8 +69,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           24.14
-  avg ns/unit:            25.76
+  best ns/unit:           22.41
+  avg ns/unit:            23.47
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -79,8 +79,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           132.47
-  avg ns/unit:            132.84
+  best ns/unit:           131.62
+  avg ns/unit:            133.76
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -89,8 +89,8 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           191.26
-  avg ns/unit:            191.82
+  best ns/unit:           194.12
+  avg ns/unit:            196.28
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -99,8 +99,8 @@ stateful 20-step model
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           1958.00
-  avg ns/unit:            2358.20
+  best ns/unit:           1959.00
+  avg ns/unit:            2500.00
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37

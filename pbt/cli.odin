@@ -4,8 +4,10 @@ import "core:strconv"
 import "core:strings"
 
 Property_Case :: struct {
-	name:     string,
-	property: Property,
+	name:        string,
+	property:    Property,
+	description: string,
+	tags:        []string,
 }
 
 parse_check_options :: proc(args: []string, defaults: Check_Options = {}) -> Check_Options {
@@ -72,7 +74,7 @@ check_from_args :: proc(name: string, property: Property, args: []string, defaul
 
 check_property_from_args :: proc(properties: []Property_Case, args: []string, defaults: Check_Options = {}) -> Check_Result {
 	if len(properties) == 0 {
-		return {status = .Error, message = "no properties registered"}
+		return {status = .Error, code = "no_properties_registered", message = "no properties registered"}
 	}
 
 	name := parse_property_name(args)
@@ -86,9 +88,34 @@ check_property_from_args :: proc(properties: []Property_Case, args: []string, de
 		}
 	}
 
+	if name != "" {
+		matches := 0
+		match_index := -1
+		for property, i in properties {
+			if strings.contains(property.name, name) {
+				matches += 1
+				match_index = i
+			}
+		}
+
+		if matches == 1 {
+			property := properties[match_index]
+			return check_from_args(property.name, property.property, args, defaults)
+		}
+		if matches > 1 {
+			return {
+				name = name,
+				status = .Error,
+				code = "multiple_properties_matched",
+				message = "multiple properties matched",
+			}
+		}
+	}
+
 	return {
 		name = name,
 		status = .Error,
+		code = "property_not_found",
 		message = "property not found",
 	}
 }
@@ -140,6 +167,9 @@ properties_json :: proc(properties: []Property_Case) -> string {
 		}
 		strings.write_string(&builder, "{")
 		json_field_string(&builder, "name", property.name, true)
+		json_field_string(&builder, "description", property.description, false)
+		strings.write_string(&builder, ",\"tags\":")
+		json_write_strings(&builder, property.tags)
 		strings.write_string(&builder, "}")
 	}
 	strings.write_string(&builder, "]}")
