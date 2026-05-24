@@ -65,6 +65,8 @@ parse_check_options :: proc(args: []string, defaults: Check_Options = {}) -> Che
 		case "--no-shrink":
 			options.shrink = false
 			options.no_shrink = true
+		case "--coverage-warning-only":
+			options.coverage_warning_only = true
 		}
 	}
 

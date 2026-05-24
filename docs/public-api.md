@@ -110,6 +110,7 @@ Check_Options :: struct {
     shrink: bool,
     no_shrink: bool,
     max_shrinks: int,
+    coverage_warning_only: bool,
 }
 
 Check_Result :: struct {
@@ -267,6 +268,8 @@ generated tests. `cover` additionally records a minimum required percentage; a
 completed check reports `Error` with `coverage_not_met` and a message naming
 the first missed label and observed percentage. Coverage summaries are included
 in JSON so Gransk can show distribution and unmet requirement details.
+Set `coverage_warning_only` or pass `--coverage-warning-only` when a run should
+report weak coverage without failing.
 
 `note` records explanatory text separately from adapter/state-machine events.
 That keeps human context visible without making notes look like target actions
@@ -358,6 +361,7 @@ Supported runner options:
 - `--max-shrinks`
 - `--shrink`
 - `--no-shrink`, equivalent to `no_shrink = true`
+- `--coverage-warning-only`
 - `--replay-seed`
 - `--replay-choices` as a comma-separated choice stream
 

@@ -46,13 +46,13 @@ has the first useful version of this:
 - label counts in `Check_Result`
 - `cover(t, condition, percent, label)`
 - coverage requirement enforcement at the end of a successful check
+- warning-only coverage mode for exploratory runs
 - coverage failure messages name the first unmet label and observed percentage
 - JSON coverage summaries for Gransk reports
 
 Useful additions still missing:
 
 - richer human-readable coverage reports
-- warning-only coverage mode
 - coverage-aware shrinking when a property wants to preserve interesting cases
 
 ### Generator Catalog

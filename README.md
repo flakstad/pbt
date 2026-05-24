@@ -36,6 +36,7 @@ The current implementation includes:
 - diagnostic helpers: first-class `note`, plus `label`, `classify`, `collect`,
   and `cover`
 - coverage/classification aggregation in `Check_Result` and JSON output
+- strict or warning-only coverage requirement handling
 - richer failure context with `counterexample` and value-printing `equal`
 - structured event capture for HTTP/process/statechart adapters
 - JSON result output for Gransk, including duration and shrink metadata

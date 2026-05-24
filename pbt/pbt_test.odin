@@ -689,6 +689,22 @@ test_unmet_coverage_requirement_fails_check :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_coverage_warning_only_keeps_check_passing :: proc(t: ^testing.T) {
+	result := check("coverage warning", coverage_failure_property, {num_tests = 10, seed = 302, coverage_warning_only = true})
+	defer destroy_check_result(&result)
+
+	testing.expect_value(t, result.status, Status.Pass)
+	testing.expect_value(t, result.code, "ok")
+	impossible_index := coverage_index(result.coverage[:], "impossible")
+	testing.expect(t, impossible_index >= 0)
+
+	json := check_result_json(result)
+	defer delete(json)
+	testing.expect(t, strings.contains(json, "\"label\":\"impossible\""))
+	testing.expect(t, strings.contains(json, "\"ok\":false"))
+}
+
+@(test)
 test_counterexample_adds_failure_context :: proc(t: ^testing.T) {
 	result := check("counterexample", counterexample_property, {num_tests = 1, seed = 401})
 	defer destroy_check_result(&result)
@@ -724,6 +740,7 @@ test_parse_check_options :: proc(t: ^testing.T) {
 		"--max-shrinks",
 		"30",
 		"--no-shrink",
+		"--coverage-warning-only",
 	}
 	options := parse_check_options(args[:])
 
@@ -733,6 +750,7 @@ test_parse_check_options :: proc(t: ^testing.T) {
 	testing.expect_value(t, options.max_discards, 20)
 	testing.expect_value(t, options.max_shrinks, 30)
 	testing.expect(t, options.no_shrink)
+	testing.expect(t, options.coverage_warning_only)
 }
 
 @(test)

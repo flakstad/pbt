@@ -14,6 +14,7 @@ Check_Options :: struct {
 	shrink:       bool,
 	no_shrink:    bool,
 	max_shrinks:  int,
+	coverage_warning_only: bool,
 }
 
 Replay :: struct {
@@ -154,7 +155,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 		}
 	}
 
-	if !coverage_requirements_met(result.coverage[:], result.num_tests) {
+	if !opts.coverage_warning_only && !coverage_requirements_met(result.coverage[:], result.num_tests) {
 		result.status = .Error
 		result.code = "coverage_not_met"
 		result.message = coverage_failure_message(result.coverage[:], result.num_tests)
