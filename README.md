@@ -17,16 +17,22 @@ The current implementation includes:
 - `Result` values with pass/fail/discard/error
 - integer, unsigned integer, boolean, array, optional, ASCII string, and fixed
   alphabet string generators
-- generator combinators: `map_gen` and `bind`
+- fixed value, element, enum range, float range, size-aware, resized, scaled,
+  and filtered generators
+- pair, dictionary, and unique array generators for structured values
+- generator combinators: `map_gen`, `bind`, `one_of`, and `frequency`
 - strict replay from seed and choices
 - default-on choice-stream shrinking
 - per-test arena allocation for generated values
+- `sample` for quick generator exploration
 - stateful model runner for command-sequence properties
 - one-shot process adapter for CLI-style targets
 - request-file protocol adapter for wrapping non-Odin libraries in small target
   processes
 - curl-backed HTTP adapter for external APIs and services
-- diagnostic helpers: `note`, `label`, `classify`, and `collect`
+- diagnostic helpers: `note`, `label`, `classify`, `collect`, and `cover`
+- coverage/classification aggregation in `Check_Result` and JSON output
+- richer failure context with `counterexample` and value-printing `equal`
 - structured event capture for HTTP/process/statechart adapters
 - JSON result output for Gransk
 - runner helpers: `print_check_result_json`, `check_result_exit_code`, and
@@ -49,3 +55,9 @@ minimal Gransk-facing runner executable.
 
 See [docs/statechart-model-example.md](docs/statechart-model-example.md) for a
 statechart-backed stateful model example.
+
+See [BENCHMARKS.md](BENCHMARKS.md) for performance measurement commands and
+current benchmark coverage.
+
+See [docs/api-comparison.md](docs/api-comparison.md) for the current comparison
+against QuickCheck and test.check.

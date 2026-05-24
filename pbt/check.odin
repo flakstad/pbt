@@ -1,0 +1,412 @@
+package pbt
+
+import "core:fmt"
+import "core:testing"
+
+Property :: proc(t: ^T) -> Result
+
+Check_Options :: struct {
+	num_tests:    int,
+	max_discards: int,
+	seed:         u64,
+	max_size:     int,
+	shrink:       bool,
+	no_shrink:    bool,
+	max_shrinks:  int,
+}
+
+Replay :: struct {
+	seed:    u64,
+	choices: [dynamic]u64,
+}
+
+Coverage_Label :: struct {
+	label:            string,
+	count:            int,
+	required_percent: f64,
+}
+
+Check_Result :: struct {
+	name:         string,
+	status:       Status,
+	seed:         u64,
+	num_tests:    int,
+	num_discards: int,
+	coverage:     [dynamic]Coverage_Label,
+	failing_test: Test_Case,
+	shrunk_test:  Test_Case,
+	replay:       Replay,
+	message:      string,
+}
+
+default_options :: proc(options: Check_Options) -> Check_Options {
+	o := options
+	if o.num_tests <= 0 {
+		o.num_tests = 100
+	}
+	if o.max_discards <= 0 {
+		o.max_discards = o.num_tests * 10
+	}
+	if o.seed == 0 {
+		o.seed = 0x9e37_79b9_7f4a_7c15
+	}
+	if o.max_size <= 0 {
+		o.max_size = 100
+	}
+	if o.no_shrink {
+		o.shrink = false
+	} else if !o.shrink {
+		o.shrink = true
+	}
+	if o.max_shrinks <= 0 {
+		o.max_shrinks = 1_000
+	}
+	return o
+}
+
+check :: proc(name: string, property: Property, options: Check_Options = {}) -> Check_Result {
+	opts := default_options(options)
+
+	result := Check_Result {
+		name = name,
+		status = .Pass,
+		seed = opts.seed,
+	}
+
+	runner: T
+	test_init(&runner, opts.seed, 1, nil, false, false)
+	defer test_destroy(&runner)
+
+	test_index := 0
+	discards := 0
+	for test_index < opts.num_tests {
+		size := size_for_test(test_index, opts)
+		case_seed := opts.seed + u64(test_index)
+		tc := run_case_with_context(&runner, property, case_seed, size, nil, false, false, false, &result.coverage)
+		switch tc.result.status {
+		case .Pass:
+			result.num_tests += 1
+			test_index += 1
+			destroy_test_case(&tc)
+		case .Discard:
+			result.num_discards += 1
+			discards += 1
+			destroy_test_case(&tc)
+			if discards > opts.max_discards {
+				result.status = .Error
+				result.message = "too many discarded tests"
+				return result
+			}
+		case .Fail, .Error:
+			captured := run_case(property, case_seed, size, tc.choices[:], true, true, true)
+			destroy_test_case(&tc)
+			tc = captured
+
+			result.status = tc.result.status
+			result.message = tc.result.message
+			result.failing_test = tc
+			if opts.shrink {
+				result.shrunk_test = shrink_case(property, tc.choices[:], case_seed, size, opts)
+			} else {
+				result.shrunk_test = Test_Case {
+					choices = copy_choices(tc.choices[:]),
+					events = copy_events(tc.events[:]),
+					labels = copy_strings(tc.labels[:]),
+					result = tc.result,
+				}
+			}
+			result.replay = Replay {
+				seed = case_seed,
+				choices = copy_choices(result.shrunk_test.choices[:]),
+			}
+			return result
+		}
+	}
+
+	if !coverage_requirements_met(result.coverage[:], result.num_tests) {
+		result.status = .Error
+		result.message = "coverage requirement not met"
+	}
+	return result
+}
+
+check_replay :: proc(name: string, property: Property, replay: Replay, options: Check_Options = {}) -> Check_Result {
+	opts := default_options(options)
+	tc := run_case(property, replay.seed, opts.max_size, replay.choices[:], true, true)
+	return Check_Result {
+		name = name,
+		status = tc.result.status,
+		seed = replay.seed,
+		num_tests = 1,
+		failing_test = tc,
+		shrunk_test = Test_Case {
+			choices = copy_choices(tc.choices[:]),
+			events = copy_events(tc.events[:]),
+			labels = copy_strings(tc.labels[:]),
+			result = tc.result,
+		},
+		replay = Replay {
+			seed = replay.seed,
+			choices = copy_choices(tc.choices[:]),
+		},
+		message = tc.result.message,
+	}
+}
+
+destroy_check_result :: proc(result: ^Check_Result) {
+	destroy_coverage(&result.coverage)
+	destroy_test_case(&result.failing_test)
+	destroy_test_case(&result.shrunk_test)
+	delete(result.replay.choices)
+}
+
+require_pass :: proc(t: ^testing.T, result: Check_Result) {
+	if result.status == .Pass {
+		testing.expect(t, true)
+		return
+	}
+
+	if len(result.message) > 0 {
+		fmt.println(result.message)
+	}
+	fmt.printf("property %q failed with seed %v and choices %v\n", result.name, result.replay.seed, result.replay.choices[:])
+	testing.expect(t, false)
+}
+
+run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil) -> Test_Case {
+	t: T
+	test_init(&t, seed, size, replay_choices, replay_strict, capture_events)
+	defer test_destroy(&t)
+
+	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, capture_pass, capture_events, coverage)
+}
+
+run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil) -> Test_Case {
+	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
+
+	result := property(t)
+	if t.force_discard && result.status == .Pass {
+		result = discard(t.discard_message)
+	}
+	if t.replay_overrun {
+		result = discard("replay choice stream exhausted")
+	}
+	if coverage != nil && result.status == .Pass && (len(t.labels) > 0 || len(t.coverage_requirements) > 0) {
+		merge_case_coverage(coverage, t.labels[:], t.coverage_requirements[:])
+	}
+	tc := Test_Case{result = result}
+	if capture_pass || result.status == .Fail || result.status == .Error {
+		tc.choices = copy_current_choices(t)
+		tc.events = copy_events(t.events[:])
+		tc.labels = copy_strings(t.labels[:])
+	}
+	return tc
+}
+
+shrink_case :: proc(property: Property, choices: []u64, seed: u64, size: int, options: Check_Options) -> Test_Case {
+	runner: T
+	test_init(&runner, seed, size, choices, true, true)
+	defer test_destroy(&runner)
+
+	initial := run_case_with_context(&runner, property, seed, size, choices, true, true, true)
+	defer destroy_test_case(&initial)
+
+	best := Test_Case {
+		choices = copy_choices(choices),
+		events = copy_events(initial.events[:]),
+		labels = copy_strings(initial.labels[:]),
+		result = initial.result,
+	}
+
+	attempts := 0
+	changed := true
+	for changed && attempts < options.max_shrinks {
+		changed = false
+
+		if len(best.choices) > 0 && try_candidate(&runner, property, &best, best.choices[:len(best.choices) - 1], seed, size, &attempts, options.max_shrinks) {
+			changed = true
+			continue
+		}
+
+		if shrink_choice_chunks(&runner, property, &best, seed, size, &attempts, options.max_shrinks) {
+			changed = true
+			continue
+		}
+
+		for i in 0 ..< len(best.choices) {
+			if shrink_choice_value(&runner, property, &best, i, seed, size, &attempts, options.max_shrinks) {
+				changed = true
+				break
+			}
+		}
+	}
+
+	return best
+}
+
+shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+	if len(best.choices) < 2 {
+		return false
+	}
+
+	chunk := len(best.choices) / 2
+	for chunk > 0 && attempts^ < max_attempts {
+		start := 0
+		for start + chunk <= len(best.choices) && attempts^ < max_attempts {
+			candidate := choices_without_range(best.choices[:], start, chunk)
+			if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+				return true
+			}
+			start += 1
+		}
+		chunk /= 2
+	}
+
+	return false
+}
+
+shrink_choice_value :: proc(runner: ^T, property: Property, best: ^Test_Case, index: int, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+	current := best.choices[index]
+	if current == 0 {
+		return false
+	}
+
+	changed := false
+	low: u64 = 0
+	high := current
+	for low < high && attempts^ < max_attempts {
+		mid := low + (high - low) / 2
+		candidate := copy_choices(best.choices[:])
+		candidate[index] = mid
+
+		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+			changed = true
+			high = best.choices[index]
+		} else {
+			low = mid + 1
+		}
+	}
+
+	return changed
+}
+
+try_candidate :: proc(runner: ^T, property: Property, best: ^Test_Case, candidate: []u64, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+	candidate_copy := copy_choices(candidate)
+	return try_candidate_dynamic(runner, property, best, candidate_copy, seed, size, attempts, max_attempts)
+}
+
+try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, candidate: [dynamic]u64, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+	if attempts^ >= max_attempts {
+		delete(candidate)
+		return false
+	}
+
+	attempts^ += 1
+	tc := run_case_with_context(runner, property, seed, size, candidate[:], true, true, true)
+	if tc.result.status == .Fail || tc.result.status == .Error {
+		actual_choices := copy_choices(tc.choices[:])
+		destroy_test_case(best)
+		best.choices = actual_choices
+		best.events = copy_events(tc.events[:])
+		best.labels = copy_strings(tc.labels[:])
+		best.result = tc.result
+		destroy_test_case(&tc)
+		delete(candidate)
+		return true
+	}
+
+	destroy_test_case(&tc)
+	delete(candidate)
+	return false
+}
+
+choices_without_range :: proc(src: []u64, start, count: int, allocator := context.allocator) -> [dynamic]u64 {
+	dst := make([dynamic]u64, 0, len(src) - count, allocator)
+	for value, i in src {
+		if i >= start && i < start + count {
+			continue
+		}
+		append(&dst, value)
+	}
+	return dst
+}
+
+size_for_test :: proc(test_index: int, options: Check_Options) -> int {
+	if options.num_tests <= 1 {
+		return options.max_size
+	}
+
+	return 1 + (test_index * options.max_size) / (options.num_tests - 1)
+}
+
+merge_case_coverage :: proc(coverage: ^[dynamic]Coverage_Label, labels: []string, requirements: []Coverage_Requirement) {
+	for requirement in requirements {
+		index := coverage_index(coverage^[:], requirement.label)
+		if index < 0 {
+			append(coverage, Coverage_Label {
+				label = clone_non_empty(requirement.label),
+				required_percent = requirement.required_percent,
+			})
+		} else if requirement.required_percent > coverage^[index].required_percent {
+			coverage^[index].required_percent = requirement.required_percent
+		}
+	}
+
+	for label, i in labels {
+		if label_seen_before(labels, i, label) {
+			continue
+		}
+		index := coverage_index(coverage^[:], label)
+		if index < 0 {
+			append(coverage, Coverage_Label {
+				label = clone_non_empty(label),
+				count = 1,
+			})
+		} else {
+			coverage^[index].count += 1
+		}
+	}
+}
+
+coverage_requirements_met :: proc(coverage: []Coverage_Label, num_tests: int) -> bool {
+	if num_tests <= 0 {
+		return true
+	}
+	for item in coverage {
+		if item.required_percent <= 0 {
+			continue
+		}
+		percent := f64(item.count) * 100.0 / f64(num_tests)
+		if percent < item.required_percent {
+			return false
+		}
+	}
+	return true
+}
+
+coverage_index :: proc(coverage: []Coverage_Label, label: string) -> int {
+	for item, i in coverage {
+		if item.label == label {
+			return i
+		}
+	}
+	return -1
+}
+
+label_seen_before :: proc(labels: []string, index: int, label: string) -> bool {
+	for i in 0 ..< index {
+		if labels[i] == label {
+			return true
+		}
+	}
+	return false
+}
+
+destroy_coverage :: proc(coverage: ^[dynamic]Coverage_Label) {
+	for item in coverage^ {
+		if len(item.label) > 0 {
+			delete(item.label)
+		}
+	}
+	delete(coverage^)
+}

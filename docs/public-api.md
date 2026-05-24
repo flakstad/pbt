@@ -118,12 +118,11 @@ Check_Result :: struct {
     seed: u64,
     num_tests: int,
     num_discards: int,
+    coverage: []Coverage_Label,
     failing_test: Maybe(Test_Case),
     shrunk_test: Maybe(Test_Case),
     replay: Replay,
     message: string,
-    labels: []Label_Count,
-    events: []Event,
 }
 ```
 
@@ -142,10 +141,14 @@ error :: proc(message: string) -> Result
 
 assert :: proc(ok: bool, message := "") -> Result
 equal :: proc(actual, expected: $T) -> Result
+counterexample :: proc(message: string, result: Result) -> Result
 ```
 
 The property function should return `Result`, not `bool`. That makes discards,
 errors, messages, and adapter failures first-class from day one.
+
+`counterexample` adds contextual text to a non-passing result. `equal` includes
+the expected and actual values in the failure message.
 
 ## Generators
 
@@ -169,27 +172,52 @@ important enough to justify the extra allocation/lifetime complexity.
 Initial generator set:
 
 ```odin
+constant :: proc(value: Value) -> Gen(Constant_Input(Value), Value)
 boolean :: proc() -> Gen(Bool_Input, bool)
 int_range :: proc(min, max: int) -> Gen(Int_Range_Input, int)
 u64_range :: proc(min, max: u64) -> Gen(U64_Range_Input, u64)
+f64_range :: proc(min, max: f64) -> Gen(F64_Range_Input, f64)
+elements :: proc(values: []Value) -> Gen(Elements_Input(Value), Value)
+enum_range :: proc(min, max: Value) -> Gen(Enum_Range_Input(Value), Value)
 one_of :: proc(gens: []Gen($Input, $Value)) -> Gen(One_Of_Input(Input, Value), Value)
 frequency :: proc(weighted: []Weighted_Gen($Input, $Value)) -> Gen(Frequency_Input(Input, Value), Value)
 array :: proc(elem: Gen($Input, $Value), min_len := 0, max_len := -1) -> Gen(Array_Input(Input, Value), []Value)
+unique_array :: proc(elem: Gen($Input, $Value), min_len := 0, max_len := -1) -> Gen(Array_Input(Input, Value), []Value)
 string_ascii :: proc(min_len := 0, max_len := -1) -> Gen(String_ASCII_Input, string)
 string_alphabet :: proc(alphabet: string, min_len := 0, max_len := -1) -> Gen(String_Alphabet_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
+pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
+dict :: proc(key: Gen($Key_Input, $Key), value: Gen($Value_Input, $Value), min_len := 0, max_len := -1) -> Gen(Dict_Input(Key_Input, Key, Value_Input, Value), map[Key]Value)
 map_gen :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Mapped) -> Gen(Map_Input(Input, Value, Mapped), Mapped)
 bind :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Gen(Next_Input, Next)) -> Gen(Bind_Input(Input, Value, Next_Input, Next), Next)
+sized :: proc(f: proc(size: int) -> Gen($Input, $Value)) -> Gen(Sized_Input(Input, Value), Value)
+resize :: proc(gen: Gen($Input, $Value), size: int) -> Gen(Resize_Input(Input, Value), Value)
+scale :: proc(gen: Gen($Input, $Value), f: proc(size: int) -> int) -> Gen(Scale_Input(Input, Value), Value)
+smaller :: proc(gen: Gen($Input, $Value)) -> Gen(Scale_Input(Input, Value), Value)
+such_that :: proc(gen: Gen($Input, $Value), predicate: proc(Value) -> bool, max_tries := 100) -> Gen(Such_That_Input(Input, Value), Value)
 ```
 
 Use a size parameter internally. Collection generators should default to size
 bounded behavior, with explicit min/max overrides.
 
-Likely next generators:
+Generators can be explored without a full property by sampling:
 
-- `float_range`
-- enum values
-- maps/sets where Odin type constraints make sense
+```odin
+samples := pbt.sample(pbt.string_alphabet("abc", 1, 8), {count = 10, seed = 123})
+defer pbt.destroy_sample_result(&samples)
+
+for value in samples.values {
+    fmt.println(value)
+}
+```
+
+Generated strings and slices in a sample result live until
+`destroy_sample_result` is called.
+
+Likely next generator work:
+
+- more recursive generator conveniences
+- domain-specific shrink hooks
 
 ## Shrinking And Replay
 
@@ -218,12 +246,19 @@ note :: proc(t: ^T, message: string)
 label :: proc(t: ^T, name: string)
 classify :: proc(t: ^T, condition: bool, name: string)
 collect :: proc(t: ^T, value: string)
+cover :: proc(t: ^T, condition: bool, required_percent: f64, name: string)
 counterexample :: proc(message: string) -> Result
 record_event :: proc(t: ^T, kind, name, status, detail: string)
 ```
 
 For Gransk, `Check_Result` should be serializable to JSON without scraping text
 output.
+
+`label`, `classify`, and `collect` aggregate coverage data across successful
+generated tests. `cover` additionally records a minimum required percentage; a
+completed check reports `Error` with `coverage requirement not met` when a
+requirement is missed. Coverage summaries are included in JSON so Gransk can
+show distribution and unmet requirement details.
 
 Runner helpers should make it easy for a project-specific executable to act as a
 Gransk engine:
