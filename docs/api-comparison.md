@@ -81,10 +81,10 @@ Useful additions:
 ### Result And Counterexample Diagnostics
 
 QuickCheck has strong counterexample/reporting ergonomics. `pbt` has events,
-notes, labels, messages, JSON, and compact text output, but still needs:
+notes, labels, messages, JSON, and compact text output with capped event traces,
+but still needs:
 
 - multiple notes without forcing event semantics
-- richer text formatting for long event traces
 
 ### Runner Integration
 

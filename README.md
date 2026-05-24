@@ -37,7 +37,7 @@ The current implementation includes:
 - richer failure context with `counterexample` and value-printing `equal`
 - structured event capture for HTTP/process/statechart adapters
 - JSON result output for Gransk, including duration and shrink metadata
-- text result output for direct human runner use
+- text result output with capped event traces for direct human runner use
 - runner helpers: `print_check_result_json`, `print_check_result_text`,
   `print_check_result`, `check_result_exit_code`, and `exit_with_check_result`
 - suite runner helpers: `run_cli`, `check_properties_from_args`,

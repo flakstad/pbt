@@ -4,6 +4,8 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 
+CHECK_RESULT_TEXT_MAX_EVENTS :: 20
+
 check_result_json :: proc(result: Check_Result) -> string {
 	builder: strings.Builder
 	strings.builder_init(&builder)
@@ -72,6 +74,7 @@ check_result_text :: proc(result: Check_Result) -> string {
 		if result.shrink_attempts > 0 {
 			strings.write_string(&builder, fmt.tprintf("shrink: %d attempts, %d ns\n", result.shrink_attempts, result.shrink_duration_ns))
 		}
+		write_event_trace_text(&builder, result.shrunk_test.events[:])
 	}
 	if len(result.coverage) > 0 {
 		strings.write_string(&builder, "coverage:\n")
@@ -88,6 +91,35 @@ check_result_text :: proc(result: Check_Result) -> string {
 		}
 	}
 	return strings.to_string(builder)
+}
+
+write_event_trace_text :: proc(builder: ^strings.Builder, events: []Event) {
+	if len(events) == 0 {
+		return
+	}
+
+	strings.write_string(builder, "events:\n")
+	limit := len(events)
+	if limit > CHECK_RESULT_TEXT_MAX_EVENTS {
+		limit = CHECK_RESULT_TEXT_MAX_EVENTS
+	}
+	for i in 0 ..< limit {
+		event := events[i]
+		strings.write_string(builder, fmt.tprintf("  %d. %s", i + 1, event.kind))
+		if len(event.name) > 0 {
+			strings.write_string(builder, fmt.tprintf(" %s", event.name))
+		}
+		if len(event.status) > 0 {
+			strings.write_string(builder, fmt.tprintf(" [%s]", event.status))
+		}
+		if len(event.detail) > 0 {
+			strings.write_string(builder, fmt.tprintf(": %s", event.detail))
+		}
+		strings.write_string(builder, "\n")
+	}
+	if len(events) > limit {
+		strings.write_string(builder, fmt.tprintf("  ... %d more events omitted\n", len(events) - limit))
+	}
 }
 
 print_check_result_text :: proc(result: Check_Result) {

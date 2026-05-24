@@ -346,6 +346,12 @@ test_events_are_reported_as_json :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"name\":\"cart add\""))
 	testing.expect(t, strings.contains(json, "\"about to fail\""))
 	testing.expect(t, strings.contains(json, "\"labels\":[\"forced\"]"))
+
+	text := check_result_text(result)
+	defer delete(text)
+	testing.expect(t, strings.contains(text, "events:"))
+	testing.expect(t, strings.contains(text, "process cart add [ok]: exit=0"))
+	testing.expect(t, strings.contains(text, "note [ok]: about to fail"))
 }
 
 @(test)
