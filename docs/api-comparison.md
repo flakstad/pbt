@@ -102,12 +102,13 @@ alternate replay encoding.
 It now tries domain-specific choice hints, built-in length hints for removing
 array/string ranges while preserving retained element choices, and marked
 command-boundary ranges for stateful properties, reducing the generated
-command-sequence length when a whole command is removed. It also removes chunks
-from the choice stream, tries zeroed suffixes for simpler array/string/payload
-contents, and lowers individual choice values. When a replay candidate consumes
-fewer choices than it was given, the shrinker keeps only the consumed choices,
-producing cleaner replay strings. `Check_Result` also records shrink attempts
-and shrink duration.
+command-sequence length when a whole command is removed. JSON field-subset
+generators also record hints that remove optional fields while preserving
+retained value choices. It also removes chunks from the choice stream, tries
+zeroed suffixes for simpler array/string/payload contents, and lowers individual
+choice values. When a replay candidate consumes fewer choices than it was given,
+the shrinker keeps only the consumed choices, producing cleaner replay strings.
+`Check_Result` also records shrink attempts and shrink duration.
 
 Useful additions:
 

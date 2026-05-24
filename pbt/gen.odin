@@ -1024,6 +1024,10 @@ json_object_field_subset_ascii :: proc(fields: []string, min_fields: int = 0, ma
 				max_string_len = 0
 			}
 
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			included := make([]bool, len(input.fields), t.value_allocator)
 			included_count := 0
 			for _, i in input.fields {
@@ -1048,6 +1052,12 @@ json_object_field_subset_ascii :: proc(fields: []string, min_fields: int = 0, ma
 			append(&values, '{')
 			string_gen := json_string_literal_ascii(0, max_string_len)
 			int_gen := json_int_literal()
+			value_starts: []int
+			value_ends: []int
+			if t.capture_shrink_hints && included_count > min_fields {
+				value_starts = make([]int, len(input.fields), t.value_allocator)
+				value_ends = make([]int, len(input.fields), t.value_allocator)
+			}
 			written := 0
 			for field, i in input.fields {
 				if !included[i] {
@@ -1058,10 +1068,19 @@ json_object_field_subset_ascii :: proc(fields: []string, min_fields: int = 0, ma
 				}
 				append_json_quoted_ascii_content(&values, field)
 				append(&values, ':')
+				if len(value_starts) > 0 {
+					value_starts[i] = choice_cursor(t)
+				}
 				append_json_simple_value(t, &values, string_gen, int_gen)
+				if len(value_ends) > 0 {
+					value_ends[i] = choice_cursor(t)
+				}
 				written += 1
 			}
 			append(&values, '}')
+			if len(value_starts) > 0 {
+				record_json_subset_shrink_hints(t, start, min_fields, max_fields, included, value_starts, value_ends)
+			}
 			return string(values[:])
 		},
 	}
@@ -1144,6 +1163,10 @@ json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields: 
 				max_fields = len(input.fields)
 			}
 
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			included := make([]bool, len(input.fields), t.value_allocator)
 			included_count := 0
 			for _, i in input.fields {
@@ -1166,6 +1189,12 @@ json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields: 
 
 			values := make([dynamic]byte, 0, 2 + included_count * 24, t.value_allocator)
 			append(&values, '{')
+			value_starts: []int
+			value_ends: []int
+			if t.capture_shrink_hints && included_count > min_fields {
+				value_starts = make([]int, len(input.fields), t.value_allocator)
+				value_ends = make([]int, len(input.fields), t.value_allocator)
+			}
 			written := 0
 			for field, i in input.fields {
 				if !included[i] {
@@ -1176,10 +1205,19 @@ json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields: 
 				}
 				append_json_quoted_ascii_content(&values, field.name)
 				append(&values, ':')
+				if len(value_starts) > 0 {
+					value_starts[i] = choice_cursor(t)
+				}
 				append_json_schema_value(t, &values, field)
+				if len(value_ends) > 0 {
+					value_ends[i] = choice_cursor(t)
+				}
 				written += 1
 			}
 			append(&values, '}')
+			if len(value_starts) > 0 {
+				record_json_subset_shrink_hints(t, start, min_fields, max_fields, included, value_starts, value_ends)
+			}
 			return string(values[:])
 		},
 	}
@@ -1379,6 +1417,97 @@ record_collection_remove_range_hint :: proc(t: ^T, start, min_len, length, remov
 	append_choice_range(&replacement, t, element_ends[0], retained_prefix_count)
 	append_choice_range(&replacement, t, element_ends[remove_start + remove_count], retained_suffix_count)
 	record_choice_shrink_hint(t, start, end - start, replacement[:])
+}
+
+record_json_subset_shrink_hints :: proc(t: ^T, start, min_fields, max_fields: int, included: []bool, value_starts, value_ends: []int) {
+	included_count := count_included_fields(included)
+	if included_count <= min_fields {
+		return
+	}
+
+	target := make([]bool, len(included), t.value_allocator)
+	if min_fields > 0 {
+		kept := 0
+		for is_included, i in included {
+			if is_included && kept < min_fields {
+				target[i] = true
+				kept += 1
+			}
+		}
+	}
+	record_json_subset_shrink_hint(t, start, max_fields, target, value_starts, value_ends)
+
+	if included_count - 1 >= min_fields {
+		copy_bool_mask(target, included)
+		if clear_last_included_field(target) {
+			record_json_subset_shrink_hint(t, start, max_fields, target, value_starts, value_ends)
+		}
+
+		copy_bool_mask(target, included)
+		if clear_first_included_field(target) {
+			record_json_subset_shrink_hint(t, start, max_fields, target, value_starts, value_ends)
+		}
+	}
+}
+
+record_json_subset_shrink_hint :: proc(t: ^T, start, max_fields: int, target: []bool, value_starts, value_ends: []int) {
+	end := choice_cursor(t)
+	replacement := make([dynamic]u64, 0, end - start, t.value_allocator)
+	included_count := 0
+	for include in target {
+		if included_count >= max_fields {
+			break
+		}
+		if include {
+			append(&replacement, 1)
+			included_count += 1
+		} else {
+			append(&replacement, 0)
+		}
+	}
+	for include, i in target {
+		if !include {
+			continue
+		}
+		append_choice_range(&replacement, t, value_starts[i], value_ends[i] - value_starts[i])
+	}
+	record_choice_shrink_hint(t, start, end - start, replacement[:])
+}
+
+count_included_fields :: proc(included: []bool) -> int {
+	count := 0
+	for value in included {
+		if value {
+			count += 1
+		}
+	}
+	return count
+}
+
+copy_bool_mask :: proc(dst: []bool, src: []bool) {
+	for value, i in src {
+		dst[i] = value
+	}
+}
+
+clear_last_included_field :: proc(values: []bool) -> bool {
+	for i := len(values) - 1; i >= 0; i -= 1 {
+		if values[i] {
+			values[i] = false
+			return true
+		}
+	}
+	return false
+}
+
+clear_first_included_field :: proc(values: []bool) -> bool {
+	for value, i in values {
+		if value {
+			values[i] = false
+			return true
+		}
+	}
+	return false
 }
 
 Optional :: struct(Value: typeid) {

@@ -622,6 +622,22 @@ domain_encoded_failure_property :: proc(t: ^T) -> Result {
 	return assert(value != 7, "domain value should not be seven")
 }
 
+json_subset_field_failure_property :: proc(t: ^T) -> Result {
+	fields := [?]string{"a", "b", "c"}
+	body := draw(t, json_object_field_subset_ascii(fields[:], 1, 3, 0))
+	return assert(!strings.contains(body, "\"b\":"), "json subset contains b")
+}
+
+json_schema_subset_field_failure_property :: proc(t: ^T) -> Result {
+	fields := [?]JSON_Field_ASCII {
+		json_null_field_ascii("a"),
+		json_null_field_ascii("b"),
+		json_null_field_ascii("c"),
+	}
+	body := draw(t, json_object_schema_subset_ascii(fields[:], 1, 3))
+	return assert(!strings.contains(body, "\"b\":"), "json schema subset contains b")
+}
+
 labelled_failure_property :: proc(t: ^T) -> Result {
 	marker := choice(t, 2)
 	_ = choice(t, 10)
@@ -1549,6 +1565,35 @@ test_shrinker_uses_domain_choice_hints :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(result.choices), 2)
 	testing.expect_value(t, result.choices[0], u64(0))
 	testing.expect_value(t, result.choices[1], u64(7))
+}
+
+@(test)
+test_shrinker_removes_json_subset_fields_with_hints :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 1, 1, 2, 2, 2}
+	result := shrink_case(json_subset_field_failure_property, choices[:], 1, 10, default_options({max_shrinks = 20}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "json subset contains b")
+	testing.expect_value(t, len(result.choices), 4)
+	testing.expect_value(t, result.choices[0], u64(0))
+	testing.expect_value(t, result.choices[1], u64(1))
+	testing.expect_value(t, result.choices[2], u64(0))
+	testing.expect_value(t, result.choices[3], u64(0))
+}
+
+@(test)
+test_shrinker_removes_json_schema_subset_fields_with_hints :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 1, 1}
+	result := shrink_case(json_schema_subset_field_failure_property, choices[:], 1, 10, default_options({max_shrinks = 20}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "json schema subset contains b")
+	testing.expect_value(t, len(result.choices), 3)
+	testing.expect_value(t, result.choices[0], u64(0))
+	testing.expect_value(t, result.choices[1], u64(1))
+	testing.expect_value(t, result.choices[2], u64(0))
 }
 
 @(test)
