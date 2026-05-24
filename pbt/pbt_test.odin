@@ -388,11 +388,42 @@ test_process_adapter_records_duration :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_process_adapter_accepts_working_dir_and_env :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	command := [?]string{"/bin/sh", "-c", "printf \"%s:%s\" \"$PWD\" \"$PBT_PROCESS_TEST\""}
+	env := [?]string{"PBT_PROCESS_TEST=ok"}
+	result := process_run_with_options(&ctx, command[:], {
+		working_dir = "/tmp",
+		env = env[:],
+	})
+
+	testing.expect(t, result.success)
+	testing.expect(t, strings.contains(result.stdout, "/tmp:ok"))
+}
+
+@(test)
 test_protocol_adapter_sends_request_file :: proc(t: ^testing.T) {
 	result := check("protocol adapter", protocol_property, {num_tests = 10, seed = 11})
 	defer destroy_check_result(&result)
 
 	testing.expect_value(t, result.status, Status.Pass)
+}
+
+@(test)
+test_protocol_adapter_accepts_process_options :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	command := [?]string{"/bin/sh", "-c", "IFS= read -r payload < \"$1\"; printf \"%s:%s\" \"$PBT_PROTOCOL_TEST\" \"$payload\"", "pbt-target"}
+	env := [?]string{"PBT_PROTOCOL_TEST=ok"}
+	result := protocol_call_with_options(&ctx, command[:], "payload", {env = env[:]})
+
+	testing.expect(t, result.success)
+	testing.expect_value(t, result.stdout, "ok:payload")
 }
 
 @(test)

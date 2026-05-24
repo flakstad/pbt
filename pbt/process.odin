@@ -14,13 +14,24 @@ Process_Result :: struct {
 	error:     string,
 }
 
+Process_Options :: struct {
+	working_dir: string,
+	env:         []string,
+}
+
 process_run :: proc(t: ^T, command: []string) -> Process_Result {
+	return process_run_with_options(t, command, {})
+}
+
+process_run_with_options :: proc(t: ^T, command: []string, options: Process_Options = {}) -> Process_Result {
 	detail := process_command_string(command, t.allocator)
 	defer delete(detail)
 
 	start_time := time.tick_now()
 	state, stdout_bytes, stderr_bytes, err := os.process_exec(os.Process_Desc {
 		command = command,
+		working_dir = options.working_dir,
+		env = options.env,
 	}, t.allocator)
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	defer delete(stdout_bytes)
@@ -45,6 +56,10 @@ process_run :: proc(t: ^T, command: []string) -> Process_Result {
 }
 
 protocol_call :: proc(t: ^T, command: []string, request: string) -> Process_Result {
+	return protocol_call_with_options(t, command, request, {})
+}
+
+protocol_call_with_options :: proc(t: ^T, command: []string, request: string, options: Process_Options = {}) -> Process_Result {
 	request_path, ok := protocol_write_request_file(t, request)
 	if !ok {
 		return {success = false, error = "could not write protocol request file"}
@@ -59,7 +74,7 @@ protocol_call :: proc(t: ^T, command: []string, request: string) -> Process_Resu
 	}
 	append(&full_command, request_path)
 
-	return process_run(t, full_command[:])
+	return process_run_with_options(t, full_command[:], options)
 }
 
 protocol_write_request_file :: proc(t: ^T, request: string) -> (string, bool) {

@@ -401,6 +401,16 @@ command := [?]string{"my-cli", "cart", "add", sku, qty}
 result := pbt.process_run(t, command[:])
 ```
 
+Use `process_run_with_options` when the target needs a working directory or
+controlled environment:
+
+```odin
+result := pbt.process_run_with_options(t, command[:], {
+    working_dir = "/path/to/project",
+    env = env[:],
+})
+```
+
 The adapter captures command, args, exit code, stdout, stderr, and duration in
 nanoseconds. Timeout support is still planned.
 
@@ -438,6 +448,9 @@ should support a persistent subprocess with structured messages:
 pbt engine -> target: {"op":"cart.add","sku":"abc","qty":2}
 target -> pbt engine: {"ok":true,"state":{"count":2}}
 ```
+
+The current request-file protocol is one-shot and can use the same
+`Process_Options` through `protocol_call_with_options`.
 
 Line-delimited JSON is a good transport because it is easy to implement in Go,
 Clojure, Python, JavaScript/TypeScript, Odin, and shell wrappers.
