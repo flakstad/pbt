@@ -27,6 +27,7 @@ T :: struct {
 	capture_events:  bool,
 	notes:           [dynamic]string,
 	labels:          [dynamic]string,
+	shrink_labels:   [dynamic]string,
 	coverage_requirements: [dynamic]Coverage_Requirement,
 	replay_choices:  []u64,
 	replay_strict:   bool,
@@ -45,6 +46,7 @@ Test_Case :: struct {
 	events:  [dynamic]Event,
 	notes:   [dynamic]string,
 	labels:  [dynamic]string,
+	shrink_labels: [dynamic]string,
 	result:  Result,
 }
 
@@ -91,6 +93,7 @@ test_init :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_str
 		events = make([dynamic]Event, allocator),
 		notes = make([dynamic]string, allocator),
 		labels = make([dynamic]string, allocator),
+		shrink_labels = make([dynamic]string, allocator),
 		coverage_requirements = make([dynamic]Coverage_Requirement, allocator),
 	}
 	mem.dynamic_arena_init(&t.value_arena, allocator, allocator, VALUE_ARENA_BLOCK_SIZE, VALUE_ARENA_OUT_OF_BAND_SIZE, VALUE_ARENA_ALIGNMENT)
@@ -106,6 +109,7 @@ test_destroy :: proc(t: ^T) {
 	destroy_events(&t.events)
 	destroy_strings(&t.notes)
 	destroy_strings(&t.labels)
+	destroy_strings(&t.shrink_labels)
 	delete(t.coverage_requirements)
 	mem.dynamic_arena_destroy(&t.value_arena)
 	delete(t.choice_marks)
@@ -119,6 +123,7 @@ test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_st
 	destroy_events_keep_storage(&t.events)
 	destroy_strings_keep_storage(&t.notes)
 	destroy_strings_keep_storage(&t.labels)
+	destroy_strings_keep_storage(&t.shrink_labels)
 	clear(&t.coverage_requirements)
 	clear(&t.choice_marks)
 	if len(t.choice_shrink_hints) > 0 {
@@ -346,6 +351,11 @@ label :: proc(t: ^T, name: string) {
 	append(&t.labels, clone_non_empty(name, t.allocator))
 }
 
+require_shrink_label :: proc(t: ^T, name: string) {
+	label(t, name)
+	append(&t.shrink_labels, clone_non_empty(name, t.allocator))
+}
+
 classify :: proc(t: ^T, condition: bool, name: string) {
 	if condition {
 		label(t, name)
@@ -467,6 +477,7 @@ destroy_test_case :: proc(tc: ^Test_Case) {
 	destroy_events(&tc.events)
 	destroy_strings(&tc.notes)
 	destroy_strings(&tc.labels)
+	destroy_strings(&tc.shrink_labels)
 	delete(tc.choice_shrink_values)
 	delete(tc.choice_shrink_candidates)
 	delete(tc.choice_shrink_hints)

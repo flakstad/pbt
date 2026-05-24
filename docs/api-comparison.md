@@ -18,6 +18,8 @@ The current core is in a reasonable place:
   to human messages.
 - `label`, `classify`, `collect`, and `cover` now aggregate coverage data in
   `Check_Result` and JSON output.
+- `require_shrink_label` lets a property pin only the classifications that must
+  survive shrinking.
 - size-aware generators now cover the basic QuickCheck/test.check shape:
   `sized`, `resize`, `scale`, `smaller`, and `such_that`.
 - `enum_range` covers the common state-machine command enum case.
@@ -86,7 +88,7 @@ and shrink duration.
 Useful additions:
 
 - deeper structure-aware collection shrinking
-- richer coverage-aware shrinking beyond preserving original failure labels
+- coverage-goal guided generation or shrinking
 
 ### Result And Counterexample Diagnostics
 

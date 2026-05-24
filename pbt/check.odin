@@ -148,6 +148,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 					events = copy_events(tc.events[:]),
 					notes = copy_strings(tc.notes[:]),
 					labels = copy_strings(tc.labels[:]),
+					shrink_labels = copy_strings(tc.shrink_labels[:]),
 					result = tc.result,
 				}
 			}
@@ -189,6 +190,7 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 			events = copy_events(tc.events[:]),
 			notes = copy_strings(tc.notes[:]),
 			labels = copy_strings(tc.labels[:]),
+			shrink_labels = copy_strings(tc.shrink_labels[:]),
 			result = tc.result,
 		},
 		replay = Replay {
@@ -288,6 +290,7 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 		tc.events = copy_events(t.events[:])
 		tc.notes = copy_strings(t.notes[:])
 		tc.labels = copy_strings(t.labels[:])
+		tc.shrink_labels = copy_strings(t.shrink_labels[:])
 	}
 	return tc
 }
@@ -318,11 +321,14 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 		events = copy_events(initial.events[:]),
 		notes = copy_strings(initial.notes[:]),
 		labels = copy_strings(initial.labels[:]),
+		shrink_labels = copy_strings(initial.shrink_labels[:]),
 		result = initial.result,
 	}
 	preserved_labels: []string
 	if options.preserve_shrink_labels {
 		preserved_labels = initial.labels[:]
+	} else {
+		preserved_labels = initial.shrink_labels[:]
 	}
 
 	attempts := 0
@@ -535,6 +541,7 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 		best.events = copy_events(tc.events[:])
 		best.notes = copy_strings(tc.notes[:])
 		best.labels = copy_strings(tc.labels[:])
+		best.shrink_labels = copy_strings(tc.shrink_labels[:])
 		best.result = tc.result
 		destroy_test_case(&tc)
 		delete(candidate)

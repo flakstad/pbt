@@ -285,6 +285,9 @@ Set `preserve_shrink_labels` or pass `--preserve-shrink-labels` when the
 shrinker should reject candidates that lose labels from the original failing
 case. This is useful when labels/classification identify the interesting
 subclass of failures and a smaller unlabeled counterexample would be less useful.
+Use `require_shrink_label` inside a property when only specific labels should be
+pinned during shrinking; unlike `preserve_shrink_labels`, incidental labels from
+the original failure may still disappear.
 
 ## Diagnostics
 
@@ -293,6 +296,7 @@ Properties need low-friction ways to add useful failure context:
 ```odin
 note :: proc(t: ^T, message: string)
 label :: proc(t: ^T, name: string)
+require_shrink_label :: proc(t: ^T, name: string)
 classify :: proc(t: ^T, condition: bool, name: string)
 collect :: proc(t: ^T, value: string)
 cover :: proc(t: ^T, condition: bool, required_percent: f64, name: string)
@@ -304,10 +308,12 @@ For Gransk, `Check_Result` should be serializable to JSON without scraping text
 output.
 
 `label`, `classify`, and `collect` aggregate coverage data across successful
-generated tests. `cover` additionally records a minimum required percentage; a
-completed check reports `Error` with `coverage_not_met` and a message naming
-the first missed label and observed percentage. Coverage summaries are included
-in JSON so Gransk can show distribution and unmet requirement details.
+generated tests. `require_shrink_label` also records a label, and tells the
+shrinker to keep that classification when minimizing a failure. `cover`
+additionally records a minimum required percentage; a completed check reports
+`Error` with `coverage_not_met` and a message naming the first missed label and
+observed percentage. Coverage summaries are included in JSON so Gransk can show
+distribution and unmet requirement details.
 Set `coverage_warning_only` or pass `--coverage-warning-only` when a run should
 report weak coverage without failing.
 

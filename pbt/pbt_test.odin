@@ -304,6 +304,18 @@ labelled_failure_property :: proc(t: ^T) -> Result {
 	return fail("labelled failure")
 }
 
+required_shrink_label_failure_property :: proc(t: ^T) -> Result {
+	marker := choice(t, 2)
+	noise := choice(t, 10)
+	if marker == 1 {
+		require_shrink_label(t, "interesting")
+	}
+	if noise == 9 {
+		label(t, "noise")
+	}
+	return fail("required shrink label failure")
+}
+
 bad_command_initial :: proc(t: ^T, target: rawptr) -> int {
 	return 0
 }
@@ -1224,6 +1236,21 @@ test_shrinker_can_preserve_original_failure_labels :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.choices[0], u64(1))
 	testing.expect_value(t, result.choices[1], u64(0))
 	testing.expect(t, labels_contain(result.labels[:], "interesting"))
+}
+
+@(test)
+test_shrinker_preserves_required_shrink_labels :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 9}
+	result := shrink_case(required_shrink_label_failure_property, choices[:], 1, 10, default_options({max_shrinks = 20}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "required shrink label failure")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(0))
+	testing.expect(t, labels_contain(result.labels[:], "interesting"))
+	testing.expect(t, !labels_contain(result.labels[:], "noise"))
 }
 
 @(test)
