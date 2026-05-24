@@ -506,23 +506,25 @@ conservative ASCII values intended for direct argv usage. They avoid shell
 metacharacters so properties can pass command vectors to `process_run` without
 quoting generated text.
 
-Use `process_run_with_options` when the target needs a working directory or
-controlled environment:
+Use `process_run_with_options` when the target needs a working directory,
+controlled environment, generated stdin, timeout, or output cap:
 
 ```odin
 result := pbt.process_run_with_options(t, command[:], {
     working_dir = "/path/to/project",
     env = env[:],
+    stdin = body,
     timeout_ms = 1_000,
     max_output_bytes = 1_048_576,
 })
 ```
 
-The adapter captures command, args, exit code, stdout, stderr, and duration in
-nanoseconds. Use `timeout_ms` for generated or untrusted target calls so a
-property fails instead of hanging indefinitely. Process stdout and stderr are
-capped at 1 MiB per stream by default; use `max_output_bytes` to set a tighter
-cap for noisy targets.
+The adapter captures command, args, exit code, stdout, stderr, duration in
+nanoseconds, and stdin byte count in its event detail. Use `stdin` for CLIs or
+small wrappers that accept JSON/input on standard input. Use `timeout_ms` for
+generated or untrusted target calls so a property fails instead of hanging
+indefinitely. Process stdout and stderr are capped at 1 MiB per stream by
+default; use `max_output_bytes` to set a tighter cap for noisy targets.
 
 The first process adapter is a one-shot command runner. A persistent process
 protocol should come next for faster cross-language library adapters.

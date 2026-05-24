@@ -26,6 +26,7 @@ Process_Result :: struct {
 Process_Options :: struct {
 	working_dir: string,
 	env:         []string,
+	stdin:       string,
 	timeout_ms:  int,
 	max_output_bytes: int,
 }
@@ -193,7 +194,7 @@ process_run_with_options :: proc(t: ^T, command: []string, options: Process_Opti
 		command = command,
 		working_dir = options.working_dir,
 		env = options.env,
-	}, options.timeout_ms, max_output_bytes, t.allocator)
+	}, options.timeout_ms, max_output_bytes, options.stdin, t.allocator)
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	defer delete(stdout_bytes)
 	defer delete(stderr_bytes)
@@ -218,7 +219,7 @@ process_run_with_options :: proc(t: ^T, command: []string, options: Process_Opti
 		result.error = clone_non_empty(fmt.tprintf("%v", err), t.value_allocator)
 	}
 
-	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d timeout_ms=%d max_output_bytes=%d", detail, state.exit_code, duration_ns, options.timeout_ms, max_output_bytes))
+	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d timeout_ms=%d max_output_bytes=%d stdin_bytes=%d", detail, state.exit_code, duration_ns, options.timeout_ms, max_output_bytes, len(options.stdin)))
 	return result
 }
 
@@ -384,7 +385,7 @@ process_output_limit_name :: proc(limit: Process_Output_Limit) -> string {
 	return "output"
 }
 
-process_exec_guarded :: proc(desc: os.Process_Desc, timeout_ms: int, max_output_bytes: int, allocator := context.allocator) -> (os.Process_State, []byte, []byte, os.Error, bool, Process_Output_Limit) {
+process_exec_guarded :: proc(desc: os.Process_Desc, timeout_ms: int, max_output_bytes: int, stdin: string = "", allocator := context.allocator) -> (os.Process_State, []byte, []byte, os.Error, bool, Process_Output_Limit) {
 	stdout_r, stdout_w, stdout_pipe_err := os.pipe()
 	if stdout_pipe_err != nil {
 		return {}, nil, nil, stdout_pipe_err, false, .None
@@ -399,13 +400,42 @@ process_exec_guarded :: proc(desc: os.Process_Desc, timeout_ms: int, max_output_
 	defer os.close(stderr_r)
 
 	process_desc := desc
+	stdin_w: ^os.File
+	if len(stdin) > 0 && process_desc.stdin == nil {
+		stdin_r, stdin_write, stdin_pipe_err := os.pipe()
+		if stdin_pipe_err != nil {
+			os.close(stdout_w)
+			os.close(stderr_w)
+			return {}, nil, nil, stdin_pipe_err, false, .None
+		}
+		process_desc.stdin = stdin_r
+		stdin_w = stdin_write
+	}
 	process_desc.stdout = stdout_w
 	process_desc.stderr = stderr_w
 	process, start_err := os.process_start(process_desc)
 	os.close(stdout_w)
 	os.close(stderr_w)
+	if len(stdin) > 0 && desc.stdin == nil {
+		os.close(process_desc.stdin)
+	}
 	if start_err != nil {
+		if stdin_w != nil {
+			os.close(stdin_w)
+		}
 		return {}, nil, nil, start_err, false, .None
+	}
+	if stdin_w != nil {
+		_, write_err := os.write_string(stdin_w, stdin)
+		os.close(stdin_w)
+		if write_err != nil {
+			state, _ := os.process_wait(process, 0)
+			if !state.exited {
+				_ = os.process_kill(process)
+				state, _ = os.process_wait(process)
+			}
+			return state, nil, nil, write_err, false, .None
+		}
 	}
 
 	stdout_b := make([dynamic]byte, allocator)

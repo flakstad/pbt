@@ -1066,6 +1066,21 @@ test_process_adapter_accepts_working_dir_and_env :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_process_adapter_accepts_stdin :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	command := [?]string{"/bin/sh", "-c", "cat"}
+	result := process_run_with_options(&ctx, command[:], {stdin = "payload"})
+
+	testing.expect(t, result.success)
+	testing.expect_value(t, result.stdout, "payload")
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect(t, strings.contains(ctx.events[0].detail, "stdin_bytes=7"))
+}
+
+@(test)
 test_process_adapter_times_out :: proc(t: ^testing.T) {
 	ctx: T
 	test_init(&ctx, 1, 1, nil, false, true)

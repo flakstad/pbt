@@ -72,6 +72,8 @@ The current core is in a reasonable place:
   HTTP calls.
 - process and protocol target calls have basic generated-input guardrails:
   timeouts, process output caps, and line-protocol response caps.
+- one-shot process calls can feed generated stdin, which covers CLIs and small
+  wrapper programs that read JSON or commands from standard input.
 
 ## Useful Missing Features
 
