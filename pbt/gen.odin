@@ -703,6 +703,37 @@ resize :: proc(gen: Gen($Gen_Input, $Value), size: int) -> Gen(Resize_Input(Gen_
 	}
 }
 
+Clamp_Size_Input :: struct(Gen_Input: typeid, Value: typeid) {
+	gen:     Gen(Gen_Input, Value),
+	min_size: int,
+	max_size: int,
+}
+
+clamp_size :: proc(gen: Gen($Gen_Input, $Value), min_size, max_size: int) -> Gen(Clamp_Size_Input(Gen_Input, Value), Value) {
+	return {
+		input = {gen = gen, min_size = min_size, max_size = max_size},
+		produce = proc(t: ^T, input: Clamp_Size_Input(Gen_Input, Value)) -> Value {
+			previous := t.size
+			min_size := input.min_size
+			max_size := input.max_size
+			if min_size < 0 {
+				min_size = 0
+			}
+			if max_size < min_size {
+				max_size = min_size
+			}
+			if t.size < min_size {
+				t.size = min_size
+			} else if t.size > max_size {
+				t.size = max_size
+			}
+			value := draw(t, input.gen)
+			t.size = previous
+			return value
+		},
+	}
+}
+
 Scale_Input :: struct(Gen_Input: typeid, Value: typeid) {
 	gen: Gen(Gen_Input, Value),
 	f:   proc(size: int) -> int,

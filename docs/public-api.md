@@ -207,6 +207,7 @@ bind :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Gen(Next_Input, Next)) 
 lazy :: proc(f: proc() -> Gen($Input, $Value)) -> Gen(Lazy_Input(Input, Value), Value)
 sized :: proc(f: proc(size: int) -> Gen($Input, $Value)) -> Gen(Sized_Input(Input, Value), Value)
 resize :: proc(gen: Gen($Input, $Value), size: int) -> Gen(Resize_Input(Input, Value), Value)
+clamp_size :: proc(gen: Gen($Input, $Value), min_size, max_size: int) -> Gen(Clamp_Size_Input(Input, Value), Value)
 scale :: proc(gen: Gen($Input, $Value), f: proc(size: int) -> int) -> Gen(Scale_Input(Input, Value), Value)
 smaller :: proc(gen: Gen($Input, $Value)) -> Gen(Scale_Input(Input, Value), Value)
 such_that :: proc(gen: Gen($Input, $Value), predicate: proc(Value) -> bool, max_tries := 100) -> Gen(Such_That_Input(Input, Value), Value)
@@ -231,13 +232,13 @@ Generated strings and slices in a sample result live until
 
 `lazy` defers generator construction until draw time. It is useful for recursive
 or mutually recursive generator definitions where a branch needs to call back
-into the generator being defined; combine it with `sized`, `resize`, or `scale`
-so recursive values shrink toward a base case as size decreases.
+into the generator being defined; combine it with `sized`, `resize`,
+`clamp_size`, or `scale` so recursive values shrink toward a base case as size
+decreases.
 
 Likely next generator work:
 
 - richer built-in domain generators
-- more depth controls for recursive values
 
 ## Shrinking And Replay
 

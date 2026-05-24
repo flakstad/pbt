@@ -21,7 +21,7 @@ The current core is in a reasonable place:
 - `require_shrink_label` lets a property pin only the classifications that must
   survive shrinking.
 - size-aware generators now cover the basic QuickCheck/test.check shape:
-  `sized`, `resize`, `scale`, `smaller`, and `such_that`.
+  `sized`, `resize`, `clamp_size`, `scale`, `smaller`, and `such_that`.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
@@ -65,8 +65,7 @@ has the first useful version of this:
 
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
-mostly about depth controls and richer built-in domain generators rather than
-basic shape.
+mostly about richer built-in domain generators rather than basic shape.
 
 ### Shrinking
 

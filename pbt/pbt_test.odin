@@ -120,6 +120,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	float := draw(t, f64_range(-1.0, 1.0))
 	sized_values := draw(t, sized(int_array_with_size))
 	resized_values := draw(t, resize(array(int_range(0, 1), 0), 3))
+	clamped_values := draw(t, clamp_size(array(int_range(0, 1), 0), 0, 3))
 	scaled_values := draw(t, scale(array(int_range(0, 1), 0), half_size))
 	smaller_values := draw(t, smaller(array(int_range(0, 1), 0)))
 	filtered := draw(t, such_that(int_range(0, 10), is_even))
@@ -145,6 +146,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		float >= -1.0 && float <= 1.0 &&
 		len(sized_values) == t.size &&
 		len(resized_values) <= 3 &&
+		len(clamped_values) <= 3 &&
 		len(scaled_values) <= 50 &&
 		len(smaller_values) <= 50 &&
 		filtered % 2 == 0 &&
