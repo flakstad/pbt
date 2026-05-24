@@ -53,6 +53,15 @@ HTTP_Request_ASCII_Input :: struct {
 	max_body_bytes:  int,
 }
 
+HTTP_Request_Body_ASCII_Input :: struct(Gen_Input: typeid) {
+	base_url:        string,
+	body:            Gen(Gen_Input, string),
+	max_path_segments: int,
+	max_query_len:   int,
+	timeout_ms:      int,
+	max_body_bytes:  int,
+}
+
 http_request_ascii :: proc(
 	base_url: string,
 	max_path_segments: int = 4,
@@ -122,6 +131,76 @@ http_request_ascii :: proc(
 			return request
 		},
 	}
+}
+
+http_request_body_ascii :: proc(
+	base_url: string,
+	body: Gen($Gen_Input, string),
+	max_path_segments: int = 4,
+	max_query_len: int = 12,
+	timeout_ms: int = 1_000,
+	max_body_bytes: int = HTTP_DEFAULT_MAX_BODY_BYTES,
+) -> Gen(HTTP_Request_Body_ASCII_Input(Gen_Input), Http_Request) {
+	return {
+		input = {
+			base_url = base_url,
+			body = body,
+			max_path_segments = max_path_segments,
+			max_query_len = max_query_len,
+			timeout_ms = timeout_ms,
+			max_body_bytes = max_body_bytes,
+		},
+		produce = proc(t: ^T, input: HTTP_Request_Body_ASCII_Input(Gen_Input)) -> Http_Request {
+			base_url := http_request_base_url(input.base_url)
+			max_path_segments := input.max_path_segments
+			if max_path_segments < 1 {
+				max_path_segments = 1
+			}
+			max_query_len := input.max_query_len
+			if max_query_len < 0 {
+				max_query_len = 0
+			}
+
+			method := http_body_method(t)
+			path := draw(t, url_path_ascii(1, max_path_segments, 1, 12))
+			query := ""
+			if max_query_len > 0 && draw(t, boolean()) {
+				key := draw(t, non_empty_query_component_ascii(max_query_len))
+				value := draw(t, query_component_ascii(0, max_query_len))
+				query = http_build_query(t, key, value)
+			}
+
+			headers := make([]Http_Header, 2, t.value_allocator)
+			headers[0] = http_header("Content-Type", "application/json")
+			headers[1] = http_header("Accept", "application/json")
+
+			return {
+				method = method,
+				url = http_build_url(t, base_url, path, query),
+				headers = headers,
+				body = draw(t, input.body),
+				timeout_ms = input.timeout_ms,
+				max_body_bytes = input.max_body_bytes,
+			}
+		},
+	}
+}
+
+http_request_base_url :: proc(base_url: string) -> string {
+	if base_url == "" {
+		return "http://127.0.0.1"
+	}
+	return base_url
+}
+
+http_body_method :: proc(t: ^T) -> string {
+	switch choice(t, 3) {
+	case 0:
+		return "POST"
+	case 1:
+		return "PUT"
+	}
+	return "PATCH"
 }
 
 http_method_supports_generated_body :: proc(method: string) -> bool {

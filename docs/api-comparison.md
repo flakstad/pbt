@@ -34,6 +34,8 @@ The current core is in a reasonable place:
   inputs without requiring a full HTTP request model.
 - `http_request_ascii` generates adapter-ready HTTP requests from a caller-owned
   base URL, including path/query data and JSON bodies for body methods.
+- `http_request_body_ascii` composes HTTP request generation with a
+  caller-provided body generator for schema-shaped request bodies.
 - URL path and query component generators cover route and query data while
   keeping base URL and escaping policy explicit in the property.
 - JSON string, boolean, integer, simple object, and simple array generators

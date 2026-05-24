@@ -128,6 +128,11 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	status_code := draw(t, http_status_code())
 	header_name := draw(t, http_header_name_ascii(1, 12))
 	request := draw(t, http_request_ascii("http://example.test/api", 3, 8, 3, 8))
+	body_schema := [?]JSON_Field_ASCII {
+		json_string_field_ascii("sku", 8),
+		json_int_field_ascii("quantity", 1, 10),
+	}
+	body_request := draw(t, http_request_body_ascii("http://example.test/api", json_object_schema_ascii(body_schema[:]), 3, 8))
 	url_path := draw(t, url_path_ascii(1, 3, 1, 6))
 	query_value := draw(t, query_component_ascii(0, 8))
 	query_key := draw(t, non_empty_query_component_ascii(8))
@@ -192,6 +197,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		len(header_name) >= 1 && len(header_name) <= 12 &&
 		http_header_name_is_ascii(header_name) &&
 		http_request_is_ascii(request) &&
+		http_body_request_is_ascii(body_request) &&
 		url_path_is_ascii(url_path) &&
 		query_component_is_ascii(query_value) &&
 		len(query_key) >= 1 && len(query_key) <= 8 &&
@@ -356,6 +362,27 @@ http_request_is_ascii :: proc(request: Http_Request) -> bool {
 			return false
 		}
 	} else if len(request.headers) != 0 || len(request.body) != 0 {
+		return false
+	}
+	for ch in request.url {
+		if ch < 0x20 || ch > 0x7e || ch == '\\' {
+			return false
+		}
+	}
+	return true
+}
+
+http_body_request_is_ascii :: proc(request: Http_Request) -> bool {
+	if !http_method_supports_generated_body(request.method) || !strings.has_prefix(request.url, "http://example.test/api") {
+		return false
+	}
+	if request.timeout_ms != 1_000 || request.max_body_bytes != HTTP_DEFAULT_MAX_BODY_BYTES {
+		return false
+	}
+	if len(request.headers) != 2 || !json_object_is_simple_ascii(request.body) {
+		return false
+	}
+	if !strings.contains(request.body, "\"sku\":\"") || !strings.contains(request.body, "\"quantity\":") || strings.contains(request.body, "\"quantity\":\"") {
 		return false
 	}
 	for ch in request.url {

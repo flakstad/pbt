@@ -208,6 +208,7 @@ http_method :: proc() -> Gen(HTTP_Method_Input, string)
 http_status_code :: proc(min := 100, max := 599) -> Gen(HTTP_Status_Code_Input, int)
 http_header_name_ascii :: proc(min_len := 1, max_len := -1) -> Gen(HTTP_Header_Name_ASCII_Input, string)
 http_request_ascii :: proc(base_url: string, max_path_segments := 4, max_query_len := 12, max_body_fields := 4, max_body_string_len := 16, timeout_ms := 1_000, max_body_bytes := HTTP_DEFAULT_MAX_BODY_BYTES) -> Gen(HTTP_Request_ASCII_Input, Http_Request)
+http_request_body_ascii :: proc(base_url: string, body: Gen($Input, string), max_path_segments := 4, max_query_len := 12, timeout_ms := 1_000, max_body_bytes := HTTP_DEFAULT_MAX_BODY_BYTES) -> Gen(HTTP_Request_Body_ASCII_Input(Input), Http_Request)
 url_path_ascii :: proc(min_segments := 1, max_segments := -1, min_segment_len := 1, max_segment_len := -1) -> Gen(URL_Path_ASCII_Input, string)
 query_component_ascii :: proc(min_len := 0, max_len := -1) -> Gen(Query_Component_ASCII_Input, string)
 non_empty_query_component_ascii :: proc(max_len := -1) -> Gen(Query_Component_ASCII_Input, string)
@@ -571,6 +572,17 @@ body := pbt.draw(t, pbt.json_object_schema_ascii(schema[:]))
 
 Use `json_object_schema_subset_ascii` for optional-field cases where included
 fields should still use their declared JSON value kinds.
+
+Use `http_request_body_ascii` when the request should always use a generated
+JSON body from a caller-provided body generator:
+
+```odin
+request := pbt.draw(t, pbt.http_request_body_ascii(
+    "http://127.0.0.1:8080/api",
+    pbt.json_object_schema_ascii(schema[:]),
+))
+res := pbt.http_request(t, request)
+```
 
 `http_request` remains available for fully custom methods, headers, curl path,
 and body handling.
