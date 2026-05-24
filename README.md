@@ -29,6 +29,7 @@ The current implementation includes:
 - one-shot process adapter for CLI-style targets
 - request-file protocol adapter for wrapping non-Odin libraries in small target
   processes
+- persistent line protocol adapter for faster non-Odin library wrappers
 - curl-backed HTTP adapter for external APIs and services
 - diagnostic helpers: `note`, `label`, `classify`, `collect`, and `cover`
 - coverage/classification aggregation in `Check_Result` and JSON output

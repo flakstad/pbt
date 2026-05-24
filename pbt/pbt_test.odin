@@ -427,6 +427,32 @@ test_protocol_adapter_accepts_process_options :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_line_protocol_reuses_process :: proc(t: ^testing.T) {
+	command := [?]string{"/bin/sh", "-c", "while IFS= read -r line; do printf \"%s:%s\\n\" \"$PBT_LINE_TEST\" \"$line\"; done"}
+	env := [?]string{"PBT_LINE_TEST=ok"}
+	client, start_error := line_protocol_start(command[:], {env = env[:]})
+	defer line_protocol_stop(&client)
+
+	testing.expect(t, start_error == nil)
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	first := line_protocol_call(&ctx, &client, "one")
+	second := line_protocol_call(&ctx, &client, "two")
+
+	testing.expect(t, first.success)
+	testing.expect(t, second.success)
+	testing.expect_value(t, first.response, "ok:one")
+	testing.expect_value(t, second.response, "ok:two")
+	testing.expect(t, first.duration_ns > 0)
+	testing.expect(t, second.duration_ns > 0)
+	testing.expect(t, len(ctx.events) >= 2)
+	testing.expect(t, strings.contains(ctx.events[0].detail, "duration_ns="))
+}
+
+@(test)
 test_http_adapter_fetches_url :: proc(t: ^testing.T) {
 	file, err := os.create("/tmp/pbt-http-adapter-ok")
 	testing.expect(t, err == nil)

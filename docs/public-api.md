@@ -453,13 +453,26 @@ target -> pbt engine: {"ok":true,"state":{"count":2}}
 The current request-file protocol is one-shot and can use the same
 `Process_Options` through `protocol_call_with_options`.
 
+The line protocol keeps a target process alive and sends one newline-terminated
+request per call:
+
+```odin
+client, err := pbt.line_protocol_start(command[:], {env = env[:]})
+defer pbt.line_protocol_stop(&client)
+
+res := pbt.line_protocol_call(t, &client, request_json)
+```
+
+Each response is one newline-terminated line from target stdout. This is the
+first persistent adapter path and is intended for small wrappers around
+libraries in Go, Python, JavaScript/TypeScript, Clojure, Odin, and shell.
+
 Line-delimited JSON is a good transport because it is easy to implement in Go,
 Clojure, Python, JavaScript/TypeScript, Odin, and shell wrappers.
 
-The first implementation supports a one-shot request-file protocol call: `pbt`
-writes the generated request to a temp file and appends that file path to the
-target command. A persistent line-delimited stdin/stdout process should follow
-once the message shape settles.
+The request-file protocol remains useful for very small wrappers: `pbt` writes
+the generated request to a temp file and appends that file path to the target
+command.
 
 ### Stateful Target
 

@@ -19,6 +19,20 @@ Process_Options :: struct {
 	env:         []string,
 }
 
+Line_Protocol_Client :: struct {
+	process: os.Process,
+	stdin:   ^os.File,
+	stdout:  ^os.File,
+	alive:   bool,
+}
+
+Line_Protocol_Result :: struct {
+	success:     bool,
+	response:    string,
+	duration_ns: i64,
+	error:       string,
+}
+
 process_run :: proc(t: ^T, command: []string) -> Process_Result {
 	return process_run_with_options(t, command, {})
 }
@@ -75,6 +89,132 @@ protocol_call_with_options :: proc(t: ^T, command: []string, request: string, op
 	append(&full_command, request_path)
 
 	return process_run_with_options(t, full_command[:], options)
+}
+
+line_protocol_start :: proc(command: []string, options: Process_Options = {}) -> (Line_Protocol_Client, os.Error) {
+	stdin_read, stdin_write, stdin_err := os.pipe()
+	if stdin_err != nil {
+		return {}, stdin_err
+	}
+
+	stdout_read, stdout_write, stdout_err := os.pipe()
+	if stdout_err != nil {
+		os.close(stdin_read)
+		os.close(stdin_write)
+		return {}, stdout_err
+	}
+
+	process, start_err := os.process_start(os.Process_Desc {
+		command = command,
+		working_dir = options.working_dir,
+		env = options.env,
+		stdin = stdin_read,
+		stdout = stdout_write,
+	})
+	os.close(stdin_read)
+	os.close(stdout_write)
+	if start_err != nil {
+		os.close(stdin_write)
+		os.close(stdout_read)
+		return {}, start_err
+	}
+
+	return {
+		process = process,
+		stdin = stdin_write,
+		stdout = stdout_read,
+		alive = true,
+	}, nil
+}
+
+line_protocol_call :: proc(t: ^T, client: ^Line_Protocol_Client, request: string) -> Line_Protocol_Result {
+	start_time := time.tick_now()
+	if client == nil || !client.alive || client.stdin == nil || client.stdout == nil {
+		return {
+			success = false,
+			duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now())),
+			error = "line protocol client is not running",
+		}
+	}
+
+	_, write_err := os.write_string(client.stdin, request)
+	if write_err == nil {
+		_, write_err = os.write_string(client.stdin, "\n")
+	}
+	if write_err != nil {
+		duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+		err_text := fmt.tprintf("write error: %v", write_err)
+		record_event(t, "protocol", "line", "error", fmt.tprintf("%s duration_ns=%d", err_text, duration_ns))
+		return {
+			success = false,
+			duration_ns = duration_ns,
+			error = clone_non_empty(err_text, t.value_allocator),
+		}
+	}
+
+	response, read_err := line_protocol_read_line(client.stdout, t.value_allocator)
+	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+	if read_err != nil {
+		err_text := fmt.tprintf("read error: %v", read_err)
+		record_event(t, "protocol", "line", "error", fmt.tprintf("%s duration_ns=%d", err_text, duration_ns))
+		return {
+			success = false,
+			duration_ns = duration_ns,
+			error = clone_non_empty(err_text, t.value_allocator),
+		}
+	}
+
+	record_event(t, "protocol", "line", "ok", fmt.tprintf("duration_ns=%d", duration_ns))
+	return {
+		success = true,
+		response = response,
+		duration_ns = duration_ns,
+	}
+}
+
+line_protocol_stop :: proc(client: ^Line_Protocol_Client) {
+	if client == nil {
+		return
+	}
+	if client.stdin != nil {
+		os.close(client.stdin)
+		client.stdin = nil
+	}
+	if client.alive {
+		state, wait_err := os.process_wait(client.process, 100 * time.Millisecond)
+		if wait_err != nil || !state.exited {
+			_ = os.process_kill(client.process)
+			_, _ = os.process_wait(client.process)
+		}
+		client.alive = false
+	}
+	if client.stdout != nil {
+		os.close(client.stdout)
+		client.stdout = nil
+	}
+}
+
+line_protocol_read_line :: proc(file: ^os.File, allocator := context.allocator) -> (string, os.Error) {
+	builder := strings.builder_make(allocator)
+	buffer: [1]byte
+	for {
+		n, err := os.read(file, buffer[:])
+		if err != nil {
+			delete(strings.to_string(builder))
+			return "", err
+		}
+		if n == 0 {
+			delete(strings.to_string(builder))
+			return "", .EOF
+		}
+		if buffer[0] == '\n' {
+			break
+		}
+		if buffer[0] != '\r' {
+			strings.write_byte(&builder, buffer[0])
+		}
+	}
+	return strings.to_string(builder), nil
 }
 
 protocol_write_request_file :: proc(t: ^T, request: string) -> (string, bool) {
