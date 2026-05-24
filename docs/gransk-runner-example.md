@@ -27,6 +27,12 @@ Run all registered properties:
 /tmp/pbt-gransk-runner --num-tests 100 --seed 123
 ```
 
+Run properties by tag:
+
+```sh
+/tmp/pbt-gransk-runner --tag string --num-tests 100 --seed 123
+```
+
 Run the intentionally failing example:
 
 ```sh

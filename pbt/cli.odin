@@ -136,8 +136,28 @@ check_properties_from_args :: proc(properties: []Property_Case, args: []string, 
 		return result
 	}
 
+	tag := parse_property_tag(args)
+	filtered := make([dynamic]Property_Case)
+	defer delete(filtered)
+	active_properties := properties
+	if tag != "" {
+		for property in properties {
+			if property_has_tag(property, tag) {
+				append(&filtered, property)
+			}
+		}
+		active_properties = filtered[:]
+		if len(active_properties) == 0 {
+			result.status = .Error
+			result.code = "no_properties_matched_tag"
+			result.message = "no properties matched tag"
+			result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+			return result
+		}
+	}
+
 	name := parse_property_name(args)
-	if name == "" && has_replay_args(args) && len(properties) > 1 {
+	if name == "" && has_replay_args(args) && len(active_properties) > 1 {
 		result.status = .Error
 		result.code = "property_required_for_replay"
 		result.message = "replay requires --property when multiple properties are registered"
@@ -147,15 +167,15 @@ check_properties_from_args :: proc(properties: []Property_Case, args: []string, 
 
 	result.results = make([dynamic]Check_Result)
 
-	if name != "" || len(properties) == 1 {
-		property_result := check_property_from_args(properties, args, defaults)
+	if name != "" || len(active_properties) == 1 {
+		property_result := check_property_from_args(active_properties, args, defaults)
 		append(&result.results, property_result)
 		check_suite_add_result(&result, property_result)
 		check_suite_finalize(&result, start_time)
 		return result
 	}
 
-	for property in properties {
+	for property in active_properties {
 		property_result := check_from_args(property.name, property.property, args, defaults)
 		append(&result.results, property_result)
 		check_suite_add_result(&result, property_result)
@@ -207,6 +227,29 @@ parse_property_name :: proc(args: []string) -> string {
 	}
 
 	return ""
+}
+
+parse_property_tag :: proc(args: []string) -> string {
+	for i := 0; i < len(args); i += 1 {
+		switch args[i] {
+		case "--tag", "-t":
+			if i + 1 < len(args) {
+				return args[i + 1]
+			}
+			i += 1
+		}
+	}
+
+	return ""
+}
+
+property_has_tag :: proc(property: Property_Case, tag: string) -> bool {
+	for candidate in property.tags {
+		if candidate == tag {
+			return true
+		}
+	}
+	return false
 }
 
 has_list_properties_flag :: proc(args: []string) -> bool {

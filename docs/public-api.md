@@ -309,6 +309,8 @@ JSON object containing `properties`, `passed`, `failed`, `errors`, `checks`,
 `discards`, `duration_ns`, and per-property `results`. With `--property`, it
 runs the exact or unique substring match and still emits the same suite shape.
 Replay flags require `--property` when more than one property is registered.
+Use `--tag <tag>` to run only properties whose registered tags contain that
+exact tag, for example `--tag stateful` or `--tag http`.
 
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.
@@ -329,6 +331,7 @@ Supported runner options:
 
 - `--num-tests` / `-n`
 - `--property` / `-p`
+- `--tag` / `-t`
 - `--list-properties`
 - `--json`
 - `--text`

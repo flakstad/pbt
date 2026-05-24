@@ -700,6 +700,41 @@ test_check_properties_from_args_requires_property_for_replay :: proc(t: ^testing
 }
 
 @(test)
+test_check_properties_from_args_filters_by_tag :: proc(t: ^testing.T) {
+	core_tag := [?]string{"core"}
+	collection_tag := [?]string{"collection", "arena"}
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative, tags = core_tag[:]},
+		{name = "collections", property = collections_are_generated_in_case_arena, tags = collection_tag[:]},
+	}
+	args := [?]string{"--tag", "collection", "--num-tests", "5", "--seed", "88"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Pass)
+	testing.expect_value(t, result.num_properties, 1)
+	testing.expect_value(t, len(result.results), 1)
+	testing.expect_value(t, result.results[0].name, "collections")
+}
+
+@(test)
+test_check_properties_from_args_rejects_missing_tag :: proc(t: ^testing.T) {
+	core_tag := [?]string{"core"}
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative, tags = core_tag[:]},
+	}
+	args := [?]string{"--tag", "http"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Error)
+	testing.expect_value(t, result.code, "no_properties_matched_tag")
+	testing.expect_value(t, len(result.results), 0)
+}
+
+@(test)
 test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
 	core_tag := [?]string{"core"}
 	collection_tag := [?]string{"collection", "arena"}

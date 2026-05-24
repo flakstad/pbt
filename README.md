@@ -49,6 +49,7 @@ The current implementation includes:
   `check_properties_from_args` for multi-property runners
 - `properties_json` and `--list-properties` detection for runner discovery
 - property descriptions/tags in discovery output
+- exact `--tag` filtering for suite runners
 - stable result codes for machine-readable Gransk handling
 
 Run the tests with:
