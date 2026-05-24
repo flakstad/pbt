@@ -146,12 +146,12 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           5788.40
-  avg ns/unit:            5827.31
-  alloc calls max:        1230000
+  best ns/unit:           4914.99
+  avg ns/unit:            4948.73
+  alloc calls max:        830000
   resize calls max:       10000
-  free calls max:         1230000
-  bytes req max:          43160000
+  free calls max:         830000
+  bytes req max:          45320000
 
 stateful 20-step compact trace
   captured cases/sample:  10000
@@ -181,8 +181,10 @@ passing properties. Passing stateful checks are now allocation-free in the
 normal benchmark because event traces are captured lazily: normal passing runs
 skip events, while failing/replay/shrink runs recapture diagnostics. The
 explicit captured-trace benchmark shows the cost of recording every successful
-step; the compact trace path shows why `skip_success_events` is useful for long
-model runs where only failure/precondition/invariant evidence matters.
+step. Stateful event records avoid cloning repeated static kind/status strings,
+which keeps rich traces cheaper while preserving owned dynamic name/detail
+strings. The compact trace path shows why `skip_success_events` is useful for
+long model runs where only failure/precondition/invariant evidence matters.
 Collection generation now reuses a per-check test context and value arena across
 passing generated tests. That moves collection allocation from per generated
 case to a small fixed cost per `check` run while preserving failure/replay

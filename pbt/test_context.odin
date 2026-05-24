@@ -43,6 +43,10 @@ Event :: struct {
 	name:   string,
 	status: string,
 	detail: string,
+	kind_owned:   bool,
+	name_owned:   bool,
+	status_owned: bool,
+	detail_owned: bool,
 }
 
 Coverage_Requirement :: struct {
@@ -154,6 +158,24 @@ record_event :: proc(t: ^T, kind, name, status, detail: string) {
 		name = clone_non_empty(name, t.allocator),
 		status = clone_non_empty(status, t.allocator),
 		detail = clone_non_empty(detail, t.allocator),
+		kind_owned = kind != "",
+		name_owned = name != "",
+		status_owned = status != "",
+		detail_owned = detail != "",
+	})
+}
+
+record_event_static_kind_status :: proc(t: ^T, kind, name, status, detail: string) {
+	if !t.capture_events {
+		return
+	}
+	append(&t.events, Event {
+		kind = kind,
+		name = clone_non_empty(name, t.allocator),
+		status = status,
+		detail = clone_non_empty(detail, t.allocator),
+		name_owned = name != "",
+		detail_owned = detail != "",
 	})
 }
 
@@ -196,6 +218,10 @@ copy_events :: proc(src: []Event, allocator := context.allocator) -> [dynamic]Ev
 			name = clone_non_empty(event.name, allocator),
 			status = clone_non_empty(event.status, allocator),
 			detail = clone_non_empty(event.detail, allocator),
+			kind_owned = event.kind != "",
+			name_owned = event.name != "",
+			status_owned = event.status != "",
+			detail_owned = event.detail != "",
 		})
 	}
 	return dst
@@ -236,16 +262,16 @@ destroy_strings_keep_storage :: proc(values: ^[dynamic]string) {
 
 destroy_events :: proc(events: ^[dynamic]Event) {
 	for event in events^ {
-		if len(event.kind) > 0 {
+		if event.kind_owned && len(event.kind) > 0 {
 			delete(event.kind)
 		}
-		if len(event.name) > 0 {
+		if event.name_owned && len(event.name) > 0 {
 			delete(event.name)
 		}
-		if len(event.status) > 0 {
+		if event.status_owned && len(event.status) > 0 {
 			delete(event.status)
 		}
-		if len(event.detail) > 0 {
+		if event.detail_owned && len(event.detail) > 0 {
 			delete(event.detail)
 		}
 	}
@@ -254,16 +280,16 @@ destroy_events :: proc(events: ^[dynamic]Event) {
 
 destroy_events_keep_storage :: proc(events: ^[dynamic]Event) {
 	for event in events^ {
-		if len(event.kind) > 0 {
+		if event.kind_owned && len(event.kind) > 0 {
 			delete(event.kind)
 		}
-		if len(event.name) > 0 {
+		if event.name_owned && len(event.name) > 0 {
 			delete(event.name)
 		}
-		if len(event.status) > 0 {
+		if event.status_owned && len(event.status) > 0 {
 			delete(event.status)
 		}
-		if len(event.detail) > 0 {
+		if event.detail_owned && len(event.detail) > 0 {
 			delete(event.detail)
 		}
 	}
