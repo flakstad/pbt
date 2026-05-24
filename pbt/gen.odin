@@ -1088,6 +1088,7 @@ json_object_field_subset_ascii :: proc(fields: []string, min_fields: int = 0, ma
 
 JSON_Value_Kind :: enum {
 	String,
+	String_Enum,
 	Int,
 	Bool,
 	Null,
@@ -1096,6 +1097,7 @@ JSON_Value_Kind :: enum {
 JSON_Field_ASCII :: struct {
 	name:           string,
 	kind:           JSON_Value_Kind,
+	enum_values:    []string,
 	min_int:        int,
 	max_int:        int,
 	max_string_len: int,
@@ -1103,6 +1105,10 @@ JSON_Field_ASCII :: struct {
 
 json_string_field_ascii :: proc(name: string, max_string_len: int = 16) -> JSON_Field_ASCII {
 	return {name = name, kind = .String, max_string_len = max_string_len}
+}
+
+json_string_enum_field_ascii :: proc(name: string, values: []string) -> JSON_Field_ASCII {
+	return {name = name, kind = .String_Enum, enum_values = values}
 }
 
 json_int_field_ascii :: proc(name: string, min: int = -1000, max: int = 1000) -> JSON_Field_ASCII {
@@ -1232,6 +1238,13 @@ append_json_schema_value :: proc(t: ^T, dst: ^[dynamic]byte, field: JSON_Field_A
 		}
 		value := draw(t, json_string_literal_ascii(0, max_string_len))
 		append_string_bytes(dst, value)
+	case .String_Enum:
+		if len(field.enum_values) == 0 {
+			append_string_bytes(dst, "\"\"")
+			return
+		}
+		value := draw(t, elements(field.enum_values))
+		append_json_quoted_ascii_content(dst, value)
 	case .Int:
 		value := draw(t, json_int_literal(field.min_int, field.max_int))
 		append_string_bytes(dst, value)

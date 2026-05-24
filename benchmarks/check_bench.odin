@@ -101,8 +101,10 @@ protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
 	fields := [?]string{"sku", "quantity", "active"}
 	body := pbt.draw(t, pbt.json_object_fields_ascii(fields[:], 16))
 	partial_body := pbt.draw(t, pbt.json_object_field_subset_ascii(fields[:], 1, 2, 16))
+	status_values := [?]string{"draft", "active", "archived"}
 	schema := [?]pbt.JSON_Field_ASCII {
 		pbt.json_string_field_ascii("sku", 16),
+		pbt.json_string_enum_field_ascii("status", status_values[:]),
 		pbt.json_int_field_ascii("quantity", 1, 100),
 		pbt.json_bool_field_ascii("active"),
 	}

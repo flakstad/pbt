@@ -143,8 +143,10 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	json_fields := [?]string{"sku", "quantity", "active"}
 	json_schema_body := draw(t, json_object_fields_ascii(json_fields[:], 8))
 	json_subset_body := draw(t, json_object_field_subset_ascii(json_fields[:], 1, 2, 8))
+	status_values := [?]string{"draft", "active", "archived"}
 	json_typed_fields := [?]JSON_Field_ASCII {
 		json_string_field_ascii("sku", 8),
+		json_string_enum_field_ascii("status", status_values[:]),
 		json_int_field_ascii("quantity", 1, 99),
 		json_bool_field_ascii("active"),
 		json_null_field_ascii("deleted_at"),
@@ -496,6 +498,7 @@ json_object_schema_is_typed :: proc(value: string) -> bool {
 		return false
 	}
 	return strings.contains(value, "\"sku\":\"") &&
+		(strings.contains(value, "\"status\":\"draft\"") || strings.contains(value, "\"status\":\"active\"") || strings.contains(value, "\"status\":\"archived\"")) &&
 		strings.contains(value, "\"quantity\":") &&
 		!strings.contains(value, "\"quantity\":\"") &&
 		(strings.contains(value, "\"active\":true") || strings.contains(value, "\"active\":false")) &&
@@ -525,6 +528,7 @@ json_array_of_schema_is_typed :: proc(value: string) -> bool {
 		}
 	}
 	return strings.contains(value, "{\"sku\":\"") &&
+		(strings.contains(value, "\"status\":\"draft\"") || strings.contains(value, "\"status\":\"active\"") || strings.contains(value, "\"status\":\"archived\"")) &&
 		strings.contains(value, "\"quantity\":") &&
 		!strings.contains(value, "\"quantity\":\"") &&
 		strings.contains(value, "\"deleted_at\":null")
