@@ -48,6 +48,8 @@ The current core is in a reasonable place:
   string, integer, boolean, or null values.
 - `json_object_schema_subset_ascii` combines missing-field coverage with typed
   schema-shaped JSON values.
+- `json_array_of_ascii` composes any JSON body generator into bounded JSON
+  arrays for batch API and protocol payloads.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.

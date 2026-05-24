@@ -1298,6 +1298,56 @@ json_array_ascii :: proc(min_items: int = 0, max_items: int = -1, max_string_len
 	}
 }
 
+JSON_Array_Of_ASCII_Input :: struct(Item_Input: typeid) {
+	item:      Gen(Item_Input, string),
+	min_items: int,
+	max_items: int,
+}
+
+json_array_of_ascii :: proc(item: Gen($Item_Input, string), min_items: int = 0, max_items: int = -1) -> Gen(JSON_Array_Of_ASCII_Input(Item_Input), string) {
+	return {
+		input = {item = item, min_items = min_items, max_items = max_items},
+		produce = proc(t: ^T, input: JSON_Array_Of_ASCII_Input(Item_Input)) -> string {
+			min_items := input.min_items
+			if min_items < 0 {
+				min_items = 0
+			}
+			max_items := input.max_items
+			if max_items < min_items {
+				max_items = math.max(min_items, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			item_count := min_items + int(choice(t, u64(max_items - min_items + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && item_count > min_items {
+				element_ends = make([]int, item_count + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			values := make([dynamic]byte, 0, 2 + item_count * 24, t.value_allocator)
+			append(&values, '[')
+			for i in 0 ..< item_count {
+				if i > 0 {
+					append(&values, ',')
+				}
+				item := draw(t, input.item)
+				append_string_bytes(&values, item)
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			append(&values, ']')
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_items, item_count, element_ends)
+			}
+			return string(values[:])
+		},
+	}
+}
+
 append_json_simple_value :: proc(t: ^T, dst: ^[dynamic]byte, string_gen: Gen(JSON_String_Literal_ASCII_Input, string), int_gen: Gen(JSON_Int_Literal_Input, string)) {
 	switch choice(t, 4) {
 	case 0:

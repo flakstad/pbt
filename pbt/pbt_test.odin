@@ -152,6 +152,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	json_typed_body := draw(t, json_object_schema_ascii(json_typed_fields[:]))
 	json_typed_subset_body := draw(t, json_object_schema_subset_ascii(json_typed_fields[:], 1, 3))
 	json_items := draw(t, json_array_ascii(0, 4, 8))
+	json_typed_items := draw(t, json_array_of_ascii(json_object_schema_ascii(json_typed_fields[:]), 1, 3))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -214,6 +215,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		json_object_field_count(json_typed_subset_body) <= 3 &&
 		json_object_is_simple_ascii(json_typed_subset_body) &&
 		json_array_is_simple_ascii(json_items) &&
+		json_array_of_schema_is_typed(json_typed_items) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -513,6 +515,21 @@ json_array_is_simple_ascii :: proc(value: string) -> bool {
 	return true
 }
 
+json_array_of_schema_is_typed :: proc(value: string) -> bool {
+	if len(value) < 2 || value[0] != '[' || value[len(value) - 1] != ']' {
+		return false
+	}
+	for ch in value {
+		if !json_simple_ascii_char_is_allowed(ch) && ch != '[' && ch != ']' && ch != '{' && ch != '}' && ch != ':' {
+			return false
+		}
+	}
+	return strings.contains(value, "{\"sku\":\"") &&
+		strings.contains(value, "\"quantity\":") &&
+		!strings.contains(value, "\"quantity\":\"") &&
+		strings.contains(value, "\"deleted_at\":null")
+}
+
 json_simple_ascii_char_is_allowed :: proc(ch: rune) -> bool {
 	if ch < 0x20 {
 		return false
@@ -663,6 +680,11 @@ json_schema_subset_field_failure_property :: proc(t: ^T) -> Result {
 	}
 	body := draw(t, json_object_schema_subset_ascii(fields[:], 1, 3))
 	return assert(!strings.contains(body, "\"b\":"), "json schema subset contains b")
+}
+
+json_array_of_failure_property :: proc(t: ^T) -> Result {
+	body := draw(t, json_array_of_ascii(json_int_literal(0, 10), 1, 3))
+	return assert(!strings.contains(body, "7"), "json array contains seven")
 }
 
 labelled_failure_property :: proc(t: ^T) -> Result {
@@ -1621,6 +1643,19 @@ test_shrinker_removes_json_schema_subset_fields_with_hints :: proc(t: ^testing.T
 	testing.expect_value(t, result.choices[0], u64(0))
 	testing.expect_value(t, result.choices[1], u64(1))
 	testing.expect_value(t, result.choices[2], u64(0))
+}
+
+@(test)
+test_shrinker_removes_json_array_items_with_hints :: proc(t: ^testing.T) {
+	choices := [?]u64{2, 1, 7, 2}
+	result := shrink_case(json_array_of_failure_property, choices[:], 1, 10, default_options({max_shrinks = 20}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "json array contains seven")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(0))
+	testing.expect_value(t, result.choices[1], u64(7))
 }
 
 @(test)

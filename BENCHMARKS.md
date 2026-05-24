@@ -37,7 +37,8 @@ The benchmark includes these modes:
   CLI flag
 - `protocol request data`: a passing property drawing an adapter-ready HTTP
   request plus simple JSON array, known-field object, and field-subset object
-  bodies, typed schema object/subset bodies, and a body-aware HTTP request
+  bodies, typed schema object/subset bodies, a typed schema-object array, and a
+  body-aware HTTP request
 - `stateful 20-step model`: a passing stateful model with a fixed 20-command
   sequence
 - `stateful 20-step captured trace`: the same model run with explicit event
@@ -123,8 +124,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           32.32
-  avg ns/unit:            32.66
+  best ns/unit:           32.33
+  avg ns/unit:            32.48
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -133,8 +134,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           141.92
-  avg ns/unit:            143.89
+  best ns/unit:           142.81
+  avg ns/unit:            143.29
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -143,8 +144,8 @@ array and string draws
 cli command data
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           388.80
-  avg ns/unit:            389.78
+  best ns/unit:           385.52
+  avg ns/unit:            388.17
   alloc calls max:        3
   resize calls max:       3
   free calls max:         3
@@ -153,18 +154,18 @@ cli command data
 protocol request data
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           3012.24
-  avg ns/unit:            3024.21
-  alloc calls max:        5
+  best ns/unit:           4278.58
+  avg ns/unit:            4296.74
+  alloc calls max:        6
   resize calls max:       5
-  free calls max:         5
-  bytes req max:          11904
+  free calls max:         6
+  bytes req max:          13952
 
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           162.54
-  avg ns/unit:            163.31
+  best ns/unit:           160.95
+  avg ns/unit:            163.24
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -173,8 +174,8 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3785.57
-  avg ns/unit:            3808.55
+  best ns/unit:           3814.43
+  avg ns/unit:            3832.44
   alloc calls max:        250000
   resize calls max:       10000
   free calls max:         250000
@@ -183,8 +184,8 @@ stateful 20-step captured trace
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           336.61
-  avg ns/unit:            338.90
+  best ns/unit:           338.43
+  avg ns/unit:            341.87
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -194,7 +195,7 @@ failing property with shrink
   checks/sample:          1
   samples:                5
   best ns/unit:           3125.00
-  avg ns/unit:            4191.80
+  avg ns/unit:            4208.40
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -203,8 +204,8 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           14875.00
-  avg ns/unit:            16816.80
+  best ns/unit:           14750.00
+  avg ns/unit:            17633.20
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124

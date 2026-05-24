@@ -225,6 +225,7 @@ json_null_field_ascii :: proc(name: string) -> JSON_Field_ASCII
 json_object_schema_ascii :: proc(fields: []JSON_Field_ASCII) -> Gen(JSON_Object_Schema_ASCII_Input, string)
 json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields := 0, max_fields := -1) -> Gen(JSON_Object_Schema_Subset_ASCII_Input, string)
 json_array_ascii :: proc(min_items := 0, max_items := -1, max_string_len := 16) -> Gen(JSON_Array_ASCII_Input, string)
+json_array_of_ascii :: proc(item: Gen($Input, string), min_items := 0, max_items := -1) -> Gen(JSON_Array_Of_ASCII_Input(Input), string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
 triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third)) -> Gen(Triple_Input(...), Triple(First, Second, Third))
@@ -572,6 +573,17 @@ body := pbt.draw(t, pbt.json_object_schema_ascii(schema[:]))
 
 Use `json_object_schema_subset_ascii` for optional-field cases where included
 fields should still use their declared JSON value kinds.
+
+Use `json_array_of_ascii` to turn any JSON string generator into a bounded JSON
+array. This is useful for batch APIs and protocol payloads:
+
+```odin
+body := pbt.draw(t, pbt.json_array_of_ascii(
+    pbt.json_object_schema_ascii(schema[:]),
+    1,
+    20,
+))
+```
 
 Use `http_request_body_ascii` when the request should always use a generated
 JSON body from a caller-provided body generator:
