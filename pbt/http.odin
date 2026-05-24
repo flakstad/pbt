@@ -6,6 +6,8 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 
+HTTP_EVENT_PREVIEW_BYTES :: 120
+
 Http_Header :: struct {
 	name:  string,
 	value: string,
@@ -164,7 +166,9 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 	if !response.success {
 		event_status = "error"
 	}
-	record_event(t, "http", http_event_name(request), event_status, fmt.tprintf("status=%d exit=%d duration_ns=%d timeout_ms=%d", response.status, response.exit_code, response.duration_ns, request.timeout_ms))
+	event_detail := http_event_detail(response, request.timeout_ms, t.allocator)
+	defer delete(event_detail)
+	record_event(t, "http", http_event_name(request), event_status, event_detail)
 	return response
 }
 
@@ -203,4 +207,48 @@ http_event_name :: proc(request: Http_Request) -> string {
 		method = "GET"
 	}
 	return fmt.tprintf("%s %s", method, request.url)
+}
+
+http_event_detail :: proc(response: Http_Response, timeout_ms: int, allocator := context.allocator) -> string {
+	builder := strings.builder_make(allocator)
+	strings.write_string(&builder, fmt.tprintf("status=%d exit=%d duration_ns=%d timeout_ms=%d", response.status, response.exit_code, response.duration_ns, timeout_ms))
+	http_write_event_preview(&builder, "body", response.body)
+	http_write_event_preview(&builder, "stderr", response.stderr)
+	return strings.to_string(builder)
+}
+
+http_write_event_preview :: proc(builder: ^strings.Builder, label, value: string) {
+	if len(value) == 0 {
+		return
+	}
+
+	strings.write_string(builder, fmt.tprintf(" %s_bytes=%d %s_preview=\"", label, len(value), label))
+	limit := len(value)
+	if limit > HTTP_EVENT_PREVIEW_BYTES {
+		limit = HTTP_EVENT_PREVIEW_BYTES
+	}
+	for i in 0 ..< limit {
+		switch value[i] {
+		case '\n':
+			strings.write_string(builder, "\\n")
+		case '\r':
+			strings.write_string(builder, "\\r")
+		case '\t':
+			strings.write_string(builder, "\\t")
+		case '"':
+			strings.write_string(builder, "\\\"")
+		case '\\':
+			strings.write_string(builder, "\\\\")
+		case:
+			if value[i] < 32 || value[i] > 126 {
+				strings.write_byte(builder, '?')
+			} else {
+				strings.write_byte(builder, value[i])
+			}
+		}
+	}
+	if len(value) > limit {
+		strings.write_string(builder, "...")
+	}
+	strings.write_string(builder, "\"")
 }

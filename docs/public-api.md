@@ -454,7 +454,9 @@ turn transport failures, timeouts, and unexpected status codes into normal
 
 The adapter captures method, URL, status, exit code, body, stderr, and duration
 in nanoseconds. Curl-backed HTTP requests support `timeout_ms`, which maps to
-curl `--max-time`; richer header/body summaries are still planned.
+curl `--max-time`. HTTP event traces include body/stderr byte counts and short
+escaped previews, while the full response body and stderr remain available on
+`Http_Response`.
 
 HTTP targets are the main cross-language path: the system under test can be
 written in any language as long as the property can drive and observe it over

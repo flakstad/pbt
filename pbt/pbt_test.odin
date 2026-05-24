@@ -672,6 +672,36 @@ test_http_post_json_adds_json_headers :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_http_adapter_records_body_and_stderr_summary :: proc(t: ^testing.T) {
+	fake_curl := "/tmp/pbt-fake-curl-summary"
+	file, err := os.create(fake_curl)
+	testing.expect(t, err == nil)
+	_, err = os.write_string(file, "#!/bin/sh\nout=\"\"\nprev=\"\"\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"-o\" ]; then out=\"$arg\"; fi\n  prev=\"$arg\"\ndone\nprintf 'hello\\nworld' > \"$out\"\nprintf 'warn\\n' >&2\nprintf 500\n")
+	testing.expect(t, err == nil)
+	os.close(file)
+	err = os.chmod(fake_curl, os.Permissions_All)
+	testing.expect(t, err == nil)
+	defer os.remove(fake_curl)
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	response := http_request(&ctx, {method = "GET", url = "http://example.test/fail", curl = fake_curl})
+
+	testing.expect(t, response.success)
+	testing.expect_value(t, response.status, 500)
+	testing.expect_value(t, response.body, "hello\nworld")
+	testing.expect(t, strings.contains(response.stderr, "warn"))
+	testing.expect(t, len(ctx.events) > 0)
+	detail := ctx.events[len(ctx.events) - 1].detail
+	testing.expect(t, strings.contains(detail, "body_bytes=11"))
+	testing.expect(t, strings.contains(detail, "body_preview=\"hello\\nworld\""))
+	testing.expect(t, strings.contains(detail, "stderr_bytes=5"))
+	testing.expect(t, strings.contains(detail, "stderr_preview=\"warn\\n\""))
+}
+
+@(test)
 test_http_expect_status_helpers :: proc(t: ^testing.T) {
 	ok := Http_Response{success = true, status = 201}
 	testing.expect_value(t, http_expect_status(ok, 201).status, Status.Pass)
