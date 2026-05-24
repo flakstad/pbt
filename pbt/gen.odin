@@ -423,6 +423,65 @@ triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Sec
 	}
 }
 
+Tuple4 :: struct(First: typeid, Second: typeid, Third: typeid, Fourth: typeid) {
+	first:  First,
+	second: Second,
+	third:  Third,
+	fourth: Fourth,
+}
+
+Tuple4_Input :: struct(First_Input: typeid, First: typeid, Second_Input: typeid, Second: typeid, Third_Input: typeid, Third: typeid, Fourth_Input: typeid, Fourth: typeid) {
+	first:  Gen(First_Input, First),
+	second: Gen(Second_Input, Second),
+	third:  Gen(Third_Input, Third),
+	fourth: Gen(Fourth_Input, Fourth),
+}
+
+tuple4 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), fourth: Gen($Fourth_Input, $Fourth)) -> Gen(Tuple4_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Fourth_Input, Fourth), Tuple4(First, Second, Third, Fourth)) {
+	return {
+		input = {first = first, second = second, third = third, fourth = fourth},
+		produce = proc(t: ^T, input: Tuple4_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Fourth_Input, Fourth)) -> Tuple4(First, Second, Third, Fourth) {
+			return {
+				first = draw(t, input.first),
+				second = draw(t, input.second),
+				third = draw(t, input.third),
+				fourth = draw(t, input.fourth),
+			}
+		},
+	}
+}
+
+Tuple5 :: struct(First: typeid, Second: typeid, Third: typeid, Fourth: typeid, Fifth: typeid) {
+	first:  First,
+	second: Second,
+	third:  Third,
+	fourth: Fourth,
+	fifth:  Fifth,
+}
+
+Tuple5_Input :: struct(First_Input: typeid, First: typeid, Second_Input: typeid, Second: typeid, Third_Input: typeid, Third: typeid, Fourth_Input: typeid, Fourth: typeid, Fifth_Input: typeid, Fifth: typeid) {
+	first:  Gen(First_Input, First),
+	second: Gen(Second_Input, Second),
+	third:  Gen(Third_Input, Third),
+	fourth: Gen(Fourth_Input, Fourth),
+	fifth:  Gen(Fifth_Input, Fifth),
+}
+
+tuple5 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), fourth: Gen($Fourth_Input, $Fourth), fifth: Gen($Fifth_Input, $Fifth)) -> Gen(Tuple5_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Fourth_Input, Fourth, Fifth_Input, Fifth), Tuple5(First, Second, Third, Fourth, Fifth)) {
+	return {
+		input = {first = first, second = second, third = third, fourth = fourth, fifth = fifth},
+		produce = proc(t: ^T, input: Tuple5_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Fourth_Input, Fourth, Fifth_Input, Fifth)) -> Tuple5(First, Second, Third, Fourth, Fifth) {
+			return {
+				first = draw(t, input.first),
+				second = draw(t, input.second),
+				third = draw(t, input.third),
+				fourth = draw(t, input.fourth),
+				fifth = draw(t, input.fifth),
+			}
+		},
+	}
+}
+
 Dict_Input :: struct(Key_Input: typeid, Key: typeid, Value_Input: typeid, Value: typeid) {
 	key:     Gen(Key_Input, Key),
 	value:   Gen(Value_Input, Value),

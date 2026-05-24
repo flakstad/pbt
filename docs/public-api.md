@@ -196,6 +196,8 @@ non_empty_string_alphabet :: proc(alphabet: string, max_len := -1) -> Gen(String
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
 triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third)) -> Gen(Triple_Input(...), Triple(First, Second, Third))
+tuple4 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), fourth: Gen($Fourth_Input, $Fourth)) -> Gen(Tuple4_Input(...), Tuple4(First, Second, Third, Fourth))
+tuple5 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), fourth: Gen($Fourth_Input, $Fourth), fifth: Gen($Fifth_Input, $Fifth)) -> Gen(Tuple5_Input(...), Tuple5(First, Second, Third, Fourth, Fifth))
 dict :: proc(key: Gen($Key_Input, $Key), value: Gen($Value_Input, $Value), min_len := 0, max_len := -1) -> Gen(Dict_Input(Key_Input, Key, Value_Input, Value), map[Key]Value)
 map_gen :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Mapped) -> Gen(Map_Input(Input, Value, Mapped), Mapped)
 bind :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Gen(Next_Input, Next)) -> Gen(Bind_Input(Input, Value, Next_Input, Next), Next)
