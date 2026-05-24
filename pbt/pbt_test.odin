@@ -129,6 +129,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	query_key := draw(t, non_empty_query_component_ascii(8))
 	json_name := draw(t, json_string_literal_ascii(0, 8))
 	json_flag := draw(t, json_bool_literal())
+	json_count := draw(t, json_int_literal(-20, 20))
 	json_body := draw(t, json_object_ascii(0, 3, 8, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
@@ -177,6 +178,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		query_component_is_ascii(query_key) &&
 		json_string_literal_is_safe_ascii(json_name) &&
 		(json_flag == "true" || json_flag == "false") &&
+		json_int_literal_is_decimal(json_count) &&
 		json_object_is_simple_ascii(json_body) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
@@ -319,6 +321,26 @@ json_string_literal_is_safe_ascii :: proc(value: string) -> bool {
 	}
 	for ch in value[1:len(value) - 1] {
 		if ch == '"' || ch == '\\' || ch < 0x20 {
+			return false
+		}
+	}
+	return true
+}
+
+json_int_literal_is_decimal :: proc(value: string) -> bool {
+	if len(value) == 0 {
+		return false
+	}
+
+	start := 0
+	if value[0] == '-' {
+		if len(value) == 1 {
+			return false
+		}
+		start = 1
+	}
+	for ch in value[start:] {
+		if ch < '0' || ch > '9' {
 			return false
 		}
 	}

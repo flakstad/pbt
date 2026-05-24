@@ -884,6 +884,23 @@ json_bool_literal :: proc() -> Gen(JSON_Bool_Literal_Input, string) {
 	}
 }
 
+JSON_Int_Literal_Input :: struct {
+	min: int,
+	max: int,
+}
+
+json_int_literal :: proc(min: int = -1000, max: int = 1000) -> Gen(JSON_Int_Literal_Input, string) {
+	return {
+		input = {min = min, max = max},
+		produce = proc(t: ^T, input: JSON_Int_Literal_Input) -> string {
+			value := draw(t, int_range(input.min, input.max))
+			values := make([dynamic]byte, 0, 24, t.value_allocator)
+			append_int_decimal(&values, value)
+			return string(values[:])
+		},
+	}
+}
+
 JSON_Object_ASCII_Input :: struct {
 	min_fields:     int,
 	max_fields:     int,
@@ -926,6 +943,7 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 			append(&values, '{')
 			key_gen := identifier_ascii(1, max_key_len)
 			string_gen := json_string_literal_ascii(0, max_string_len)
+			int_gen := json_int_literal()
 			for i in 0 ..< field_count {
 				if i > 0 {
 					append(&values, ',')
@@ -933,7 +951,7 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 				key := draw(t, key_gen)
 				append_json_quoted_content(&values, key)
 				append(&values, ':')
-				switch choice(t, 3) {
+				switch choice(t, 4) {
 				case 0:
 					value := draw(t, string_gen)
 					append_string_bytes(&values, value)
@@ -942,6 +960,9 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 					append_string_bytes(&values, value)
 				case 2:
 					append_string_bytes(&values, "null")
+				case 3:
+					value := draw(t, int_gen)
+					append_string_bytes(&values, value)
 				}
 				if len(element_ends) > 0 {
 					element_ends[i + 1] = choice_cursor(t)
@@ -953,6 +974,32 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 			}
 			return string(values[:])
 		},
+	}
+}
+
+append_int_decimal :: proc(dst: ^[dynamic]byte, value: int) {
+	if value == 0 {
+		append(dst, '0')
+		return
+	}
+
+	n: u64
+	if value < 0 {
+		append(dst, '-')
+		n = u64(-(value + 1)) + 1
+	} else {
+		n = u64(value)
+	}
+
+	digits: [20]byte
+	count := 0
+	for n > 0 {
+		digits[count] = byte('0' + n % 10)
+		n /= 10
+		count += 1
+	}
+	for i := count; i > 0; i -= 1 {
+		append(dst, digits[i - 1])
 	}
 }
 
