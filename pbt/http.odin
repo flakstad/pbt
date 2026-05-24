@@ -11,6 +11,12 @@ Http_Header :: struct {
 	value: string,
 }
 
+Http_Options :: struct {
+	headers:    []Http_Header,
+	curl:       string,
+	timeout_ms: int,
+}
+
 Http_Request :: struct {
 	method:  string,
 	url:     string,
@@ -31,12 +37,45 @@ Http_Response :: struct {
 	error:     string,
 }
 
+http_header :: proc(name, value: string) -> Http_Header {
+	return {name = name, value = value}
+}
+
 http_get :: proc(t: ^T, url: string) -> Http_Response {
 	return http_request(t, {method = "GET", url = url})
 }
 
+http_get_with_options :: proc(t: ^T, url: string, options: Http_Options = {}) -> Http_Response {
+	return http_request(t, {
+		method = "GET",
+		url = url,
+		headers = options.headers,
+		curl = options.curl,
+		timeout_ms = options.timeout_ms,
+	})
+}
+
 http_post :: proc(t: ^T, url, body: string, headers: []Http_Header = nil) -> Http_Response {
 	return http_request(t, {method = "POST", url = url, body = body, headers = headers})
+}
+
+http_post_json :: proc(t: ^T, url, body: string, options: Http_Options = {}) -> Http_Response {
+	headers := make([dynamic]Http_Header, 0, 2 + len(options.headers), t.allocator)
+	defer delete(headers)
+	append(&headers, http_header("Content-Type", "application/json"))
+	append(&headers, http_header("Accept", "application/json"))
+	for header in options.headers {
+		append(&headers, header)
+	}
+
+	return http_request(t, {
+		method = "POST",
+		url = url,
+		body = body,
+		headers = headers[:],
+		curl = options.curl,
+		timeout_ms = options.timeout_ms,
+	})
 }
 
 http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {

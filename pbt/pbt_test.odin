@@ -511,6 +511,44 @@ test_http_adapter_accepts_timeout :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_http_post_json_adds_json_headers :: proc(t: ^testing.T) {
+	fake_curl := "/tmp/pbt-fake-curl-json"
+	file, err := os.create(fake_curl)
+	testing.expect(t, err == nil)
+	_, err = os.write_string(file, "#!/bin/sh\nout=\"\"\nprev=\"\"\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"-o\" ]; then out=\"$arg\"; fi\n  prev=\"$arg\"\ndone\nprintf '{\"ok\":true}' > \"$out\"\nprintf 201\n")
+	testing.expect(t, err == nil)
+	os.close(file)
+	err = os.chmod(fake_curl, os.Permissions_All)
+	testing.expect(t, err == nil)
+	defer os.remove(fake_curl)
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	response := http_post_json(&ctx, "http://example.test/items", "{\"sku\":\"abc\"}", {
+		curl = fake_curl,
+		timeout_ms = 500,
+	})
+
+	testing.expect(t, response.success)
+	testing.expect_value(t, response.status, 201)
+	testing.expect_value(t, response.body, "{\"ok\":true}")
+	testing.expect(t, http_events_contain(ctx.events[:], "Content-Type: application/json"))
+	testing.expect(t, http_events_contain(ctx.events[:], "Accept: application/json"))
+	testing.expect(t, http_events_contain(ctx.events[:], "--max-time 0.500"))
+}
+
+http_events_contain :: proc(events: []Event, text: string) -> bool {
+	for event in events {
+		if strings.contains(event.detail, text) {
+			return true
+		}
+	}
+	return false
+}
+
+@(test)
 test_same_seed_replays_choices :: proc(t: ^testing.T) {
 	a := check("seed a", same_seed_generates_same_choices, {num_tests = 1, seed = 99})
 	defer destroy_check_result(&a)
