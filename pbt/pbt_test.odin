@@ -304,14 +304,26 @@ test_check_result_json_contains_replay :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"tool\":\"pbt\""))
 	testing.expect(t, strings.contains(json, "\"schema_version\":1"))
 	testing.expect(t, strings.contains(json, "\"status\":\"fail\""))
+	testing.expect(t, strings.contains(json, "\"duration_ns\""))
+	testing.expect(t, strings.contains(json, "\"shrink_attempts\""))
+	testing.expect(t, strings.contains(json, "\"shrink_duration_ns\""))
 	testing.expect(t, strings.contains(json, "\"replay\""))
 	testing.expect(t, strings.contains(json, "\"choices\""))
 	testing.expect(t, strings.contains(json, "\"choices_csv\":\"50\""))
 	testing.expect_value(t, check_result_exit_code(result), 1)
+	testing.expect(t, result.duration_ns > 0)
+	testing.expect(t, result.shrink_attempts > 0)
+	testing.expect(t, result.shrink_duration_ns > 0)
 
 	choices_csv := replay_choices_csv(result.replay)
 	defer delete(choices_csv)
 	testing.expect_value(t, choices_csv, "50")
+
+	text := check_result_text(result)
+	defer delete(text)
+	testing.expect(t, strings.contains(text, "large values fail: fail"))
+	testing.expect(t, strings.contains(text, "replay: --replay-seed 123 --replay-choices 50"))
+	testing.expect(t, strings.contains(text, "shrink:"))
 }
 
 @(test)
@@ -505,6 +517,16 @@ test_parse_check_options :: proc(t: ^testing.T) {
 	testing.expect_value(t, options.max_discards, 20)
 	testing.expect_value(t, options.max_shrinks, 30)
 	testing.expect(t, options.no_shrink)
+}
+
+@(test)
+test_parse_output_mode :: proc(t: ^testing.T) {
+	empty := [?]string{}
+	text_args := [?]string{"--text"}
+	json_args := [?]string{"--text", "--json"}
+	testing.expect(t, use_json_output(empty[:]))
+	testing.expect(t, !use_json_output(text_args[:]))
+	testing.expect(t, use_json_output(json_args[:]))
 }
 
 @(test)

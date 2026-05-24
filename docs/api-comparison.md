@@ -64,6 +64,7 @@ not enough long-term.
 It now lowers individual choice values and removes chunks from the choice
 stream. When a replay candidate consumes fewer choices than it was given, the
 shrinker keeps only the consumed choices, producing cleaner replay strings.
+`Check_Result` also records shrink attempts and shrink duration.
 
 Useful additions:
 
@@ -71,24 +72,22 @@ Useful additions:
 - better array/string shrinking
 - command-aware stateful shrink passes
 - preserve interesting coverage during shrinking when requested
-- shrink attempt counters and timing in JSON
 
 ### Result And Counterexample Diagnostics
 
 QuickCheck has strong counterexample/reporting ergonomics. `pbt` has events,
-notes, labels, messages, and JSON, but still needs:
+notes, labels, messages, JSON, and compact text output, but still needs:
 
 - multiple notes without forcing event semantics
-- compact textual summaries for CLI users
+- richer text formatting for long event traces
 
 ### Runner Integration
 
-The runner API is already useful for Gransk. Still missing:
+The runner API is already useful for Gransk. `--json` and `--text` output modes
+are supported by the shared CLI helpers. Still missing:
 
-- `--json` / `--text` output mode if humans want non-JSON output
 - `--property` pattern matching or multiple property execution
 - stable machine-readable error codes
-- optional timing fields in JSON
 - optional per-property metadata
 
 ## Performance Notes

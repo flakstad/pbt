@@ -2,6 +2,7 @@ package pbt
 
 import "core:fmt"
 import "core:testing"
+import "core:time"
 
 Property :: proc(t: ^T) -> Result
 
@@ -32,6 +33,9 @@ Check_Result :: struct {
 	seed:         u64,
 	num_tests:    int,
 	num_discards: int,
+	duration_ns:  i64,
+	shrink_attempts: int,
+	shrink_duration_ns: i64,
 	coverage:     [dynamic]Coverage_Label,
 	failing_test: Test_Case,
 	shrunk_test:  Test_Case,
@@ -66,6 +70,7 @@ default_options :: proc(options: Check_Options) -> Check_Options {
 
 check :: proc(name: string, property: Property, options: Check_Options = {}) -> Check_Result {
 	opts := default_options(options)
+	start_time := time.tick_now()
 
 	result := Check_Result {
 		name = name,
@@ -95,6 +100,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 			if discards > opts.max_discards {
 				result.status = .Error
 				result.message = "too many discarded tests"
+				result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 				return result
 			}
 		case .Fail, .Error:
@@ -106,7 +112,11 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 			result.message = tc.result.message
 			result.failing_test = tc
 			if opts.shrink {
-				result.shrunk_test = shrink_case(property, tc.choices[:], case_seed, size, opts)
+				shrink_start := time.tick_now()
+				shrink_result := shrink_case_with_stats(property, tc.choices[:], case_seed, size, opts)
+				result.shrunk_test = shrink_result.test
+				result.shrink_attempts = shrink_result.attempts
+				result.shrink_duration_ns = time.duration_nanoseconds(time.tick_diff(shrink_start, time.tick_now()))
 			} else {
 				result.shrunk_test = Test_Case {
 					choices = copy_choices(tc.choices[:]),
@@ -119,6 +129,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 				seed = case_seed,
 				choices = copy_choices(result.shrunk_test.choices[:]),
 			}
+			result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 			return result
 		}
 	}
@@ -127,13 +138,15 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 		result.status = .Error
 		result.message = "coverage requirement not met"
 	}
+	result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	return result
 }
 
 check_replay :: proc(name: string, property: Property, replay: Replay, options: Check_Options = {}) -> Check_Result {
+	start_time := time.tick_now()
 	opts := default_options(options)
 	tc := run_case(property, replay.seed, opts.max_size, replay.choices[:], true, true)
-	return Check_Result {
+	result := Check_Result {
 		name = name,
 		status = tc.result.status,
 		seed = replay.seed,
@@ -151,6 +164,8 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 		},
 		message = tc.result.message,
 	}
+	result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+	return result
 }
 
 destroy_check_result :: proc(result: ^Check_Result) {
@@ -204,6 +219,15 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 }
 
 shrink_case :: proc(property: Property, choices: []u64, seed: u64, size: int, options: Check_Options) -> Test_Case {
+	return shrink_case_with_stats(property, choices, seed, size, options).test
+}
+
+Shrink_Result :: struct {
+	test:     Test_Case,
+	attempts: int,
+}
+
+shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, size: int, options: Check_Options) -> Shrink_Result {
 	runner: T
 	test_init(&runner, seed, size, choices, true, true)
 	defer test_destroy(&runner)
@@ -241,7 +265,7 @@ shrink_case :: proc(property: Property, choices: []u64, seed: u64, size: int, op
 		}
 	}
 
-	return best
+	return {test = best, attempts = attempts}
 }
 
 shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {

@@ -33,7 +33,7 @@ main :: proc() {
 	}
 
 	result := pbt.check_property_from_args(properties[:], args, {shrink = true})
-	pbt.print_check_result_json(result)
+	pbt.print_check_result(result, pbt.use_json_output(args))
 	exit_code := pbt.check_result_exit_code(result)
 	pbt.destroy_check_result(&result)
 	os.exit(exit_code)

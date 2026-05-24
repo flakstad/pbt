@@ -118,6 +118,9 @@ Check_Result :: struct {
     seed: u64,
     num_tests: int,
     num_discards: int,
+    duration_ns: i64,
+    shrink_attempts: int,
+    shrink_duration_ns: i64,
     coverage: []Coverage_Label,
     failing_test: Maybe(Test_Case),
     shrunk_test: Maybe(Test_Case),
@@ -291,11 +294,22 @@ pbt.exit_with_check_result(result)
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.
 
+JSON is the default machine-readable output. Human-oriented runner output can
+use:
+
+```odin
+pbt.print_check_result(result, pbt.use_json_output(os.args[1:]))
+```
+
+where `--text` selects compact text output and `--json` selects JSON.
+
 Supported runner options:
 
 - `--num-tests` / `-n`
 - `--property` / `-p`
 - `--list-properties`
+- `--json`
+- `--text`
 - `--seed`
 - `--max-size`
 - `--max-discards`
@@ -484,6 +498,8 @@ The result payload should include:
 - property name
 - pass/fail/error/discard status
 - seed
+- duration in nanoseconds
+- shrink attempts and shrink duration
 - replay choices
 - replay choices as `choices_csv`, directly usable with `--replay-choices`
 - original failure

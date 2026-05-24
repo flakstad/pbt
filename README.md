@@ -34,9 +34,10 @@ The current implementation includes:
 - coverage/classification aggregation in `Check_Result` and JSON output
 - richer failure context with `counterexample` and value-printing `equal`
 - structured event capture for HTTP/process/statechart adapters
-- JSON result output for Gransk
-- runner helpers: `print_check_result_json`, `check_result_exit_code`, and
-  `exit_with_check_result`
+- JSON result output for Gransk, including duration and shrink metadata
+- text result output for direct human runner use
+- runner helpers: `print_check_result_json`, `print_check_result_text`,
+  `print_check_result`, `check_result_exit_code`, and `exit_with_check_result`
 - runner option parsing with `parse_check_options`
 - replay parsing with `parse_replay`
 - replay choice CSV formatting for CLI reruns

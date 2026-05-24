@@ -116,6 +116,19 @@ has_list_properties_flag :: proc(args: []string) -> bool {
 	return false
 }
 
+use_json_output :: proc(args: []string, default_json: bool = true) -> bool {
+	use_json := default_json
+	for arg in args {
+		switch arg {
+		case "--json":
+			use_json = true
+		case "--text":
+			use_json = false
+		}
+	}
+	return use_json
+}
+
 properties_json :: proc(properties: []Property_Case) -> string {
 	builder: strings.Builder
 	strings.builder_init(&builder)

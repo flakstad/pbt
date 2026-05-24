@@ -16,6 +16,9 @@ check_result_json :: proc(result: Check_Result) -> string {
 	json_field_u64(&builder, "seed", result.seed, false)
 	json_field_int(&builder, "num_tests", result.num_tests, false)
 	json_field_int(&builder, "num_discards", result.num_discards, false)
+	json_field_i64(&builder, "duration_ns", result.duration_ns, false)
+	json_field_int(&builder, "shrink_attempts", result.shrink_attempts, false)
+	json_field_i64(&builder, "shrink_duration_ns", result.shrink_duration_ns, false)
 	json_field_string(&builder, "message", result.message, false)
 	strings.write_string(&builder, ",\"coverage\":")
 	json_write_coverage(&builder, result.coverage[:], result.num_tests)
@@ -45,6 +48,56 @@ print_check_result_json :: proc(result: Check_Result) {
 	json := check_result_json(result)
 	defer delete(json)
 	fmt.println(json)
+}
+
+check_result_text :: proc(result: Check_Result) -> string {
+	builder: strings.Builder
+	strings.builder_init(&builder)
+
+	strings.write_string(&builder, fmt.tprintf("%s: %s\n", result.name, status_string(result.status)))
+	strings.write_string(&builder, fmt.tprintf("tests: %d, discards: %d, duration: %d ns\n", result.num_tests, result.num_discards, result.duration_ns))
+	if len(result.message) > 0 {
+		strings.write_string(&builder, fmt.tprintf("message: %s\n", result.message))
+	}
+	if result.status != .Pass {
+		strings.write_string(&builder, fmt.tprintf("replay: --replay-seed %d --replay-choices ", result.replay.seed))
+		choices_csv := replay_choices_csv(result.replay)
+		defer delete(choices_csv)
+		strings.write_string(&builder, choices_csv)
+		strings.write_string(&builder, "\n")
+		if result.shrink_attempts > 0 {
+			strings.write_string(&builder, fmt.tprintf("shrink: %d attempts, %d ns\n", result.shrink_attempts, result.shrink_duration_ns))
+		}
+	}
+	if len(result.coverage) > 0 {
+		strings.write_string(&builder, "coverage:\n")
+		for item in result.coverage {
+			percent := 0.0
+			if result.num_tests > 0 {
+				percent = f64(item.count) * 100.0 / f64(result.num_tests)
+			}
+			strings.write_string(&builder, fmt.tprintf("  %s: %d (%.2f%%", item.label, item.count, percent))
+			if item.required_percent > 0 {
+				strings.write_string(&builder, fmt.tprintf(", required %.2f%%", item.required_percent))
+			}
+			strings.write_string(&builder, ")\n")
+		}
+	}
+	return strings.to_string(builder)
+}
+
+print_check_result_text :: proc(result: Check_Result) {
+	text := check_result_text(result)
+	defer delete(text)
+	fmt.print(text)
+}
+
+print_check_result :: proc(result: Check_Result, json: bool = true) {
+	if json {
+		print_check_result_json(result)
+	} else {
+		print_check_result_text(result)
+	}
 }
 
 check_result_exit_code :: proc(result: Check_Result) -> int {
@@ -175,6 +228,11 @@ json_field_int :: proc(builder: ^strings.Builder, name: string, value: int, firs
 }
 
 json_field_u64 :: proc(builder: ^strings.Builder, name: string, value: u64, first: bool) {
+	json_field_prefix(builder, name, first)
+	strings.write_string(builder, fmt.tprintf("%d", value))
+}
+
+json_field_i64 :: proc(builder: ^strings.Builder, name: string, value: i64, first: bool) {
 	json_field_prefix(builder, name, first)
 	strings.write_string(builder, fmt.tprintf("%d", value))
 }
