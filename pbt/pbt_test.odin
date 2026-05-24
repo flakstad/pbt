@@ -129,6 +129,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	query_key := draw(t, non_empty_query_component_ascii(8))
 	json_name := draw(t, json_string_literal_ascii(0, 8))
 	json_flag := draw(t, json_bool_literal())
+	json_body := draw(t, json_object_ascii(0, 3, 8, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -176,6 +177,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		query_component_is_ascii(query_key) &&
 		json_string_literal_is_safe_ascii(json_name) &&
 		(json_flag == "true" || json_flag == "false") &&
+		json_object_is_simple_ascii(json_body) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -317,6 +319,22 @@ json_string_literal_is_safe_ascii :: proc(value: string) -> bool {
 	}
 	for ch in value[1:len(value) - 1] {
 		if ch == '"' || ch == '\\' || ch < 0x20 {
+			return false
+		}
+	}
+	return true
+}
+
+json_object_is_simple_ascii :: proc(value: string) -> bool {
+	if len(value) < 2 || value[0] != '{' || value[len(value) - 1] != '}' {
+		return false
+	}
+
+	for ch in value {
+		if ch < 0x20 {
+			return false
+		}
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.' || ch == ' ' || ch == '{' || ch == '}' || ch == '"' || ch == ':' || ch == ',') {
 			return false
 		}
 	}

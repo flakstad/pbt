@@ -209,6 +209,7 @@ query_component_ascii :: proc(min_len := 0, max_len := -1) -> Gen(Query_Componen
 non_empty_query_component_ascii :: proc(max_len := -1) -> Gen(Query_Component_ASCII_Input, string)
 json_string_literal_ascii :: proc(min_len := 0, max_len := -1) -> Gen(JSON_String_Literal_ASCII_Input, string)
 json_bool_literal :: proc() -> Gen(JSON_Bool_Literal_Input, string)
+json_object_ascii :: proc(min_fields := 0, max_fields := -1, max_key_len := 12, max_string_len := 16) -> Gen(JSON_Object_ASCII_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
 triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third)) -> Gen(Triple_Input(...), Triple(First, Second, Third))

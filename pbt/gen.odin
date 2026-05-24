@@ -884,6 +884,90 @@ json_bool_literal :: proc() -> Gen(JSON_Bool_Literal_Input, string) {
 	}
 }
 
+JSON_Object_ASCII_Input :: struct {
+	min_fields:     int,
+	max_fields:     int,
+	max_key_len:    int,
+	max_string_len: int,
+}
+
+json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len: int = 12, max_string_len: int = 16) -> Gen(JSON_Object_ASCII_Input, string) {
+	return {
+		input = {min_fields = min_fields, max_fields = max_fields, max_key_len = max_key_len, max_string_len = max_string_len},
+		produce = proc(t: ^T, input: JSON_Object_ASCII_Input) -> string {
+			min_fields := input.min_fields
+			if min_fields < 0 {
+				min_fields = 0
+			}
+			max_fields := input.max_fields
+			if max_fields < min_fields {
+				max_fields = math.max(min_fields, t.size)
+			}
+			max_key_len := input.max_key_len
+			if max_key_len < 1 {
+				max_key_len = 1
+			}
+			max_string_len := input.max_string_len
+			if max_string_len < 0 {
+				max_string_len = 0
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			field_count := min_fields + int(choice(t, u64(max_fields - min_fields + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && field_count > min_fields {
+				element_ends = make([]int, field_count + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			values := make([dynamic]byte, 0, 2 + field_count * (max_key_len + max_string_len + 8), t.value_allocator)
+			append(&values, '{')
+			key_gen := identifier_ascii(1, max_key_len)
+			string_gen := json_string_literal_ascii(0, max_string_len)
+			for i in 0 ..< field_count {
+				if i > 0 {
+					append(&values, ',')
+				}
+				key := draw(t, key_gen)
+				append_json_quoted_content(&values, key)
+				append(&values, ':')
+				switch choice(t, 3) {
+				case 0:
+					value := draw(t, string_gen)
+					append_string_bytes(&values, value)
+				case 1:
+					value := draw(t, json_bool_literal())
+					append_string_bytes(&values, value)
+				case 2:
+					append_string_bytes(&values, "null")
+				}
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			append(&values, '}')
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_fields, field_count, element_ends)
+			}
+			return string(values[:])
+		},
+	}
+}
+
+append_json_quoted_content :: proc(dst: ^[dynamic]byte, value: string) {
+	append(dst, '"')
+	append_string_bytes(dst, value)
+	append(dst, '"')
+}
+
+append_string_bytes :: proc(dst: ^[dynamic]byte, value: string) {
+	for ch in value {
+		append(dst, byte(ch))
+	}
+}
+
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
 	if length <= min_len {
 		return
