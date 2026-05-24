@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:time"
 
 Http_Header :: struct {
 	name:  string,
@@ -24,6 +25,7 @@ Http_Response :: struct {
 	body:      string,
 	stderr:    string,
 	exit_code: int,
+	duration_ns: i64,
 	error:     string,
 }
 
@@ -36,6 +38,7 @@ http_post :: proc(t: ^T, url, body: string, headers: []Http_Header = nil) -> Htt
 }
 
 http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
+	start_time := time.tick_now()
 	curl := request.curl
 	if curl == "" {
 		curl = "curl"
@@ -72,14 +75,16 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 
 		file, create_err := os.create(body_path)
 		if create_err != nil {
+			duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 			record_event(t, "http", http_event_name(request), "error", fmt.tprintf("body create error: %v", create_err))
-			return {success = false, error = clone_non_empty(fmt.tprintf("%v", create_err), t.value_allocator)}
+			return {success = false, duration_ns = duration_ns, error = clone_non_empty(fmt.tprintf("%v", create_err), t.value_allocator)}
 		}
 		_, write_err := os.write_string(file, request.body)
 		os.close(file)
 		if write_err != nil {
+			duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 			record_event(t, "http", http_event_name(request), "error", fmt.tprintf("body write error: %v", write_err))
-			return {success = false, error = clone_non_empty(fmt.tprintf("%v", write_err), t.value_allocator)}
+			return {success = false, duration_ns = duration_ns, error = clone_non_empty(fmt.tprintf("%v", write_err), t.value_allocator)}
 		}
 
 		append(&command, "--data-binary")
@@ -107,12 +112,13 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 		response.body = clone_non_empty(string(body_bytes), t.value_allocator)
 		delete(body_bytes)
 	}
+	response.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 
 	event_status := "ok"
 	if !response.success {
 		event_status = "error"
 	}
-	record_event(t, "http", http_event_name(request), event_status, fmt.tprintf("status=%d exit=%d", response.status, response.exit_code))
+	record_event(t, "http", http_event_name(request), event_status, fmt.tprintf("status=%d exit=%d duration_ns=%d", response.status, response.exit_code, response.duration_ns))
 	return response
 }
 

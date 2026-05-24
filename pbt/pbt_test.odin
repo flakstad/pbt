@@ -373,6 +373,21 @@ test_process_adapter_runs_cli :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_process_adapter_records_duration :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	command := [?]string{"/bin/sh", "-c", "printf ok"}
+	result := process_run(&ctx, command[:])
+
+	testing.expect(t, result.success)
+	testing.expect(t, result.duration_ns > 0)
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect(t, strings.contains(ctx.events[0].detail, "duration_ns="))
+}
+
+@(test)
 test_protocol_adapter_sends_request_file :: proc(t: ^testing.T) {
 	result := check("protocol adapter", protocol_property, {num_tests = 10, seed = 11})
 	defer destroy_check_result(&result)
@@ -393,6 +408,27 @@ test_http_adapter_fetches_url :: proc(t: ^testing.T) {
 	defer destroy_check_result(&result)
 
 	testing.expect_value(t, result.status, Status.Pass)
+}
+
+@(test)
+test_http_adapter_records_duration :: proc(t: ^testing.T) {
+	file, err := os.create("/tmp/pbt-http-adapter-duration")
+	testing.expect(t, err == nil)
+	_, err = os.write_string(file, "ok")
+	testing.expect(t, err == nil)
+	os.close(file)
+	defer os.remove("/tmp/pbt-http-adapter-duration")
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	response := http_get(&ctx, "file:///tmp/pbt-http-adapter-duration")
+
+	testing.expect(t, response.success)
+	testing.expect(t, response.duration_ns > 0)
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect(t, strings.contains(ctx.events[len(ctx.events) - 1].detail, "duration_ns="))
 }
 
 @(test)

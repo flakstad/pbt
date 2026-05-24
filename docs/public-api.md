@@ -401,8 +401,8 @@ command := [?]string{"my-cli", "cart", "add", sku, qty}
 result := pbt.process_run(t, command[:])
 ```
 
-The adapter should capture command, args, exit code, stdout, stderr, duration,
-and timeout as structured events.
+The adapter captures command, args, exit code, stdout, stderr, and duration in
+nanoseconds. Timeout support is still planned.
 
 The first process adapter is a one-shot command runner. A persistent process
 protocol should come next for faster cross-language library adapters.
@@ -418,8 +418,9 @@ client := http.client({
 res := http.post_json(client, "/cart/items", body)
 ```
 
-The adapter should capture method, URL path, status, selected headers, body
-summary, duration, and timeout.
+The adapter captures method, URL, status, exit code, body, stderr, and duration
+in nanoseconds. Timeout support and richer header/body summaries are still
+planned.
 
 HTTP targets are the main cross-language path: the system under test can be
 written in any language as long as the property can drive and observe it over

@@ -3,12 +3,14 @@ package pbt
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:time"
 
 Process_Result :: struct {
 	exit_code: int,
 	success:   bool,
 	stdout:    string,
 	stderr:    string,
+	duration_ns: i64,
 	error:     string,
 }
 
@@ -16,9 +18,11 @@ process_run :: proc(t: ^T, command: []string) -> Process_Result {
 	detail := process_command_string(command, t.allocator)
 	defer delete(detail)
 
+	start_time := time.tick_now()
 	state, stdout_bytes, stderr_bytes, err := os.process_exec(os.Process_Desc {
 		command = command,
 	}, t.allocator)
+	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	defer delete(stdout_bytes)
 	defer delete(stderr_bytes)
 
@@ -27,6 +31,7 @@ process_run :: proc(t: ^T, command: []string) -> Process_Result {
 		success = err == nil && state.success,
 		stdout = clone_non_empty(string(stdout_bytes), t.value_allocator),
 		stderr = clone_non_empty(string(stderr_bytes), t.value_allocator),
+		duration_ns = duration_ns,
 	}
 
 	status := "ok"
@@ -35,7 +40,7 @@ process_run :: proc(t: ^T, command: []string) -> Process_Result {
 		result.error = clone_non_empty(fmt.tprintf("%v", err), t.value_allocator)
 	}
 
-	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d", detail, state.exit_code))
+	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d", detail, state.exit_code, duration_ns))
 	return result
 }
 
