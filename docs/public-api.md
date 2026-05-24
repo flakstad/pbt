@@ -506,6 +506,8 @@ Model :: struct {
     postcondition: proc(state: State, cmd: Command, actual: Value) -> pbt.Result,
     invariant: proc(t: ^pbt.T, state: State) -> pbt.Result,
     command_name: proc(cmd: Command) -> string,
+    state_detail: proc(state: State) -> string,
+    value_detail: proc(actual: Value) -> string,
 }
 
 commands := pbt_state.commands(model, {max_len = 100})
@@ -518,6 +520,13 @@ libraries against the same abstract model.
 `command_name` is optional, but recommended. It makes shrunk stateful failures
 much easier to read because the event trace can say `step 0 reset
 postcondition` instead of only `step 0`.
+
+`state_detail` and `value_detail` are optional, but useful for complex failures.
+When supplied, captured stateful event details include the model state before
+the command, the observed value returned by the target, and the next model state
+for successful steps. Normal passing checks do not capture these traces on the
+hot path; they are captured for failures, shrinking, replay, and explicit event
+capture.
 
 ### Statechart Target
 

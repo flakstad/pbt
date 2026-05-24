@@ -13,6 +13,8 @@ State_Model :: struct(State: typeid, Command: typeid, Value: typeid) {
 	postcondition: proc(state: State, command: Command, value: Value) -> Result,
 	invariant: proc(t: ^T, state: State) -> Result,
 	command_name: proc(command: Command) -> string,
+	state_detail: proc(state: State) -> string,
+	value_detail: proc(value: Value) -> string,
 }
 
 State_Run_Options :: struct {
@@ -72,12 +74,13 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			return discard(fmt.tprintf("could not generate valid command at step %d", step))
 		}
 
+		state_before := state
 		value := model.run(t, model.target, state, command)
 		if model.postcondition != nil {
 			post_result := model.postcondition(state, command, value)
 			if post_result.status != .Pass {
 				if t.capture_events {
-					record_event(t, "stateful", stateful_step_name(model, step, command, "postcondition"), status_string(post_result.status), post_result.message)
+					record_event(t, "stateful", stateful_step_name(model, step, command, "postcondition"), status_string(post_result.status), stateful_value_detail(model, state_before, value, post_result.message))
 				}
 				return post_result
 			}
@@ -91,14 +94,14 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			invariant_result := model.invariant(t, state)
 			if invariant_result.status != .Pass {
 				if t.capture_events {
-					record_event(t, "stateful", stateful_step_name(model, step, command, "invariant"), status_string(invariant_result.status), invariant_result.message)
+					record_event(t, "stateful", stateful_step_name(model, step, command, "invariant"), status_string(invariant_result.status), stateful_state_detail(model, state, invariant_result.message))
 				}
 				return invariant_result
 			}
 		}
 
 		if t.capture_events {
-			record_event(t, "stateful", stateful_step_name(model, step, command, ""), "ok", "")
+			record_event(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
 		}
 	}
 
@@ -118,4 +121,72 @@ stateful_step_name :: proc(model: State_Model($State, $Command, $Value), step: i
 		return fmt.tprintf("step %d %s", step, command_name)
 	}
 	return fmt.tprintf("step %d %s %s", step, command_name, phase)
+}
+
+stateful_state_detail :: proc(model: State_Model($State, $Command, $Value), state: State, message: string) -> string {
+	state_text := stateful_format_state(model, state)
+	if state_text == "" {
+		return message
+	}
+	if message == "" {
+		return fmt.tprintf("state=%s", state_text)
+	}
+	return fmt.tprintf("state=%s message=%s", state_text, message)
+}
+
+stateful_value_detail :: proc(model: State_Model($State, $Command, $Value), state: State, value: Value, message: string) -> string {
+	state_text := stateful_format_state(model, state)
+	value_text := stateful_format_value(model, value)
+	detail := stateful_join_state_value(state_text, value_text)
+	if detail == "" {
+		return message
+	}
+	if message == "" {
+		return detail
+	}
+	return fmt.tprintf("%s message=%s", detail, message)
+}
+
+stateful_step_detail :: proc(model: State_Model($State, $Command, $Value), state_before: State, value: Value, state_after: State) -> string {
+	state_before_text := stateful_format_state(model, state_before)
+	value_text := stateful_format_value(model, value)
+	state_after_text := stateful_format_state(model, state_after)
+	if state_before_text == "" && value_text == "" && state_after_text == "" {
+		return ""
+	}
+	detail := stateful_join_state_value(state_before_text, value_text)
+	if state_after_text == "" {
+		return detail
+	}
+	if detail == "" {
+		return fmt.tprintf("next=%s", state_after_text)
+	}
+	return fmt.tprintf("%s next=%s", detail, state_after_text)
+}
+
+stateful_format_state :: proc(model: State_Model($State, $Command, $Value), state: State) -> string {
+	if model.state_detail == nil {
+		return ""
+	}
+	return model.state_detail(state)
+}
+
+stateful_format_value :: proc(model: State_Model($State, $Command, $Value), value: Value) -> string {
+	if model.value_detail == nil {
+		return ""
+	}
+	return model.value_detail(value)
+}
+
+stateful_join_state_value :: proc(state_text, value_text: string) -> string {
+	if state_text == "" {
+		if value_text == "" {
+			return ""
+		}
+		return fmt.tprintf("value=%s", value_text)
+	}
+	if value_text == "" {
+		return fmt.tprintf("state=%s", state_text)
+	}
+	return fmt.tprintf("state=%s value=%s", state_text, value_text)
 }

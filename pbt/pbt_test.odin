@@ -230,6 +230,14 @@ counter_command_name :: proc(command: Counter_Command) -> string {
 	return "unknown"
 }
 
+counter_state_detail :: proc(state: int) -> string {
+	return fmt.tprintf("%d", state)
+}
+
+counter_value_detail :: proc(value: int) -> string {
+	return fmt.tprintf("%d", value)
+}
+
 counter_stateful_property :: proc(t: ^T) -> Result {
 	target := Counter_Target{}
 	model := State_Model(int, Counter_Command, int) {
@@ -242,6 +250,8 @@ counter_stateful_property :: proc(t: ^T) -> Result {
 		postcondition = counter_postcondition,
 		invariant = counter_invariant,
 		command_name = counter_command_name,
+		state_detail = counter_state_detail,
+		value_detail = counter_value_detail,
 	}
 	return run_commands(t, model, {min_len = 1, max_len = 20})
 }
@@ -375,6 +385,8 @@ test_stateful_runner_finds_model_mismatch :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.message, "counter target diverged from model")
 	testing.expect(t, len(result.shrunk_test.events) > 0)
 	testing.expect(t, strings.contains(result.shrunk_test.events[0].name, "reset"))
+	testing.expect(t, strings.contains(result.shrunk_test.events[0].detail, "state=0"))
+	testing.expect(t, strings.contains(result.shrunk_test.events[0].detail, "value=1"))
 
 	replayed := check_replay("counter stateful", counter_stateful_property, result.replay)
 	defer destroy_check_result(&replayed)
