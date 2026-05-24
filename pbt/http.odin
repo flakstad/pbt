@@ -17,6 +17,7 @@ Http_Request :: struct {
 	headers: []Http_Header,
 	body:    string,
 	curl:    string,
+	timeout_ms: int,
 }
 
 Http_Response :: struct {
@@ -26,6 +27,7 @@ Http_Response :: struct {
 	stderr:    string,
 	exit_code: int,
 	duration_ns: i64,
+	timed_out: bool,
 	error:     string,
 }
 
@@ -56,6 +58,10 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 	append(&command, response_path)
 	append(&command, "-w")
 	append(&command, "%{http_code}")
+	if request.timeout_ms > 0 {
+		append(&command, "--max-time")
+		append(&command, fmt.tprintf("%.3f", f64(request.timeout_ms) / 1000.0))
+	}
 
 	if request.method != "" {
 		append(&command, "-X")
@@ -99,6 +105,7 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 		success = process_result.success,
 		stderr = process_result.stderr,
 		error = process_result.error,
+		timed_out = process_result.exit_code == 28,
 	}
 
 	status_text := strings.trim_space(process_result.stdout)
@@ -118,7 +125,7 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 	if !response.success {
 		event_status = "error"
 	}
-	record_event(t, "http", http_event_name(request), event_status, fmt.tprintf("status=%d exit=%d duration_ns=%d", response.status, response.exit_code, response.duration_ns))
+	record_event(t, "http", http_event_name(request), event_status, fmt.tprintf("status=%d exit=%d duration_ns=%d timeout_ms=%d", response.status, response.exit_code, response.duration_ns, request.timeout_ms))
 	return response
 }
 

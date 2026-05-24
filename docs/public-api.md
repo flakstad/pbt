@@ -420,17 +420,18 @@ protocol should come next for faster cross-language library adapters.
 ### HTTP Target
 
 ```odin
-client := http.client({
-    base_url = "http://127.0.0.1:8080",
+res := pbt.http_request(t, {
+    method = "POST",
+    url = "http://127.0.0.1:8080/cart/items",
+    body = body,
+    headers = headers[:],
     timeout_ms = 1_000,
 })
-
-res := http.post_json(client, "/cart/items", body)
 ```
 
 The adapter captures method, URL, status, exit code, body, stderr, and duration
-in nanoseconds. Timeout support and richer header/body summaries are still
-planned.
+in nanoseconds. Curl-backed HTTP requests support `timeout_ms`, which maps to
+curl `--max-time`; richer header/body summaries are still planned.
 
 HTTP targets are the main cross-language path: the system under test can be
 written in any language as long as the property can drive and observe it over

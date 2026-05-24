@@ -463,6 +463,28 @@ test_http_adapter_records_duration :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_http_adapter_accepts_timeout :: proc(t: ^testing.T) {
+	file, err := os.create("/tmp/pbt-http-adapter-timeout")
+	testing.expect(t, err == nil)
+	_, err = os.write_string(file, "ok")
+	testing.expect(t, err == nil)
+	os.close(file)
+	defer os.remove("/tmp/pbt-http-adapter-timeout")
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	response := http_request(&ctx, {method = "GET", url = "file:///tmp/pbt-http-adapter-timeout", timeout_ms = 1_500})
+
+	testing.expect(t, response.success)
+	testing.expect(t, !response.timed_out)
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect(t, strings.contains(ctx.events[0].detail, "--max-time 1.500"))
+	testing.expect(t, strings.contains(ctx.events[len(ctx.events) - 1].detail, "timeout_ms=1500"))
+}
+
+@(test)
 test_same_seed_replays_choices :: proc(t: ^testing.T) {
 	a := check("seed a", same_seed_generates_same_choices, {num_tests = 1, seed = 99})
 	defer destroy_check_result(&a)
