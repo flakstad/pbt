@@ -37,6 +37,8 @@ The current core is in a reasonable place:
 - external target adapters now cover one-shot process calls, one-shot
   request-file protocol calls, persistent line protocol calls, and curl-backed
   HTTP calls.
+- process and protocol target calls have basic generated-input guardrails:
+  timeouts, process output caps, and line-protocol response caps.
 
 ## Useful Missing Features
 
@@ -99,18 +101,27 @@ invocation with aggregate suite JSON.
 
 ## Performance Notes
 
-The first benchmark harness is in `benchmarks/check_bench.odin`.
+The benchmark harnesses are in `benchmarks/check_bench.odin` and
+`benchmarks/adapter_bench.odin`.
 
 The current fast path is promising:
 
-- two integer draws: roughly `40 ns/generated test`
+- two integer draws: roughly `22 ns/generated test`
 - zero allocations for short choice streams
+- collection generation reuses per-check storage for passing cases
+- normal passing stateful checks avoid event allocation unless diagnostics are
+  captured
+- compact stateful traces are available when rich successful-step traces would
+  add noise or cost
 
 Known performance work:
 
-- collection generators allocate heavily through per-case arenas
-- stateful tests allocate heavily because every command records events
-- rich diagnostics should probably be lazy or failure-only in hot passing runs
+- captured rich stateful traces still allocate heavily because each step stores
+  human-readable event strings
+- one-shot process adapters are orders of magnitude slower than the persistent
+  line protocol path and should be reserved for simple targets
+- guarded process execution adds some overhead versus bare `os.process_exec`,
+  but gives bounded output and timeout behavior for generated inputs
 - result construction should remain cheap for passing tests
 
 The broad strategy should be:
