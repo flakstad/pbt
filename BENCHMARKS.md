@@ -41,6 +41,8 @@ The benchmark includes these modes:
   `skip_success_events`, measuring the compact trace path
 - `failing property with shrink`: a failing property that shrinks an integer
   boundary case
+- `payload failure with shrink`: a failing property that draws fixed array and
+  string payload data before shrinking an independent failure marker
 
 ## Adapter Benchmark
 
@@ -166,12 +168,22 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           2291.00
-  avg ns/unit:            2716.60
+  best ns/unit:           2292.00
+  avg ns/unit:            2816.80
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
   bytes req max:          296
+
+payload failure with shrink
+  checks/sample:          1
+  samples:                5
+  best ns/unit:           297416.00
+  avg ns/unit:            313050.00
+  alloc calls max:        3011
+  resize calls max:       0
+  free calls max:         3011
+  bytes req max:          262776
 ```
 
 The integer hot path is now allocation-free for short choice streams because
