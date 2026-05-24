@@ -168,6 +168,35 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 	return response
 }
 
+http_expect_status :: proc(response: Http_Response, expected: int) -> Result {
+	if !response.success {
+		if response.timed_out {
+			return fail(fmt.tprintf("HTTP request timed out after %d ns", response.duration_ns))
+		}
+		if len(response.error) > 0 {
+			return fail(response.error)
+		}
+		if len(response.stderr) > 0 {
+			return fail(response.stderr)
+		}
+		return fail(fmt.tprintf("HTTP request failed with exit code %d", response.exit_code))
+	}
+	if response.status != expected {
+		return fail(fmt.tprintf("expected HTTP status %d, got %d", expected, response.status))
+	}
+	return pass()
+}
+
+http_expect_success :: proc(response: Http_Response) -> Result {
+	if !response.success {
+		return http_expect_status(response, 200)
+	}
+	if response.status < 200 || response.status >= 300 {
+		return fail(fmt.tprintf("expected HTTP 2xx status, got %d", response.status))
+	}
+	return pass()
+}
+
 http_event_name :: proc(request: Http_Request) -> string {
 	method := request.method
 	if method == "" {

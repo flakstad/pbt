@@ -539,6 +539,22 @@ test_http_post_json_adds_json_headers :: proc(t: ^testing.T) {
 	testing.expect(t, http_events_contain(ctx.events[:], "--max-time 0.500"))
 }
 
+@(test)
+test_http_expect_status_helpers :: proc(t: ^testing.T) {
+	ok := Http_Response{success = true, status = 201}
+	testing.expect_value(t, http_expect_status(ok, 201).status, Status.Pass)
+	testing.expect_value(t, http_expect_success(ok).status, Status.Pass)
+
+	wrong_status := http_expect_status(ok, 200)
+	testing.expect_value(t, wrong_status.status, Status.Fail)
+	testing.expect(t, strings.contains(wrong_status.message, "expected HTTP status 200"))
+
+	transport := Http_Response{success = false, exit_code = 7, error = "connection refused"}
+	transport_result := http_expect_success(transport)
+	testing.expect_value(t, transport_result.status, Status.Fail)
+	testing.expect_value(t, transport_result.message, "connection refused")
+}
+
 http_events_contain :: proc(events: []Event, text: string) -> bool {
 	for event in events {
 		if strings.contains(event.detail, text) {

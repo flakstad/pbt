@@ -428,6 +428,10 @@ res := pbt.http_post_json(t, "http://127.0.0.1:8080/cart/items", body, {
 `http_request` remains available for fully custom methods, headers, curl path,
 and body handling.
 
+Helpers such as `http_expect_status(res, 201)` and `http_expect_success(res)`
+turn transport failures, timeouts, and unexpected status codes into normal
+`Result` values.
+
 The adapter captures method, URL, status, exit code, body, stderr, and duration
 in nanoseconds. Curl-backed HTTP requests support `timeout_ms`, which maps to
 curl `--max-time`; richer header/body summaries are still planned.
