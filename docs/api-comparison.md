@@ -23,8 +23,10 @@ The current core is in a reasonable place:
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
-- `pair` and `dict` cover common structured inputs without requiring custom
-  generators for every small record-like value.
+- `pair`, `triple`, and `dict` cover common structured inputs without requiring
+  custom generators for every small record-like value.
+- non-empty collection and string helpers cover a frequent precondition without
+  forcing `such_that`.
 - `unique_array` covers set-style generated data where duplicate values would
   mostly add noise.
 - stateful testing has the important Erlang QuickCheck shape: initial state,
@@ -57,7 +59,8 @@ Useful additions still missing:
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set, but still lacks:
 
-- tuples / records helpers
+- higher-arity tuple helpers beyond triples
+- record helpers
 - richer recursive generator conveniences
 
 ### Shrinking

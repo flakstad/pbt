@@ -82,6 +82,10 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	scaled_values := draw(t, scale(array(int_range(0, 1), 0), half_size))
 	smaller_values := draw(t, smaller(array(int_range(0, 1), 0)))
 	filtered := draw(t, such_that(int_range(0, 10), is_even))
+	non_empty_values := draw(t, non_empty_array(int_range(0, 10), 8))
+	non_empty_ascii := draw(t, non_empty_string_ascii(8))
+	non_empty_token := draw(t, non_empty_string_alphabet("abc", 8))
+	int_triple := draw(t, triple(int_range(1, 3), boolean(), string_alphabet("z", 1, 3)))
 
 	return assert(
 		(color == "red" || color == "green" || color == "blue") &&
@@ -97,7 +101,12 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		len(resized_values) <= 3 &&
 		len(scaled_values) <= 50 &&
 		len(smaller_values) <= 50 &&
-		filtered % 2 == 0,
+		filtered % 2 == 0 &&
+		len(non_empty_values) >= 1 && len(non_empty_values) <= 8 &&
+		len(non_empty_ascii) >= 1 && len(non_empty_ascii) <= 8 &&
+		len(non_empty_token) >= 1 && len(non_empty_token) <= 8 &&
+		int_triple.first >= 1 && int_triple.first <= 3 &&
+		len(int_triple.third) >= 1 && len(int_triple.third) <= 3,
 		"expected generator catalog values",
 	)
 }

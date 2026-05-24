@@ -256,6 +256,10 @@ array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1
 	}
 }
 
+non_empty_array :: proc(elem: Gen($Gen_Input, $Value), max_len: int = -1) -> Gen(Array_Input(Gen_Input, Value), []Value) {
+	return array(elem, 1, max_len)
+}
+
 unique_array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1) -> Gen(Array_Input(Gen_Input, Value), []Value) {
 	return {
 		input = {elem = elem, min_len = min_len, max_len = max_len},
@@ -313,6 +317,10 @@ string_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(String_ASCII_In
 	}
 }
 
+non_empty_string_ascii :: proc(max_len: int = -1) -> Gen(String_ASCII_Input, string) {
+	return string_ascii(1, max_len)
+}
+
 String_Alphabet_Input :: struct {
 	alphabet: string,
 	min_len:  int,
@@ -341,6 +349,10 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 			return string(bytes)
 		},
 	}
+}
+
+non_empty_string_alphabet :: proc(alphabet: string, max_len: int = -1) -> Gen(String_Alphabet_Input, string) {
+	return string_alphabet(alphabet, 1, max_len)
 }
 
 Optional :: struct(Value: typeid) {
@@ -381,6 +393,31 @@ pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Secon
 			return {
 				first = draw(t, input.first),
 				second = draw(t, input.second),
+			}
+		},
+	}
+}
+
+Triple :: struct(First: typeid, Second: typeid, Third: typeid) {
+	first:  First,
+	second: Second,
+	third:  Third,
+}
+
+Triple_Input :: struct(First_Input: typeid, First: typeid, Second_Input: typeid, Second: typeid, Third_Input: typeid, Third: typeid) {
+	first:  Gen(First_Input, First),
+	second: Gen(Second_Input, Second),
+	third:  Gen(Third_Input, Third),
+}
+
+triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third)) -> Gen(Triple_Input(First_Input, First, Second_Input, Second, Third_Input, Third), Triple(First, Second, Third)) {
+	return {
+		input = {first = first, second = second, third = third},
+		produce = proc(t: ^T, input: Triple_Input(First_Input, First, Second_Input, Second, Third_Input, Third)) -> Triple(First, Second, Third) {
+			return {
+				first = draw(t, input.first),
+				second = draw(t, input.second),
+				third = draw(t, input.third),
 			}
 		},
 	}

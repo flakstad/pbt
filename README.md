@@ -19,7 +19,8 @@ The current implementation includes:
   alphabet string generators
 - fixed value, element, enum range, float range, size-aware, resized, scaled,
   and filtered generators
-- pair, dictionary, and unique array generators for structured values
+- pair, triple, dictionary, non-empty collection/string, and unique array
+  generators for structured values
 - generator combinators: `map_gen`, `bind`, `one_of`, and `frequency`
 - strict replay from seed and choices
 - default-on choice-stream shrinking
