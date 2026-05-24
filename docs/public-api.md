@@ -355,6 +355,7 @@ Supported runner options:
 - `--fail-fast`
 - `--json`
 - `--text`
+- `--help` / `-h`
 - `--seed`
 - `--max-size`
 - `--max-discards`

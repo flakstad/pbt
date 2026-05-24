@@ -55,6 +55,7 @@ The current implementation includes:
 - `properties_json` and `--list-properties` detection for runner discovery
 - `tags_json` and `--list-tags` detection for runner tag discovery
 - property descriptions/tags in discovery output
+- `--help` output for direct runner use
 - exact `--tag` filtering for suite runners
 - `--fail-fast` for quick first-failure suite runs
 - stable result codes for machine-readable Gransk handling

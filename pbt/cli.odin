@@ -199,6 +199,12 @@ check_properties_from_args :: proc(properties: []Property_Case, args: []string, 
 }
 
 run_cli :: proc(properties: []Property_Case, args: []string, defaults: Check_Options = {}) -> ! {
+	if has_help_flag(args) {
+		text := help_text(properties)
+		fmt.print(text)
+		delete(text)
+		os.exit(0)
+	}
 	if has_list_properties_flag(args) {
 		json := properties_json(properties)
 		fmt.println(json)
@@ -307,6 +313,59 @@ has_list_tags_flag :: proc(args: []string) -> bool {
 
 has_fail_fast_flag :: proc(args: []string) -> bool {
 	return has_arg(args, "--fail-fast")
+}
+
+has_help_flag :: proc(args: []string) -> bool {
+	return has_arg(args, "--help") || has_arg(args, "-h")
+}
+
+help_text :: proc(properties: []Property_Case) -> string {
+	builder: strings.Builder
+	strings.builder_init(&builder)
+
+	strings.write_string(&builder, "Usage: pbt-runner [options]\n\n")
+	strings.write_string(&builder, "Options:\n")
+	strings.write_string(&builder, "  --list-properties          Print registered properties as JSON\n")
+	strings.write_string(&builder, "  --list-tags                Print registered tags as JSON\n")
+	strings.write_string(&builder, "  --property, -p <name>      Run one property by exact or unique substring match\n")
+	strings.write_string(&builder, "  --tag, -t <tag>            Run properties with an exact tag\n")
+	strings.write_string(&builder, "  --num-tests, -n <n>        Number of generated tests\n")
+	strings.write_string(&builder, "  --seed <n>                 Deterministic seed\n")
+	strings.write_string(&builder, "  --max-size <n>             Maximum generated size\n")
+	strings.write_string(&builder, "  --max-discards <n>         Maximum discarded cases\n")
+	strings.write_string(&builder, "  --max-shrinks <n>          Maximum shrink attempts\n")
+	strings.write_string(&builder, "  --shrink                   Enable shrinking\n")
+	strings.write_string(&builder, "  --no-shrink                Disable shrinking\n")
+	strings.write_string(&builder, "  --coverage-warning-only    Report coverage misses without failing\n")
+	strings.write_string(&builder, "  --replay-seed <n>          Replay a failing case seed\n")
+	strings.write_string(&builder, "  --replay-choices <csv>     Replay a comma-separated choice stream\n")
+	strings.write_string(&builder, "  --fail-fast                Stop a suite after the first non-pass\n")
+	strings.write_string(&builder, "  --json                     Print JSON output\n")
+	strings.write_string(&builder, "  --text                     Print text output\n")
+	strings.write_string(&builder, "  --help, -h                 Print this help\n")
+
+	if len(properties) > 0 {
+		strings.write_string(&builder, "\nProperties:\n")
+		for property in properties {
+			strings.write_string(&builder, fmt.tprintf("  %s", property.name))
+			if len(property.tags) > 0 {
+				strings.write_string(&builder, " [")
+				for tag, i in property.tags {
+					if i > 0 {
+						strings.write_string(&builder, ",")
+					}
+					strings.write_string(&builder, tag)
+				}
+				strings.write_string(&builder, "]")
+			}
+			if property.description != "" {
+				strings.write_string(&builder, fmt.tprintf(" - %s", property.description))
+			}
+			strings.write_string(&builder, "\n")
+		}
+	}
+
+	return strings.to_string(builder)
 }
 
 property_tags :: proc(properties: []Property_Case) -> [dynamic]Property_Tag {

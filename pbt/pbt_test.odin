@@ -815,6 +815,21 @@ test_parse_output_mode :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_runner_help_text_lists_options_and_properties :: proc(t: ^testing.T) {
+	tags := [?]string{"integer", "shrinking"}
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative, description = "adds numbers", tags = tags[:]},
+	}
+	text := help_text(properties[:])
+	defer delete(text)
+
+	testing.expect(t, strings.contains(text, "Usage: pbt-runner"))
+	testing.expect(t, strings.contains(text, "--coverage-warning-only"))
+	testing.expect(t, strings.contains(text, "--list-properties"))
+	testing.expect(t, strings.contains(text, "sum [integer,shrinking] - adds numbers"))
+}
+
+@(test)
 test_parse_replay :: proc(t: ^testing.T) {
 	args := [?]string{
 		"--replay-seed",
