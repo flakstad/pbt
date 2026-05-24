@@ -199,6 +199,7 @@ string_alphabet :: proc(alphabet: string, min_len := 0, max_len := -1) -> Gen(St
 non_empty_string_alphabet :: proc(alphabet: string, max_len := -1) -> Gen(String_Alphabet_Input, string)
 hex_string :: proc(min_bytes := 0, max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
 non_empty_hex_string :: proc(max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
+identifier_ascii :: proc(min_len := 1, max_len := -1) -> Gen(Identifier_ASCII_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
 triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third)) -> Gen(Triple_Input(...), Triple(First, Second, Third))
@@ -243,8 +244,7 @@ decreases.
 
 Likely next generator work:
 
-- richer built-in domain generators for identifiers, paths, and structured
-  protocol data
+- richer built-in domain generators for paths and structured protocol data
 
 ## Shrinking And Replay
 

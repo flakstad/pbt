@@ -24,6 +24,8 @@ The current core is in a reasonable place:
   `sized`, `resize`, `clamp_size`, `scale`, `smaller`, and `such_that`.
 - byte and hex generators cover common payload/token cases for HTTP, CLI, and
   protocol testing.
+- `identifier_ascii` covers common generated names for fields, flags, commands,
+  and fixtures.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
@@ -67,8 +69,8 @@ has the first useful version of this:
 
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
-mostly about richer built-in domain generators for identifiers, paths, and
-structured protocol data rather than basic shape.
+mostly about richer built-in domain generators for paths and structured
+protocol data rather than basic shape.
 
 ### Shrinking
 

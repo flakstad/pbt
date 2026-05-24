@@ -119,6 +119,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	non_empty_payload := draw(t, non_empty_byte_array(6, 1, 3))
 	token_hex := draw(t, hex_string(1, 4))
 	upper_hex := draw(t, non_empty_hex_string(4, true))
+	identifier := draw(t, identifier_ascii(1, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -152,6 +153,8 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		hex_is_lower(token_hex) &&
 		len(upper_hex) >= 2 && len(upper_hex) <= 8 && len(upper_hex) % 2 == 0 &&
 		hex_is_upper(upper_hex) &&
+		len(identifier) >= 1 && len(identifier) <= 8 &&
+		identifier_is_ascii(identifier) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -211,6 +214,21 @@ hex_is_upper :: proc(value: string) -> bool {
 		}
 	}
 	return true
+}
+
+identifier_is_ascii :: proc(value: string) -> bool {
+	for ch, i in value {
+		if i == 0 {
+			if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_') {
+				return false
+			}
+			continue
+		}
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') {
+			return false
+		}
+	}
+	return len(value) > 0
 }
 
 values_are_unique :: proc(values: []int) -> bool {
