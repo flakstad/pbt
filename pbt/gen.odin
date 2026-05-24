@@ -713,6 +713,116 @@ http_header_name_ascii :: proc(min_len: int = 1, max_len: int = -1) -> Gen(HTTP_
 	}
 }
 
+URL_Path_ASCII_Input :: struct {
+	min_segments: int,
+	max_segments: int,
+	min_segment_len: int,
+	max_segment_len: int,
+}
+
+url_path_ascii :: proc(min_segments: int = 1, max_segments: int = -1, min_segment_len: int = 1, max_segment_len: int = -1) -> Gen(URL_Path_ASCII_Input, string) {
+	return {
+		input = {min_segments = min_segments, max_segments = max_segments, min_segment_len = min_segment_len, max_segment_len = max_segment_len},
+		produce = proc(t: ^T, input: URL_Path_ASCII_Input) -> string {
+			min_segments := input.min_segments
+			if min_segments < 0 {
+				min_segments = 0
+			}
+			max_segments := input.max_segments
+			if max_segments < min_segments {
+				max_segments = math.max(min_segments, t.size)
+			}
+			min_segment_len := input.min_segment_len
+			if min_segment_len < 1 {
+				min_segment_len = 1
+			}
+			max_segment_len := input.max_segment_len
+			if max_segment_len < min_segment_len {
+				max_segment_len = math.max(min_segment_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			segment_count := min_segments + int(choice(t, u64(max_segments - min_segments + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && segment_count > min_segments {
+				element_ends = make([]int, segment_count + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			values := make([dynamic]byte, 0, 1 + segment_count * (max_segment_len + 1), t.value_allocator)
+			append(&values, '/')
+			segment := path_segment_ascii(min_segment_len, max_segment_len)
+			for i in 0 ..< segment_count {
+				if i > 0 {
+					append(&values, '/')
+				}
+				part := draw(t, segment)
+				for ch in part {
+					append(&values, byte(ch))
+				}
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_segments, segment_count, element_ends)
+			}
+			return string(values[:])
+		},
+	}
+}
+
+Query_Component_ASCII_Input :: struct {
+	min_len: int,
+	max_len: int,
+}
+
+query_component_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(Query_Component_ASCII_Input, string) {
+	return {
+		input = {min_len = min_len, max_len = max_len},
+		produce = proc(t: ^T, input: Query_Component_ASCII_Input) -> string {
+			min_len := input.min_len
+			if min_len < 0 {
+				min_len = 0
+			}
+			max_len := input.max_len
+			if max_len < min_len {
+				max_len = math.max(min_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			length := min_len + int(choice(t, u64(max_len - min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+			values := make([]byte, length, t.value_allocator)
+			for i in 0 ..< length {
+				index := int(choice(t, u64(len(chars))))
+				values[i] = chars[index]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_len, length, element_ends)
+			}
+			return string(values)
+		},
+	}
+}
+
+non_empty_query_component_ascii :: proc(max_len: int = -1) -> Gen(Query_Component_ASCII_Input, string) {
+	return query_component_ascii(1, max_len)
+}
+
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
 	if length <= min_len {
 		return

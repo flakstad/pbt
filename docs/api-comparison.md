@@ -30,6 +30,8 @@ The current core is in a reasonable place:
   filesystem or URL policy for the caller.
 - HTTP method, status-code, and header-name generators cover common adapter
   inputs without requiring a full HTTP request model.
+- URL path and query component generators cover route and query data while
+  keeping base URL and escaping policy explicit in the property.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
@@ -73,8 +75,8 @@ has the first useful version of this:
 
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
-mostly about richer built-in domain generators for structured protocol data
-beyond HTTP basics rather than basic shape.
+mostly about richer built-in domain generators for structured protocol bodies
+and schemas rather than basic shape.
 
 ### Shrinking
 

@@ -124,6 +124,9 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	method := draw(t, http_method())
 	status_code := draw(t, http_status_code())
 	header_name := draw(t, http_header_name_ascii(1, 12))
+	url_path := draw(t, url_path_ascii(1, 3, 1, 6))
+	query_value := draw(t, query_component_ascii(0, 8))
+	query_key := draw(t, non_empty_query_component_ascii(8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -165,6 +168,10 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		status_code >= 100 && status_code <= 599 &&
 		len(header_name) >= 1 && len(header_name) <= 12 &&
 		http_header_name_is_ascii(header_name) &&
+		url_path_is_ascii(url_path) &&
+		query_component_is_ascii(query_value) &&
+		len(query_key) >= 1 && len(query_key) <= 8 &&
+		query_component_is_ascii(query_key) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -274,6 +281,30 @@ http_header_name_is_ascii :: proc(value: string) -> bool {
 		}
 	}
 	return len(value) > 0
+}
+
+url_path_is_ascii :: proc(value: string) -> bool {
+	if len(value) == 0 || value[0] != '/' {
+		return false
+	}
+	for ch in value[1:] {
+		if ch == '\\' || ch == '?' || ch == '#' {
+			return false
+		}
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.' || ch == '/') {
+			return false
+		}
+	}
+	return true
+}
+
+query_component_is_ascii :: proc(value: string) -> bool {
+	for ch in value {
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '.' || ch == '_' || ch == '~') {
+			return false
+		}
+	}
+	return true
 }
 
 values_are_unique :: proc(values: []int) -> bool {
