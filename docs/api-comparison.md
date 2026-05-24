@@ -23,8 +23,9 @@ The current core is in a reasonable place:
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
-- `pair`, `triple`, `tuple4`, `tuple5`, and `dict` cover common structured
-  inputs without requiring custom generators for every small record-like value.
+- `pair`, `triple`, `tuple4`, `tuple5`, `dict`, `map2`, and `map3` cover common
+  structured inputs without requiring custom generators for every small
+  record-like value.
 - `lazy` supports recursive and mutually recursive generator definitions when
   combined with size-aware generators.
 - non-empty collection and string helpers cover a frequent precondition without
@@ -61,9 +62,8 @@ has the first useful version of this:
 ### Generator Catalog
 
 test.check has a broad generator catalog: scalar types, collections, and
-combinators. `pbt` has a useful starter set, but still lacks:
-
-- record helpers
+combinators. `pbt` has a useful starter set. The remaining generator work is now
+mostly about depth and domain-specific shrinking rather than basic shape.
 
 ### Shrinking
 

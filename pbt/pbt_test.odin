@@ -83,6 +83,25 @@ Color :: enum {
 	Blue,
 }
 
+Credentials :: struct {
+	name:    string,
+	retries: int,
+	active:  bool,
+}
+
+credentials_from :: proc(name: string, retries: int, active: bool) -> Credentials {
+	return {name = name, retries = retries, active = active}
+}
+
+Name_Length :: struct {
+	name:   string,
+	length: int,
+}
+
+name_length_from :: proc(name: string, length: int) -> Name_Length {
+	return {name = name, length = length}
+}
+
 combinators_generate_domain_values :: proc(t: ^T) -> Result {
 	even := draw(t, map_gen(int_range(0, 50), double_int))
 	fixed := draw(t, bind(int_range(1, 5), string_with_length))
@@ -110,6 +129,8 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	int_triple := draw(t, triple(int_range(1, 3), boolean(), string_alphabet("z", 1, 3)))
 	int_tuple4 := draw(t, tuple4(int_range(1, 3), boolean(), string_alphabet("x", 1, 3), u64_range(10, 20)))
 	int_tuple5 := draw(t, tuple5(int_range(1, 3), boolean(), string_alphabet("y", 1, 3), u64_range(10, 20), f64_range(0, 1)))
+	name_length := draw(t, map2(string_alphabet("ab", 1, 4), int_range(1, 4), name_length_from))
+	credentials := draw(t, map3(string_alphabet("cd", 1, 4), int_range(0, 3), boolean(), credentials_from))
 	recursive_leaf_count := draw(t, leaf_count_gen())
 
 	return assert(
@@ -132,14 +153,19 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		len(non_empty_token) >= 1 && len(non_empty_token) <= 8 &&
 		int_triple.first >= 1 && int_triple.first <= 3 &&
 		len(int_triple.third) >= 1 && len(int_triple.third) <= 3 &&
-		int_tuple4.first >= 1 && int_tuple4.first <= 3 &&
-		len(int_tuple4.third) >= 1 && len(int_tuple4.third) <= 3 &&
-		int_tuple4.fourth >= 10 && int_tuple4.fourth <= 20 &&
-		int_tuple5.first >= 1 && int_tuple5.first <= 3 &&
-		len(int_tuple5.third) >= 1 && len(int_tuple5.third) <= 3 &&
-		int_tuple5.fourth >= 10 && int_tuple5.fourth <= 20 &&
-		int_tuple5.fifth >= 0 && int_tuple5.fifth <= 1 &&
-		recursive_leaf_count >= 1 && recursive_leaf_count <= 16,
+			int_tuple4.first >= 1 && int_tuple4.first <= 3 &&
+			len(int_tuple4.third) >= 1 && len(int_tuple4.third) <= 3 &&
+			int_tuple4.fourth >= 10 && int_tuple4.fourth <= 20 &&
+			int_tuple5.first >= 1 && int_tuple5.first <= 3 &&
+			len(int_tuple5.third) >= 1 && len(int_tuple5.third) <= 3 &&
+			int_tuple5.fourth >= 10 && int_tuple5.fourth <= 20 &&
+			int_tuple5.fifth >= 0 && int_tuple5.fifth <= 1 &&
+			len(name_length.name) >= 1 && len(name_length.name) <= 4 &&
+			name_length.length >= 1 && name_length.length <= 4 &&
+			len(credentials.name) >= 1 && len(credentials.name) <= 4 &&
+			credentials.retries >= 0 && credentials.retries <= 3 &&
+			(credentials.active || !credentials.active) &&
+			recursive_leaf_count >= 1 && recursive_leaf_count <= 16,
 		"expected generator catalog values",
 	)
 }

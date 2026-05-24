@@ -524,6 +524,37 @@ map_gen :: proc(gen: Gen($Gen_Input, $Value), f: proc(value: Value) -> $Mapped) 
 	}
 }
 
+Map2_Input :: struct(First_Input: typeid, First: typeid, Second_Input: typeid, Second: typeid, Mapped: typeid) {
+	first:  Gen(First_Input, First),
+	second: Gen(Second_Input, Second),
+	f:      proc(first: First, second: Second) -> Mapped,
+}
+
+map2 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), f: proc(first: First, second: Second) -> $Mapped) -> Gen(Map2_Input(First_Input, First, Second_Input, Second, Mapped), Mapped) {
+	return {
+		input = {first = first, second = second, f = f},
+		produce = proc(t: ^T, input: Map2_Input(First_Input, First, Second_Input, Second, Mapped)) -> Mapped {
+			return input.f(draw(t, input.first), draw(t, input.second))
+		},
+	}
+}
+
+Map3_Input :: struct(First_Input: typeid, First: typeid, Second_Input: typeid, Second: typeid, Third_Input: typeid, Third: typeid, Mapped: typeid) {
+	first:  Gen(First_Input, First),
+	second: Gen(Second_Input, Second),
+	third:  Gen(Third_Input, Third),
+	f:      proc(first: First, second: Second, third: Third) -> Mapped,
+}
+
+map3 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), f: proc(first: First, second: Second, third: Third) -> $Mapped) -> Gen(Map3_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Mapped), Mapped) {
+	return {
+		input = {first = first, second = second, third = third, f = f},
+		produce = proc(t: ^T, input: Map3_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Mapped)) -> Mapped {
+			return input.f(draw(t, input.first), draw(t, input.second), draw(t, input.third))
+		},
+	}
+}
+
 Bind_Input :: struct(Gen_Input: typeid, Value: typeid, Next_Input: typeid, Next: typeid) {
 	gen: Gen(Gen_Input, Value),
 	f:   proc(value: Value) -> Gen(Next_Input, Next),

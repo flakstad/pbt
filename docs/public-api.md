@@ -201,6 +201,8 @@ tuple4 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Sec
 tuple5 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), fourth: Gen($Fourth_Input, $Fourth), fifth: Gen($Fifth_Input, $Fifth)) -> Gen(Tuple5_Input(...), Tuple5(First, Second, Third, Fourth, Fifth))
 dict :: proc(key: Gen($Key_Input, $Key), value: Gen($Value_Input, $Value), min_len := 0, max_len := -1) -> Gen(Dict_Input(Key_Input, Key, Value_Input, Value), map[Key]Value)
 map_gen :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Mapped) -> Gen(Map_Input(Input, Value, Mapped), Mapped)
+map2 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), f: proc(First, Second) -> Mapped) -> Gen(Map2_Input(...), Mapped)
+map3 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third), f: proc(First, Second, Third) -> Mapped) -> Gen(Map3_Input(...), Mapped)
 bind :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Gen(Next_Input, Next)) -> Gen(Bind_Input(Input, Value, Next_Input, Next), Next)
 lazy :: proc(f: proc() -> Gen($Input, $Value)) -> Gen(Lazy_Input(Input, Value), Value)
 sized :: proc(f: proc(size: int) -> Gen($Input, $Value)) -> Gen(Sized_Input(Input, Value), Value)
