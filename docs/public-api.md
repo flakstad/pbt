@@ -422,12 +422,15 @@ result := pbt.process_run_with_options(t, command[:], {
     working_dir = "/path/to/project",
     env = env[:],
     timeout_ms = 1_000,
+    max_output_bytes = 1_048_576,
 })
 ```
 
 The adapter captures command, args, exit code, stdout, stderr, and duration in
 nanoseconds. Use `timeout_ms` for generated or untrusted target calls so a
-property fails instead of hanging indefinitely.
+property fails instead of hanging indefinitely. Process stdout and stderr are
+capped at 1 MiB per stream by default; use `max_output_bytes` to set a tighter
+cap for noisy targets.
 
 The first process adapter is a one-shot command runner. A persistent process
 protocol should come next for faster cross-language library adapters.
@@ -469,7 +472,8 @@ target -> pbt engine: {"ok":true,"state":{"count":2}}
 ```
 
 The current request-file protocol is one-shot and can use the same
-`Process_Options` through `protocol_call_with_options`.
+`Process_Options` through `protocol_call_with_options`, including timeouts and
+process output caps.
 
 The line protocol keeps a target process alive and sends one newline-terminated
 request per call:

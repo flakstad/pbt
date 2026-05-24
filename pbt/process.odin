@@ -6,6 +6,13 @@ import "core:strings"
 import "core:time"
 
 LINE_PROTOCOL_DEFAULT_MAX_RESPONSE_BYTES :: 1_048_576
+PROCESS_DEFAULT_MAX_OUTPUT_BYTES :: 1_048_576
+
+Process_Output_Limit :: enum {
+	None,
+	Stdout,
+	Stderr,
+}
 
 Process_Result :: struct {
 	exit_code: int,
@@ -20,6 +27,7 @@ Process_Options :: struct {
 	working_dir: string,
 	env:         []string,
 	timeout_ms:  int,
+	max_output_bytes: int,
 }
 
 Line_Protocol_Client :: struct {
@@ -54,26 +62,20 @@ process_run_with_options :: proc(t: ^T, command: []string, options: Process_Opti
 	stderr_bytes: []byte
 	err: os.Error
 	timed_out := false
-	if options.timeout_ms > 0 {
-		state, stdout_bytes, stderr_bytes, err, timed_out = process_exec_timed(os.Process_Desc {
-			command = command,
-			working_dir = options.working_dir,
-			env = options.env,
-		}, options.timeout_ms, t.allocator)
-	} else {
-		state, stdout_bytes, stderr_bytes, err = os.process_exec(os.Process_Desc {
-			command = command,
-			working_dir = options.working_dir,
-			env = options.env,
-		}, t.allocator)
-	}
+	output_limit := Process_Output_Limit.None
+	max_output_bytes := process_max_output_bytes(options)
+	state, stdout_bytes, stderr_bytes, err, timed_out, output_limit = process_exec_guarded(os.Process_Desc {
+		command = command,
+		working_dir = options.working_dir,
+		env = options.env,
+	}, options.timeout_ms, max_output_bytes, t.allocator)
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	defer delete(stdout_bytes)
 	defer delete(stderr_bytes)
 
 	result := Process_Result {
 		exit_code = state.exit_code,
-		success = err == nil && state.success,
+		success = err == nil && state.success && !timed_out && output_limit == .None,
 		stdout = clone_non_empty(string(stdout_bytes), t.value_allocator),
 		stderr = clone_non_empty(string(stderr_bytes), t.value_allocator),
 		duration_ns = duration_ns,
@@ -83,12 +85,15 @@ process_run_with_options :: proc(t: ^T, command: []string, options: Process_Opti
 	if timed_out {
 		status = "error"
 		result.error = clone_non_empty(fmt.tprintf("process timed out after %d ms", options.timeout_ms), t.value_allocator)
+	} else if output_limit != .None {
+		status = "error"
+		result.error = clone_non_empty(fmt.tprintf("process %s exceeded %d bytes", process_output_limit_name(output_limit), max_output_bytes), t.value_allocator)
 	} else if err != nil || !state.success {
 		status = "error"
 		result.error = clone_non_empty(fmt.tprintf("%v", err), t.value_allocator)
 	}
 
-	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d timeout_ms=%d", detail, state.exit_code, duration_ns, options.timeout_ms))
+	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d timeout_ms=%d max_output_bytes=%d", detail, state.exit_code, duration_ns, options.timeout_ms, max_output_bytes))
 	return result
 }
 
@@ -235,17 +240,36 @@ line_protocol_max_response_bytes :: proc(options: Line_Protocol_Call_Options) ->
 	return LINE_PROTOCOL_DEFAULT_MAX_RESPONSE_BYTES
 }
 
-process_exec_timed :: proc(desc: os.Process_Desc, timeout_ms: int, allocator := context.allocator) -> (os.Process_State, []byte, []byte, os.Error, bool) {
+process_max_output_bytes :: proc(options: Process_Options) -> int {
+	if options.max_output_bytes > 0 {
+		return options.max_output_bytes
+	}
+	return PROCESS_DEFAULT_MAX_OUTPUT_BYTES
+}
+
+process_output_limit_name :: proc(limit: Process_Output_Limit) -> string {
+	switch limit {
+	case .Stdout:
+		return "stdout"
+	case .Stderr:
+		return "stderr"
+	case .None:
+		return "output"
+	}
+	return "output"
+}
+
+process_exec_guarded :: proc(desc: os.Process_Desc, timeout_ms: int, max_output_bytes: int, allocator := context.allocator) -> (os.Process_State, []byte, []byte, os.Error, bool, Process_Output_Limit) {
 	stdout_r, stdout_w, stdout_pipe_err := os.pipe()
 	if stdout_pipe_err != nil {
-		return {}, nil, nil, stdout_pipe_err, false
+		return {}, nil, nil, stdout_pipe_err, false, .None
 	}
 	defer os.close(stdout_r)
 
 	stderr_r, stderr_w, stderr_pipe_err := os.pipe()
 	if stderr_pipe_err != nil {
 		os.close(stdout_w)
-		return {}, nil, nil, stderr_pipe_err, false
+		return {}, nil, nil, stderr_pipe_err, false, .None
 	}
 	defer os.close(stderr_r)
 
@@ -256,54 +280,61 @@ process_exec_timed :: proc(desc: os.Process_Desc, timeout_ms: int, allocator := 
 	os.close(stdout_w)
 	os.close(stderr_w)
 	if start_err != nil {
-		return {}, nil, nil, start_err, false
+		return {}, nil, nil, start_err, false, .None
 	}
 
 	stdout_b := make([dynamic]byte, allocator)
 	stderr_b := make([dynamic]byte, allocator)
 	stdout_done := false
 	stderr_done := false
-	exited := false
 	timed_out := false
+	output_limit := Process_Output_Limit.None
 	state: os.Process_State
 	err: os.Error
 	start := time.tick_now()
 
-	for !stdout_done || !stderr_done || !exited {
+	for err == nil && (!stdout_done || !stderr_done) {
 		if !stdout_done {
-			err = process_drain_pipe(stdout_r, &stdout_b, &stdout_done)
+			limit_hit := false
+			err = process_drain_pipe(stdout_r, &stdout_b, &stdout_done, max_output_bytes, &limit_hit)
 			if err != nil {
+				break
+			}
+			if limit_hit {
+				output_limit = .Stdout
+				_ = os.process_kill(process)
+				state, _ = os.process_wait(process)
+				stdout_done = true
+				stderr_done = true
 				break
 			}
 		}
 		if !stderr_done {
-			err = process_drain_pipe(stderr_r, &stderr_b, &stderr_done)
+			limit_hit := false
+			err = process_drain_pipe(stderr_r, &stderr_b, &stderr_done, max_output_bytes, &limit_hit)
 			if err != nil {
 				break
 			}
-		}
-
-		if !exited {
-			wait_state, wait_err := os.process_wait(process, 0)
-			if wait_err == nil {
-				state = wait_state
-				exited = state.exited
-			} else if wait_err != .Timeout {
-				err = wait_err
+			if limit_hit {
+				output_limit = .Stderr
+				_ = os.process_kill(process)
+				state, _ = os.process_wait(process)
+				stdout_done = true
+				stderr_done = true
 				break
 			}
 		}
 
-		if !exited && time.duration_milliseconds(time.tick_diff(start, time.tick_now())) >= f64(timeout_ms) {
+		if timeout_ms > 0 && time.duration_milliseconds(time.tick_diff(start, time.tick_now())) >= f64(timeout_ms) {
 			timed_out = true
 			_ = os.process_kill(process)
 			state, _ = os.process_wait(process)
-			exited = true
 			stdout_done = true
 			stderr_done = true
+			break
 		}
 
-		if (!stdout_done || !stderr_done || !exited) && err == nil {
+		if !stdout_done || !stderr_done {
 			time.sleep(1 * time.Millisecond)
 		}
 	}
@@ -314,12 +345,14 @@ process_exec_timed :: proc(desc: os.Process_Desc, timeout_ms: int, allocator := 
 			_ = os.process_kill(process)
 			state, _ = os.process_wait(process)
 		}
+	} else if !timed_out && output_limit == .None {
+		state, err = os.process_wait(process)
 	}
 
-	return state, stdout_b[:], stderr_b[:], err, timed_out
+	return state, stdout_b[:], stderr_b[:], err, timed_out, output_limit
 }
 
-process_drain_pipe :: proc(file: ^os.File, out: ^[dynamic]byte, done: ^bool) -> os.Error {
+process_drain_pipe :: proc(file: ^os.File, out: ^[dynamic]byte, done: ^bool, max_bytes: int, limit_hit: ^bool) -> os.Error {
 	buffer: [1024]byte
 	for {
 		has_data, data_err := os.pipe_has_data(file)
@@ -336,6 +369,15 @@ process_drain_pipe :: proc(file: ^os.File, out: ^[dynamic]byte, done: ^bool) -> 
 		n, read_err := os.read(file, buffer[:])
 		switch read_err {
 		case nil:
+			if max_bytes > 0 && len(out^) + n > max_bytes {
+				remaining := max_bytes - len(out^)
+				if remaining > 0 {
+					append(out, ..buffer[:remaining])
+				}
+				limit_hit^ = true
+				done^ = true
+				return nil
+			}
 			append(out, ..buffer[:n])
 		case .EOF, .Broken_Pipe:
 			done^ = true

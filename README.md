@@ -28,7 +28,7 @@ The current implementation includes:
 - `sample` for quick generator exploration
 - stateful model runner for command-sequence properties
 - statechart adapter helpers for enabled trigger generation and trace events
-- one-shot process adapter with optional timeout for CLI-style targets
+- one-shot process adapter with timeout and output caps for CLI-style targets
 - request-file protocol adapter for wrapping non-Odin libraries in small target
   processes
 - persistent line protocol adapter for faster non-Odin library wrappers

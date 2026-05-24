@@ -491,6 +491,22 @@ test_process_adapter_times_out :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_process_adapter_caps_output :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	command := [?]string{"/bin/sh", "-c", "printf abcdef"}
+	result := process_run_with_options(&ctx, command[:], {max_output_bytes = 3})
+
+	testing.expect(t, !result.success)
+	testing.expect_value(t, result.stdout, "abc")
+	testing.expect(t, strings.contains(result.error, "stdout exceeded 3 bytes"))
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect(t, strings.contains(ctx.events[0].detail, "max_output_bytes=3"))
+}
+
+@(test)
 test_protocol_adapter_sends_request_file :: proc(t: ^testing.T) {
 	result := check("protocol adapter", protocol_property, {num_tests = 10, seed = 11})
 	defer destroy_check_result(&result)
