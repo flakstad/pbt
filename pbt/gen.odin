@@ -246,7 +246,10 @@ array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1
 				max_len = math.max(input.min_len, t.size)
 			}
 
-			start := choice_cursor(t)
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
 			element_ends: []int
 			if t.capture_shrink_hints && length > input.min_len {
@@ -260,7 +263,9 @@ array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1
 					element_ends[i + 1] = choice_cursor(t)
 				}
 			}
-			record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			}
 			return values
 		},
 	}
@@ -317,7 +322,10 @@ string_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(String_ASCII_In
 				max_len = math.max(input.min_len, t.size)
 			}
 
-			start := choice_cursor(t)
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
 			element_ends: []int
 			if t.capture_shrink_hints && length > input.min_len {
@@ -331,7 +339,9 @@ string_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(String_ASCII_In
 					element_ends[i + 1] = choice_cursor(t)
 				}
 			}
-			record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			}
 			return string(bytes)
 		},
 	}
@@ -360,7 +370,10 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 				max_len = math.max(input.min_len, t.size)
 			}
 
-			start := choice_cursor(t)
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
 			element_ends: []int
 			if t.capture_shrink_hints && length > input.min_len {
@@ -375,7 +388,9 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 					element_ends[i + 1] = choice_cursor(t)
 				}
 			}
-			record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			}
 			return string(bytes)
 		},
 	}
@@ -386,7 +401,7 @@ non_empty_string_alphabet :: proc(alphabet: string, max_len: int = -1) -> Gen(St
 }
 
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
-	if !t.capture_shrink_hints || len(element_ends) == 0 || length <= min_len {
+	if length <= min_len {
 		return
 	}
 
