@@ -140,6 +140,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 			} else {
 				result.shrunk_test = Test_Case {
 					choices = copy_choices(tc.choices[:]),
+					choice_marks = copy_choice_marks(tc.choice_marks[:]),
 					events = copy_events(tc.events[:]),
 					notes = copy_strings(tc.notes[:]),
 					labels = copy_strings(tc.labels[:]),
@@ -177,6 +178,7 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 		failing_test = tc,
 		shrunk_test = Test_Case {
 			choices = copy_choices(tc.choices[:]),
+			choice_marks = copy_choice_marks(tc.choice_marks[:]),
 			events = copy_events(tc.events[:]),
 			notes = copy_strings(tc.notes[:]),
 			labels = copy_strings(tc.labels[:]),
@@ -243,16 +245,18 @@ require_pass :: proc(t: ^testing.T, result: Check_Result) {
 	testing.expect(t, false)
 }
 
-run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil) -> Test_Case {
+run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false) -> Test_Case {
 	t: T
 	test_init(&t, seed, size, replay_choices, replay_strict, capture_events)
+	t.capture_choice_marks = capture_choice_marks
 	defer test_destroy(&t)
 
-	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, capture_pass, capture_events, coverage)
+	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, capture_pass, capture_events, coverage, capture_choice_marks)
 }
 
-run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil) -> Test_Case {
+run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false) -> Test_Case {
 	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
+	t.capture_choice_marks = capture_choice_marks
 
 	result := property(t)
 	if t.force_discard && result.status == .Pass {
@@ -267,6 +271,9 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 	tc := Test_Case{result = result}
 	if capture_pass || result.status == .Fail || result.status == .Error {
 		tc.choices = copy_current_choices(t)
+		if result.status == .Fail || result.status == .Error {
+			tc.choice_marks = copy_current_choice_marks(t)
+		}
 		tc.events = copy_events(t.events[:])
 		tc.notes = copy_strings(t.notes[:])
 		tc.labels = copy_strings(t.labels[:])
@@ -288,11 +295,12 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 	test_init(&runner, seed, size, choices, true, true)
 	defer test_destroy(&runner)
 
-	initial := run_case_with_context(&runner, property, seed, size, choices, true, true, true)
+	initial := run_case_with_context(&runner, property, seed, size, choices, true, true, true, nil, true)
 	defer destroy_test_case(&initial)
 
 	best := Test_Case {
 		choices = copy_choices(choices),
+		choice_marks = copy_choice_marks(initial.choice_marks[:]),
 		events = copy_events(initial.events[:]),
 		notes = copy_strings(initial.notes[:]),
 		labels = copy_strings(initial.labels[:]),
@@ -305,6 +313,11 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 		changed = false
 
 		if len(best.choices) > 0 && try_candidate(&runner, property, &best, best.choices[:len(best.choices) - 1], seed, size, &attempts, options.max_shrinks) {
+			changed = true
+			continue
+		}
+
+		if shrink_choice_mark_ranges(&runner, property, &best, seed, size, &attempts, options.max_shrinks) {
 			changed = true
 			continue
 		}
@@ -328,6 +341,33 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 	}
 
 	return {test = best, attempts = attempts}
+}
+
+shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+	if len(best.choice_marks) == 0 || len(best.choices) < 2 {
+		return false
+	}
+
+	for i := len(best.choice_marks) - 1; i >= 0; i -= 1 {
+		start := best.choice_marks[i].index
+		end := len(best.choices)
+		if i + 1 < len(best.choice_marks) {
+			end = best.choice_marks[i + 1].index
+		}
+		if start <= 0 || start >= end || end > len(best.choices) {
+			continue
+		}
+
+		candidate := choices_without_range(best.choices[:], start, end - start)
+		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+			return true
+		}
+		if attempts^ >= max_attempts {
+			return false
+		}
+	}
+
+	return false
 }
 
 shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
@@ -417,11 +457,13 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 	}
 
 	attempts^ += 1
-	tc := run_case_with_context(runner, property, seed, size, candidate[:], true, true, true)
+	tc := run_case_with_context(runner, property, seed, size, candidate[:], true, true, true, nil, true)
 	if tc.result.status == .Fail || tc.result.status == .Error {
 		actual_choices := copy_choices(tc.choices[:])
+		actual_marks := copy_choice_marks(tc.choice_marks[:])
 		destroy_test_case(best)
 		best.choices = actual_choices
+		best.choice_marks = actual_marks
 		best.events = copy_events(tc.events[:])
 		best.notes = copy_strings(tc.notes[:])
 		best.labels = copy_strings(tc.labels[:])

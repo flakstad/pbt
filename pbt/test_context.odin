@@ -17,6 +17,8 @@ T :: struct {
 	choice_inline:   [INLINE_CHOICE_CAP]u64,
 	choice_count:    int,
 	choice_extra:    [dynamic]u64,
+	choice_marks:    [dynamic]Choice_Mark,
+	capture_choice_marks: bool,
 	events:          [dynamic]Event,
 	capture_events:  bool,
 	notes:           [dynamic]string,
@@ -32,10 +34,15 @@ T :: struct {
 
 Test_Case :: struct {
 	choices: [dynamic]u64,
+	choice_marks: [dynamic]Choice_Mark,
 	events:  [dynamic]Event,
 	notes:   [dynamic]string,
 	labels:  [dynamic]string,
 	result:  Result,
+}
+
+Choice_Mark :: struct {
+	index: int,
 }
 
 Event :: struct {
@@ -64,6 +71,7 @@ test_init :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_str
 	}
 	mem.dynamic_arena_init(&t.value_arena, allocator, allocator, VALUE_ARENA_BLOCK_SIZE, VALUE_ARENA_OUT_OF_BAND_SIZE, VALUE_ARENA_ALIGNMENT)
 	t.value_allocator = mem.dynamic_arena_allocator(&t.value_arena)
+	t.choice_marks.allocator = allocator
 	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
 }
 
@@ -73,6 +81,7 @@ test_destroy :: proc(t: ^T) {
 	destroy_strings(&t.labels)
 	delete(t.coverage_requirements)
 	mem.dynamic_arena_destroy(&t.value_arena)
+	delete(t.choice_marks)
 	delete(t.choice_extra)
 }
 
@@ -81,6 +90,7 @@ test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_st
 	destroy_strings_keep_storage(&t.notes)
 	destroy_strings_keep_storage(&t.labels)
 	clear(&t.coverage_requirements)
+	clear(&t.choice_marks)
 	clear(&t.choice_extra)
 	mem.dynamic_arena_reset(&t.value_arena)
 
@@ -94,6 +104,7 @@ test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_st
 	t.force_discard = false
 	t.discard_message = ""
 	t.capture_events = capture_events
+	t.capture_choice_marks = false
 }
 
 choice :: proc(t: ^T, upper_exclusive: u64) -> u64 {
@@ -126,6 +137,13 @@ record_choice :: proc(t: ^T, value: u64) {
 	t.choice_count += 1
 }
 
+mark_choice_boundary :: proc(t: ^T) {
+	if !t.capture_choice_marks {
+		return
+	}
+	append(&t.choice_marks, Choice_Mark{index = t.choice_count})
+}
+
 copy_current_choices :: proc(t: ^T, allocator := context.allocator) -> [dynamic]u64 {
 	dst := make([dynamic]u64, 0, t.choice_count, allocator)
 	inline_count := t.choice_count
@@ -141,10 +159,28 @@ copy_current_choices :: proc(t: ^T, allocator := context.allocator) -> [dynamic]
 	return dst
 }
 
+copy_current_choice_marks :: proc(t: ^T, allocator := context.allocator) -> [dynamic]Choice_Mark {
+	dst := make([dynamic]Choice_Mark, 0, len(t.choice_marks), allocator)
+	for mark in t.choice_marks {
+		if mark.index >= 0 && mark.index < t.choice_count {
+			append(&dst, mark)
+		}
+	}
+	return dst
+}
+
 copy_choices :: proc(src: []u64, allocator := context.allocator) -> [dynamic]u64 {
 	dst := make([dynamic]u64, 0, len(src), allocator)
 	for value in src {
 		append(&dst, value)
+	}
+	return dst
+}
+
+copy_choice_marks :: proc(src: []Choice_Mark, allocator := context.allocator) -> [dynamic]Choice_Mark {
+	dst := make([dynamic]Choice_Mark, 0, len(src), allocator)
+	for mark in src {
+		append(&dst, mark)
 	}
 	return dst
 }
@@ -311,5 +347,6 @@ destroy_test_case :: proc(tc: ^Test_Case) {
 	destroy_events(&tc.events)
 	destroy_strings(&tc.notes)
 	destroy_strings(&tc.labels)
+	delete(tc.choice_marks)
 	delete(tc.choices)
 }

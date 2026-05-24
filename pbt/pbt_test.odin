@@ -448,6 +448,7 @@ test_stateful_runner_finds_model_mismatch :: proc(t: ^testing.T) {
 
 	testing.expect_value(t, result.status, Status.Fail)
 	testing.expect_value(t, result.message, "counter target diverged from model")
+	testing.expect(t, len(result.shrunk_test.choice_marks) > 0)
 	testing.expect(t, len(result.shrunk_test.events) > 0)
 	testing.expect(t, strings.contains(result.shrunk_test.events[0].name, "reset"))
 	testing.expect(t, strings.contains(result.shrunk_test.events[0].detail, "state=0"))

@@ -61,6 +61,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 		command: Command
 		found_command := false
 		for attempt in 0 ..< opts.max_precondition_retries {
+			mark_choice_boundary(t)
 			command = model.command(t, state)
 			if model.precondition == nil || model.precondition(state, command) {
 				found_command = true
