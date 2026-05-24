@@ -118,8 +118,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           22.54
-  avg ns/unit:            22.91
+  best ns/unit:           21.64
+  avg ns/unit:            22.83
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -128,8 +128,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           136.04
-  avg ns/unit:            137.39
+  best ns/unit:           135.41
+  avg ns/unit:            136.53
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -138,8 +138,8 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           151.32
-  avg ns/unit:            155.07
+  best ns/unit:           160.70
+  avg ns/unit:            161.19
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -148,18 +148,18 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3816.37
-  avg ns/unit:            3873.57
-  alloc calls max:        430000
+  best ns/unit:           3798.71
+  avg ns/unit:            3841.37
+  alloc calls max:        250000
   resize calls max:       10000
-  free calls max:         430000
-  bytes req max:          43240000
+  free calls max:         250000
+  bytes req max:          62260000
 
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           310.70
-  avg ns/unit:            312.53
+  best ns/unit:           316.23
+  avg ns/unit:            318.78
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -168,8 +168,8 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           2583.00
-  avg ns/unit:            3008.20
+  best ns/unit:           2416.00
+  avg ns/unit:            2783.40
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -178,8 +178,8 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           13333.00
-  avg ns/unit:            16124.80
+  best ns/unit:           12583.00
+  avg ns/unit:            14158.20
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124
@@ -194,9 +194,10 @@ normal benchmark because event traces are captured lazily: normal passing runs
 skip events, while failing/replay/shrink runs recapture diagnostics. The
 explicit captured-trace benchmark shows the cost of recording every successful
 step. Stateful event records avoid cloning repeated static kind/status strings,
-and copied traces preserve those static fields instead of cloning them again.
-That keeps rich traces cheaper while preserving owned dynamic name/detail
-strings. The compact trace path shows why `skip_success_events` is useful for
+store per-run dynamic event strings in the case arena, and copy those strings
+only when materializing the captured `Test_Case`. That cuts rich trace allocation
+calls while preserving owned diagnostics in the returned result. The compact
+trace path shows why `skip_success_events` is useful for
 long model runs where only failure/precondition/invariant evidence matters.
 Collection generation now reuses a per-check test context and value arena across
 passing generated tests. That moves collection allocation from per generated

@@ -54,6 +54,10 @@ Event :: struct {
 	name_owned:   bool,
 	status_owned: bool,
 	detail_owned: bool,
+	kind_copy:    bool,
+	name_copy:    bool,
+	status_copy:  bool,
+	detail_copy:  bool,
 }
 
 Coverage_Requirement :: struct {
@@ -189,14 +193,14 @@ record_event :: proc(t: ^T, kind, name, status, detail: string) {
 		return
 	}
 	append(&t.events, Event {
-		kind = clone_non_empty(kind, t.allocator),
-		name = clone_non_empty(name, t.allocator),
-		status = clone_non_empty(status, t.allocator),
-		detail = clone_non_empty(detail, t.allocator),
-		kind_owned = kind != "",
-		name_owned = name != "",
-		status_owned = status != "",
-		detail_owned = detail != "",
+		kind = clone_non_empty(kind, t.value_allocator),
+		name = clone_non_empty(name, t.value_allocator),
+		status = clone_non_empty(status, t.value_allocator),
+		detail = clone_non_empty(detail, t.value_allocator),
+		kind_copy = kind != "",
+		name_copy = name != "",
+		status_copy = status != "",
+		detail_copy = detail != "",
 	})
 }
 
@@ -206,11 +210,11 @@ record_event_static_kind_status :: proc(t: ^T, kind, name, status, detail: strin
 	}
 	append(&t.events, Event {
 		kind = kind,
-		name = clone_non_empty(name, t.allocator),
+		name = clone_non_empty(name, t.value_allocator),
 		status = status,
-		detail = clone_non_empty(detail, t.allocator),
-		name_owned = name != "",
-		detail_owned = detail != "",
+		detail = clone_non_empty(detail, t.value_allocator),
+		name_copy = name != "",
+		detail_copy = detail != "",
 	})
 }
 
@@ -248,10 +252,10 @@ cover :: proc(t: ^T, condition: bool, required_percent: f64, name: string) {
 copy_events :: proc(src: []Event, allocator := context.allocator) -> [dynamic]Event {
 	dst := make([dynamic]Event, 0, len(src), allocator)
 	for event in src {
-		kind, kind_owned := copy_event_string(event.kind, event.kind_owned, allocator)
-		name, name_owned := copy_event_string(event.name, event.name_owned, allocator)
-		status, status_owned := copy_event_string(event.status, event.status_owned, allocator)
-		detail, detail_owned := copy_event_string(event.detail, event.detail_owned, allocator)
+		kind, kind_owned := copy_event_string(event.kind, event.kind_owned || event.kind_copy, allocator)
+		name, name_owned := copy_event_string(event.name, event.name_owned || event.name_copy, allocator)
+		status, status_owned := copy_event_string(event.status, event.status_owned || event.status_copy, allocator)
+		detail, detail_owned := copy_event_string(event.detail, event.detail_owned || event.detail_copy, allocator)
 		append(&dst, Event {
 			kind = kind,
 			name = name,

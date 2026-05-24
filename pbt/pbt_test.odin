@@ -968,6 +968,11 @@ test_copy_events_preserves_static_fields :: proc(t: ^testing.T) {
 	defer test_destroy(&ctx)
 
 	record_event_static_kind_status(&ctx, "stateful", "step 0", "ok", "detail")
+	testing.expect(t, !ctx.events[0].name_owned)
+	testing.expect(t, !ctx.events[0].detail_owned)
+	testing.expect(t, ctx.events[0].name_copy)
+	testing.expect(t, ctx.events[0].detail_copy)
+
 	copied := copy_events(ctx.events[:])
 	defer destroy_events(&copied)
 
