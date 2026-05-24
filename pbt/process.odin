@@ -245,6 +245,16 @@ protocol_call_with_options :: proc(t: ^T, command: []string, request: string, op
 	return process_run_with_options(t, full_command[:], options)
 }
 
+protocol_stdin_call :: proc(t: ^T, command: []string, request: string) -> Process_Result {
+	return protocol_stdin_call_with_options(t, command, request, {})
+}
+
+protocol_stdin_call_with_options :: proc(t: ^T, command: []string, request: string, options: Process_Options = {}) -> Process_Result {
+	o := options
+	o.stdin = request
+	return process_run_with_options(t, command, o)
+}
+
 line_protocol_start :: proc(command: []string, options: Process_Options = {}) -> (Line_Protocol_Client, os.Error) {
 	stdin_read, stdin_write, stdin_err := os.pipe()
 	if stdin_err != nil {

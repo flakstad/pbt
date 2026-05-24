@@ -1136,6 +1136,22 @@ test_protocol_adapter_accepts_process_options :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_protocol_stdin_adapter_sends_request_on_stdin :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	command := [?]string{"/bin/sh", "-c", "IFS= read -r payload; printf \"%s:%s\" \"$PBT_PROTOCOL_TEST\" \"$payload\""}
+	env := [?]string{"PBT_PROTOCOL_TEST=ok"}
+	result := protocol_stdin_call_with_options(&ctx, command[:], "payload", {env = env[:]})
+
+	testing.expect(t, result.success)
+	testing.expect_value(t, result.stdout, "ok:payload")
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect(t, strings.contains(ctx.events[0].detail, "stdin_bytes=7"))
+}
+
+@(test)
 test_line_protocol_reuses_process :: proc(t: ^testing.T) {
 	command := [?]string{"/bin/sh", "-c", "while IFS= read -r line; do printf \"%s:%s\\n\" \"$PBT_LINE_TEST\" \"$line\"; done"}
 	env := [?]string{"PBT_LINE_TEST=ok"}

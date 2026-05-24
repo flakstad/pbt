@@ -33,6 +33,7 @@ The current implementation includes:
 - one-shot process adapter with timeout and output caps for CLI-style targets
 - request-file protocol adapter for wrapping non-Odin libraries in small target
   processes
+- stdin protocol adapter for one-shot JSON/command wrappers
 - persistent line protocol adapter for faster non-Odin library wrappers
 - curl-backed HTTP adapter for external APIs and services
 - diagnostic helpers: first-class `note`, plus `label`, `classify`, `collect`,

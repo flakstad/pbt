@@ -629,9 +629,10 @@ pbt engine -> target: {"op":"cart.add","sku":"abc","qty":2}
 target -> pbt engine: {"ok":true,"state":{"count":2}}
 ```
 
-The current request-file protocol is one-shot and can use the same
-`Process_Options` through `protocol_call_with_options`, including timeouts and
-process output caps.
+The request-file protocol is one-shot and can use the same `Process_Options`
+through `protocol_call_with_options`, including timeouts and process output
+caps. `protocol_stdin_call_with_options` is the matching one-shot helper for
+wrappers that read a single request from stdin.
 
 The line protocol keeps a target process alive and sends one newline-terminated
 request per call:

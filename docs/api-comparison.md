@@ -74,6 +74,8 @@ The current core is in a reasonable place:
   timeouts, process output caps, and line-protocol response caps.
 - one-shot process calls can feed generated stdin, which covers CLIs and small
   wrapper programs that read JSON or commands from standard input.
+- `protocol_stdin_call_with_options` provides a named one-shot stdin protocol
+  path alongside request-file and persistent line protocols.
 
 ## Useful Missing Features
 

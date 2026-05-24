@@ -83,14 +83,14 @@ odin run benchmarks/adapter_bench.odin -file -o:speed
 one-shot process adapter
   calls/sample: 50
   samples:      3
-  best ns/call: 3642471.66
-  avg ns/call:  3715072.22
+  best ns/call: 3592839.16
+  avg ns/call:  3737505.55
 
 persistent line protocol adapter
   calls/sample: 50
   samples:      3
-  best ns/call: 85912.50
-  avg ns/call:  92509.99
+  best ns/call: 80830.84
+  avg ns/call:  83099.72
 ```
 
 ## Interpreting Results
