@@ -182,6 +182,7 @@ constant :: proc(value: Value) -> Gen(Constant_Input(Value), Value)
 boolean :: proc() -> Gen(Bool_Input, bool)
 int_range :: proc(min, max: int) -> Gen(Int_Range_Input, int)
 u64_range :: proc(min, max: u64) -> Gen(U64_Range_Input, u64)
+byte_range :: proc(min := 0, max := 255) -> Gen(Byte_Range_Input, byte)
 f64_range :: proc(min, max: f64) -> Gen(F64_Range_Input, f64)
 elements :: proc(values: []Value) -> Gen(Elements_Input(Value), Value)
 enum_range :: proc(min, max: Value) -> Gen(Enum_Range_Input(Value), Value)
@@ -189,11 +190,15 @@ one_of :: proc(gens: []Gen($Input, $Value)) -> Gen(One_Of_Input(Input, Value), V
 frequency :: proc(weighted: []Weighted_Gen($Input, $Value)) -> Gen(Frequency_Input(Input, Value), Value)
 array :: proc(elem: Gen($Input, $Value), min_len := 0, max_len := -1) -> Gen(Array_Input(Input, Value), []Value)
 non_empty_array :: proc(elem: Gen($Input, $Value), max_len := -1) -> Gen(Array_Input(Input, Value), []Value)
+byte_array :: proc(min_len := 0, max_len := -1, min := 0, max := 255) -> Gen(Byte_Array_Input, []byte)
+non_empty_byte_array :: proc(max_len := -1, min := 0, max := 255) -> Gen(Byte_Array_Input, []byte)
 unique_array :: proc(elem: Gen($Input, $Value), min_len := 0, max_len := -1) -> Gen(Array_Input(Input, Value), []Value)
 string_ascii :: proc(min_len := 0, max_len := -1) -> Gen(String_ASCII_Input, string)
 non_empty_string_ascii :: proc(max_len := -1) -> Gen(String_ASCII_Input, string)
 string_alphabet :: proc(alphabet: string, min_len := 0, max_len := -1) -> Gen(String_Alphabet_Input, string)
 non_empty_string_alphabet :: proc(alphabet: string, max_len := -1) -> Gen(String_Alphabet_Input, string)
+hex_string :: proc(min_bytes := 0, max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
+non_empty_hex_string :: proc(max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
 triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second), third: Gen($Third_Input, $Third)) -> Gen(Triple_Input(...), Triple(First, Second, Third))
@@ -238,7 +243,8 @@ decreases.
 
 Likely next generator work:
 
-- richer built-in domain generators
+- richer built-in domain generators for identifiers, paths, and structured
+  protocol data
 
 ## Shrinking And Replay
 

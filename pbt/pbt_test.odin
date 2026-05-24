@@ -114,6 +114,11 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	color := draw(t, elements(colors[:]))
 	enum_color := draw(t, enum_range(Color.Red, Color.Blue))
 	fixed := draw(t, constant(42))
+	raw_byte := draw(t, byte_range(10, 20))
+	payload_bytes := draw(t, byte_array(0, 6, 1, 3))
+	non_empty_payload := draw(t, non_empty_byte_array(6, 1, 3))
+	token_hex := draw(t, hex_string(1, 4))
+	upper_hex := draw(t, non_empty_hex_string(4, true))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -138,6 +143,15 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		(color == "red" || color == "green" || color == "blue") &&
 		enum_color >= Color.Red && enum_color <= Color.Blue &&
 		fixed == 42 &&
+		raw_byte >= 10 && raw_byte <= 20 &&
+		len(payload_bytes) <= 6 &&
+		bytes_in_range(payload_bytes, 1, 3) &&
+		len(non_empty_payload) >= 1 && len(non_empty_payload) <= 6 &&
+		bytes_in_range(non_empty_payload, 1, 3) &&
+		len(token_hex) >= 2 && len(token_hex) <= 8 && len(token_hex) % 2 == 0 &&
+		hex_is_lower(token_hex) &&
+		len(upper_hex) >= 2 && len(upper_hex) <= 8 && len(upper_hex) % 2 == 0 &&
+		hex_is_upper(upper_hex) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -170,6 +184,33 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 			recursive_leaf_count >= 1 && recursive_leaf_count <= 16,
 		"expected generator catalog values",
 	)
+}
+
+bytes_in_range :: proc(values: []byte, min, max: byte) -> bool {
+	for value in values {
+		if value < min || value > max {
+			return false
+		}
+	}
+	return true
+}
+
+hex_is_lower :: proc(value: string) -> bool {
+	for ch in value {
+		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+			return false
+		}
+	}
+	return true
+}
+
+hex_is_upper :: proc(value: string) -> bool {
+	for ch in value {
+		if !((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 
 values_are_unique :: proc(values: []int) -> bool {

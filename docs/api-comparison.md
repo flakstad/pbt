@@ -22,6 +22,8 @@ The current core is in a reasonable place:
   survive shrinking.
 - size-aware generators now cover the basic QuickCheck/test.check shape:
   `sized`, `resize`, `clamp_size`, `scale`, `smaller`, and `such_that`.
+- byte and hex generators cover common payload/token cases for HTTP, CLI, and
+  protocol testing.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
@@ -65,7 +67,8 @@ has the first useful version of this:
 
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
-mostly about richer built-in domain generators rather than basic shape.
+mostly about richer built-in domain generators for identifiers, paths, and
+structured protocol data rather than basic shape.
 
 ### Shrinking
 

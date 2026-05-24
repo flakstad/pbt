@@ -116,6 +116,26 @@ u64_range :: proc(min, max: u64) -> Gen(U64_Range_Input, u64) {
 	}
 }
 
+Byte_Range_Input :: struct {
+	min: byte,
+	max: byte,
+}
+
+byte_range :: proc(min: byte = 0, max: byte = 255) -> Gen(Byte_Range_Input, byte) {
+	return {
+		input = {min = min, max = max},
+		produce = proc(t: ^T, input: Byte_Range_Input) -> byte {
+			min := int(input.min)
+			max := int(input.max)
+			if max <= min {
+				return input.min
+			}
+
+			return byte(min + int(choice(t, u64(max - min + 1))))
+		},
+	}
+}
+
 F64_Range_Input :: struct {
 	min: f64,
 	max: f64,
@@ -275,6 +295,52 @@ non_empty_array :: proc(elem: Gen($Gen_Input, $Value), max_len: int = -1) -> Gen
 	return array(elem, 1, max_len)
 }
 
+Byte_Array_Input :: struct {
+	min_len: int,
+	max_len: int,
+	min:     byte,
+	max:     byte,
+}
+
+byte_array :: proc(min_len: int = 0, max_len: int = -1, min: byte = 0, max: byte = 255) -> Gen(Byte_Array_Input, []byte) {
+	return {
+		input = {min_len = min_len, max_len = max_len, min = min, max = max},
+		produce = proc(t: ^T, input: Byte_Array_Input) -> []byte {
+			max_len := input.max_len
+			if max_len < input.min_len {
+				max_len = math.max(input.min_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > input.min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			values := make([]byte, length, t.value_allocator)
+			elem := byte_range(input.min, input.max)
+			for i in 0 ..< length {
+				values[i] = draw(t, elem)
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, input.min_len, length, element_ends)
+			}
+			return values
+		},
+	}
+}
+
+non_empty_byte_array :: proc(max_len: int = -1, min: byte = 0, max: byte = 255) -> Gen(Byte_Array_Input, []byte) {
+	return byte_array(1, max_len, min, max)
+}
+
 unique_array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1) -> Gen(Array_Input(Gen_Input, Value), []Value) {
 	return {
 		input = {elem = elem, min_len = min_len, max_len = max_len},
@@ -398,6 +464,56 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 
 non_empty_string_alphabet :: proc(alphabet: string, max_len: int = -1) -> Gen(String_Alphabet_Input, string) {
 	return string_alphabet(alphabet, 1, max_len)
+}
+
+Hex_String_Input :: struct {
+	min_bytes: int,
+	max_bytes: int,
+	uppercase: bool,
+}
+
+hex_string :: proc(min_bytes: int = 0, max_bytes: int = -1, uppercase: bool = false) -> Gen(Hex_String_Input, string) {
+	return {
+		input = {min_bytes = min_bytes, max_bytes = max_bytes, uppercase = uppercase},
+		produce = proc(t: ^T, input: Hex_String_Input) -> string {
+			max_bytes := input.max_bytes
+			if max_bytes < input.min_bytes {
+				max_bytes = math.max(input.min_bytes, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			byte_count := input.min_bytes + int(choice(t, u64(max_bytes - input.min_bytes + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && byte_count > input.min_bytes {
+				element_ends = make([]int, byte_count + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			table := "0123456789abcdef"
+			if input.uppercase {
+				table = "0123456789ABCDEF"
+			}
+			values := make([]byte, byte_count * 2, t.value_allocator)
+			for i in 0 ..< byte_count {
+				value := byte(choice(t, 256))
+				values[i * 2] = table[value >> 4]
+				values[i * 2 + 1] = table[value & 0x0f]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, input.min_bytes, byte_count, element_ends)
+			}
+			return string(values)
+		},
+	}
+}
+
+non_empty_hex_string :: proc(max_bytes: int = -1, uppercase: bool = false) -> Gen(Hex_String_Input, string) {
+	return hex_string(1, max_bytes, uppercase)
 }
 
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
