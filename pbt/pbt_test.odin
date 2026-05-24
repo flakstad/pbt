@@ -684,6 +684,27 @@ test_check_properties_from_args_reports_suite_failure :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_check_properties_from_args_stops_on_fail_fast :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "always fails", property = always_fails},
+		{name = "sum", property = sum_is_commutative},
+	}
+	args := [?]string{"--num-tests", "5", "--seed", "88", "--no-shrink", "--fail-fast"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Fail)
+	testing.expect_value(t, result.code, "suite_failed")
+	testing.expect_value(t, result.fail_fast, true)
+	testing.expect_value(t, result.passed, 0)
+	testing.expect_value(t, result.failed, 1)
+	testing.expect_value(t, result.checks, 1)
+	testing.expect_value(t, len(result.results), 1)
+	testing.expect_value(t, result.results[0].name, "always fails")
+}
+
+@(test)
 test_check_properties_from_args_requires_property_for_replay :: proc(t: ^testing.T) {
 	properties := [?]Property_Case{
 		{name = "sum", property = sum_is_commutative},
@@ -794,6 +815,7 @@ test_check_suite_result_json_includes_summary_and_results :: proc(t: ^testing.T)
 	testing.expect(t, strings.contains(json, "\"properties\":2"))
 	testing.expect(t, strings.contains(json, "\"passed\":1"))
 	testing.expect(t, strings.contains(json, "\"failed\":1"))
+	testing.expect(t, strings.contains(json, "\"fail_fast\":false"))
 	testing.expect(t, strings.contains(json, "\"failing_property\":\"always fails\""))
 	testing.expect(t, strings.contains(json, "\"failing_code\":\"property_failed\""))
 	testing.expect(t, strings.contains(json, "\"failing_message\":\"always fails\""))

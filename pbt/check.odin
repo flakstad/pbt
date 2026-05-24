@@ -53,6 +53,7 @@ Check_Suite_Result :: struct {
 	errors:       int,
 	checks:       int,
 	discards:     int,
+	fail_fast:    bool,
 	duration_ns:  i64,
 	message:      string,
 	results:      [dynamic]Check_Result,

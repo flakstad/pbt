@@ -51,6 +51,7 @@ The current implementation includes:
 - `tags_json` and `--list-tags` detection for runner tag discovery
 - property descriptions/tags in discovery output
 - exact `--tag` filtering for suite runners
+- `--fail-fast` for quick first-failure suite runs
 - stable result codes for machine-readable Gransk handling
 
 Run the tests with:

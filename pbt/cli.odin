@@ -132,6 +132,7 @@ check_properties_from_args :: proc(properties: []Property_Case, args: []string, 
 	result := Check_Suite_Result {
 		status = .Pass,
 		code = "ok",
+		fail_fast = has_fail_fast_flag(args),
 	}
 
 	if len(properties) == 0 {
@@ -185,6 +186,9 @@ check_properties_from_args :: proc(properties: []Property_Case, args: []string, 
 		property_result := check_from_args(property.name, property.property, args, defaults)
 		append(&result.results, property_result)
 		check_suite_add_result(&result, property_result)
+		if result.fail_fast && property_result.status != .Pass {
+			break
+		}
 	}
 	check_suite_finalize(&result, start_time)
 	return result
@@ -274,6 +278,10 @@ has_list_tags_flag :: proc(args: []string) -> bool {
 		}
 	}
 	return false
+}
+
+has_fail_fast_flag :: proc(args: []string) -> bool {
+	return has_arg(args, "--fail-fast")
 }
 
 property_tags :: proc(properties: []Property_Case) -> [dynamic]Property_Tag {

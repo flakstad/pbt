@@ -39,6 +39,12 @@ Run properties by tag:
 /tmp/pbt-gransk-runner --tag string --num-tests 100 --seed 123
 ```
 
+Stop after the first failing property:
+
+```sh
+/tmp/pbt-gransk-runner --fail-fast --num-tests 100 --seed 123
+```
+
 Run the intentionally failing example:
 
 ```sh

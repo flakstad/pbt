@@ -311,6 +311,8 @@ runs the exact or unique substring match and still emits the same suite shape.
 Replay flags require `--property` when more than one property is registered.
 Use `--tag <tag>` to run only properties whose registered tags contain that
 exact tag, for example `--tag stateful` or `--tag http`.
+Use `--fail-fast` to stop a suite run after the first failing or errored
+property.
 
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.
@@ -338,6 +340,7 @@ Supported runner options:
 - `--tag` / `-t`
 - `--list-properties`
 - `--list-tags`
+- `--fail-fast`
 - `--json`
 - `--text`
 - `--seed`

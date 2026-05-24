@@ -120,6 +120,7 @@ check_suite_result_json :: proc(result: Check_Suite_Result) -> string {
 	json_field_int(&builder, "errors", result.errors, false)
 	json_field_int(&builder, "checks", result.checks, false)
 	json_field_int(&builder, "discards", result.discards, false)
+	json_field_bool(&builder, "fail_fast", result.fail_fast, false)
 	json_field_i64(&builder, "duration_ns", result.duration_ns, false)
 	json_field_string(&builder, "message", result.message, false)
 	failing := check_suite_first_non_pass(result)
@@ -172,7 +173,7 @@ check_suite_result_text :: proc(result: Check_Suite_Result) -> string {
 	if len(result.code) > 0 {
 		strings.write_string(&builder, fmt.tprintf("code: %s\n", result.code))
 	}
-	strings.write_string(&builder, fmt.tprintf("properties: %d, passed: %d, failed: %d, errors: %d, checks: %d, discards: %d, duration: %d ns\n", result.num_properties, result.passed, result.failed, result.errors, result.checks, result.discards, result.duration_ns))
+	strings.write_string(&builder, fmt.tprintf("properties: %d, passed: %d, failed: %d, errors: %d, checks: %d, discards: %d, fail-fast: %v, duration: %d ns\n", result.num_properties, result.passed, result.failed, result.errors, result.checks, result.discards, result.fail_fast, result.duration_ns))
 	if len(result.message) > 0 {
 		strings.write_string(&builder, fmt.tprintf("message: %s\n", result.message))
 	}
