@@ -314,6 +314,11 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 			continue
 		}
 
+		if shrink_choice_suffix_values(&runner, property, &best, seed, size, &attempts, options.max_shrinks) {
+			changed = true
+			continue
+		}
+
 		for i in 0 ..< len(best.choices) {
 			if shrink_choice_value(&runner, property, &best, i, seed, size, &attempts, options.max_shrinks) {
 				changed = true
@@ -341,6 +346,35 @@ shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, s
 			start += 1
 		}
 		chunk /= 2
+	}
+
+	return false
+}
+
+shrink_choice_suffix_values :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+	if len(best.choices) < 2 {
+		return false
+	}
+
+	for start in 0 ..< len(best.choices) {
+		changed := false
+		candidate := copy_choices(best.choices[:])
+		for i in start ..< len(candidate) {
+			if candidate[i] != 0 {
+				candidate[i] = 0
+				changed = true
+			}
+		}
+		if !changed {
+			delete(candidate)
+			continue
+		}
+		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+			return true
+		}
+		if attempts^ >= max_attempts {
+			return false
+		}
 	}
 
 	return false

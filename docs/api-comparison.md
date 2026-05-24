@@ -73,15 +73,16 @@ The current shrinker minimizes the choice stream. That gives broad shrinking
 without every generator needing a custom shrinker. It is a good foundation, but
 not enough long-term.
 
-It now lowers individual choice values and removes chunks from the choice
-stream. When a replay candidate consumes fewer choices than it was given, the
-shrinker keeps only the consumed choices, producing cleaner replay strings.
-`Check_Result` also records shrink attempts and shrink duration.
+It now removes chunks from the choice stream, tries zeroed suffixes for simpler
+array/string/payload contents, and lowers individual choice values. When a
+replay candidate consumes fewer choices than it was given, the shrinker keeps
+only the consumed choices, producing cleaner replay strings. `Check_Result`
+also records shrink attempts and shrink duration.
 
 Useful additions:
 
 - generator-specific shrink hooks for domain types
-- better array/string shrinking
+- more structure-aware array/string shrinking
 - command-aware stateful shrink passes
 - preserve interesting coverage during shrinking when requested
 

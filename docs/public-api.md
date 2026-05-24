@@ -253,6 +253,10 @@ check_replay :: proc(name: string, property: Property, replay: Replay) -> Check_
 Later, custom shrink hooks can be added for types where domain-specific
 shrinking is important.
 
+The current choice-stream shrinker removes unused choices, removes contiguous
+choice chunks, tries zeroed suffixes to simplify generated payload contents, and
+then lowers individual choice values.
+
 ## Diagnostics
 
 Properties need low-friction ways to add useful failure context:

@@ -184,6 +184,13 @@ sequence_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+payload_irrelevant_failure_property :: proc(t: ^T) -> Result {
+	marker := draw(t, int_range(0, 1))
+	_ = draw(t, int_range(0, 10))
+	_ = draw(t, int_range(0, 10))
+	return assert(marker == 0, "marker triggers failure")
+}
+
 records_structured_event :: proc(t: ^T) -> Result {
 	record_event(t, "process", "cart add", "ok", "exit=0")
 	note(t, "about to fail")
@@ -927,6 +934,19 @@ test_shrinker_keeps_consumed_choices_only :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.choices[0], u64(1))
 	testing.expect_value(t, result.choices[1], u64(7))
 	testing.expect_value(t, len(result.choices), 2)
+}
+
+@(test)
+test_shrinker_zeroes_irrelevant_choice_suffix :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 9, 8}
+	result := shrink_case(payload_irrelevant_failure_property, choices[:], 1, 10, default_options({max_shrinks = 8}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(0))
+	testing.expect_value(t, result.choices[2], u64(0))
+	testing.expect_value(t, len(result.choices), 3)
 }
 
 @(test)
