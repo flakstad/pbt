@@ -86,6 +86,11 @@ check_result_text :: proc(result: Check_Result) -> string {
 			strings.write_string(&builder, fmt.tprintf("  %s: %d (%.2f%%", item.label, item.count, percent))
 			if item.required_percent > 0 {
 				strings.write_string(&builder, fmt.tprintf(", required %.2f%%", item.required_percent))
+				if percent >= item.required_percent {
+					strings.write_string(&builder, ", ok")
+				} else {
+					strings.write_string(&builder, ", missing")
+				}
 			}
 			strings.write_string(&builder, ")\n")
 		}

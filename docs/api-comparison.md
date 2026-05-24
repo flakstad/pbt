@@ -54,7 +54,6 @@ has the first useful version of this:
 
 Useful additions still missing:
 
-- richer human-readable coverage reports
 - coverage-aware shrinking when a property wants to preserve interesting cases
 
 ### Generator Catalog

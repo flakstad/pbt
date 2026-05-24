@@ -723,6 +723,10 @@ test_coverage_is_aggregated_and_written_to_json :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"label\":\"all\""))
 	testing.expect(t, strings.contains(json, "\"required_percent\":100.00"))
 	testing.expect(t, strings.contains(json, "\"ok\":true"))
+
+	text := check_result_text(result)
+	defer delete(text)
+	testing.expect(t, strings.contains(text, "all: 25 (100.00%, required 100.00%, ok)"))
 }
 
 @(test)
@@ -737,6 +741,10 @@ test_unmet_coverage_requirement_fails_check :: proc(t: ^testing.T) {
 	testing.expect(t, impossible_index >= 0)
 	testing.expect_value(t, result.coverage[impossible_index].count, 0)
 	testing.expect_value(t, result.coverage[impossible_index].required_percent, 1.0)
+
+	text := check_result_text(result)
+	defer delete(text)
+	testing.expect(t, strings.contains(text, "impossible: 0 (0.00%, required 1.00%, missing)"))
 }
 
 @(test)
