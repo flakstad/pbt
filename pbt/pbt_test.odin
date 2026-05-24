@@ -145,6 +145,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		json_null_field_ascii("deleted_at"),
 	}
 	json_typed_body := draw(t, json_object_schema_ascii(json_typed_fields[:]))
+	json_typed_subset_body := draw(t, json_object_schema_subset_ascii(json_typed_fields[:], 1, 3))
 	json_items := draw(t, json_array_ascii(0, 4, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
@@ -203,6 +204,9 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		json_object_field_count(json_subset_body) >= 1 &&
 		json_object_field_count(json_subset_body) <= 2 &&
 		json_object_schema_is_typed(json_typed_body) &&
+		json_object_field_count(json_typed_subset_body) >= 1 &&
+		json_object_field_count(json_typed_subset_body) <= 3 &&
+		json_object_is_simple_ascii(json_typed_subset_body) &&
 		json_array_is_simple_ascii(json_items) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&

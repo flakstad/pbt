@@ -107,7 +107,8 @@ protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
 		pbt.json_bool_field_ascii("active"),
 	}
 	typed_body := pbt.draw(t, pbt.json_object_schema_ascii(schema[:]))
-	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2 && len(body) >= 2 && len(partial_body) >= 2 && len(typed_body) >= 2)
+	typed_partial_body := pbt.draw(t, pbt.json_object_schema_subset_ascii(schema[:], 1, 2))
+	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2 && len(body) >= 2 && len(partial_body) >= 2 && len(typed_body) >= 2 && len(typed_partial_body) >= 2)
 }
 
 failure_property :: proc(t: ^pbt.T) -> pbt.Result {

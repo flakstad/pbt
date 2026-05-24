@@ -222,6 +222,7 @@ json_int_field_ascii :: proc(name: string, min := -1000, max := 1000) -> JSON_Fi
 json_bool_field_ascii :: proc(name: string) -> JSON_Field_ASCII
 json_null_field_ascii :: proc(name: string) -> JSON_Field_ASCII
 json_object_schema_ascii :: proc(fields: []JSON_Field_ASCII) -> Gen(JSON_Object_Schema_ASCII_Input, string)
+json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields := 0, max_fields := -1) -> Gen(JSON_Object_Schema_Subset_ASCII_Input, string)
 json_array_ascii :: proc(min_items := 0, max_items := -1, max_string_len := 16) -> Gen(JSON_Array_ASCII_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
@@ -567,6 +568,9 @@ schema := [?]pbt.JSON_Field_ASCII {
 }
 body := pbt.draw(t, pbt.json_object_schema_ascii(schema[:]))
 ```
+
+Use `json_object_schema_subset_ascii` for optional-field cases where included
+fields should still use their declared JSON value kinds.
 
 `http_request` remains available for fully custom methods, headers, curl path,
 and body handling.

@@ -1122,6 +1122,69 @@ json_object_schema_ascii :: proc(fields: []JSON_Field_ASCII) -> Gen(JSON_Object_
 	}
 }
 
+JSON_Object_Schema_Subset_ASCII_Input :: struct {
+	fields:     []JSON_Field_ASCII,
+	min_fields: int,
+	max_fields: int,
+}
+
+json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields: int = 0, max_fields: int = -1) -> Gen(JSON_Object_Schema_Subset_ASCII_Input, string) {
+	return {
+		input = {fields = fields, min_fields = min_fields, max_fields = max_fields},
+		produce = proc(t: ^T, input: JSON_Object_Schema_Subset_ASCII_Input) -> string {
+			min_fields := input.min_fields
+			if min_fields < 0 {
+				min_fields = 0
+			}
+			if min_fields > len(input.fields) {
+				min_fields = len(input.fields)
+			}
+			max_fields := input.max_fields
+			if max_fields < min_fields || max_fields > len(input.fields) {
+				max_fields = len(input.fields)
+			}
+
+			included := make([]bool, len(input.fields), t.value_allocator)
+			included_count := 0
+			for _, i in input.fields {
+				if included_count < max_fields && draw(t, boolean()) {
+					included[i] = true
+					included_count += 1
+				}
+			}
+			if included_count < min_fields {
+				for _, i in input.fields {
+					if !included[i] {
+						included[i] = true
+						included_count += 1
+						if included_count >= min_fields {
+							break
+						}
+					}
+				}
+			}
+
+			values := make([dynamic]byte, 0, 2 + included_count * 24, t.value_allocator)
+			append(&values, '{')
+			written := 0
+			for field, i in input.fields {
+				if !included[i] {
+					continue
+				}
+				if written > 0 {
+					append(&values, ',')
+				}
+				append_json_quoted_ascii_content(&values, field.name)
+				append(&values, ':')
+				append_json_schema_value(t, &values, field)
+				written += 1
+			}
+			append(&values, '}')
+			return string(values[:])
+		},
+	}
+}
+
 append_json_schema_value :: proc(t: ^T, dst: ^[dynamic]byte, field: JSON_Field_ASCII) {
 	switch field.kind {
 	case .String:

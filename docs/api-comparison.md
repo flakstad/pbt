@@ -44,6 +44,8 @@ The current core is in a reasonable place:
   still keeping the generated body inside a known field set.
 - `json_object_schema_ascii` covers simple typed API bodies with per-field
   string, integer, boolean, or null values.
+- `json_object_schema_subset_ascii` combines missing-field coverage with typed
+  schema-shaped JSON values.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
