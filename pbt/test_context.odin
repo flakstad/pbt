@@ -220,6 +220,22 @@ record_choice_shrink_hint :: proc(t: ^T, start, count: int, replacement: []u64) 
 	})
 }
 
+choice_value_at :: proc(t: ^T, index: int) -> u64 {
+	if index < 0 || index >= t.choice_count {
+		return 0
+	}
+	if index < INLINE_CHOICE_CAP {
+		return t.choice_inline[index]
+	}
+	return t.choice_extra[index - INLINE_CHOICE_CAP]
+}
+
+append_choice_range :: proc(dst: ^[dynamic]u64, t: ^T, start, count: int) {
+	for i in start ..< start + count {
+		append(dst, choice_value_at(t, i))
+	}
+}
+
 copy_current_choices :: proc(t: ^T, allocator := context.allocator) -> [dynamic]u64 {
 	dst := make([dynamic]u64, 0, t.choice_count, allocator)
 	inline_count := t.choice_count

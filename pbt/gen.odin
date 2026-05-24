@@ -246,11 +246,21 @@ array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: int = -1
 				max_len = math.max(input.min_len, t.size)
 			}
 
+			start := choice_cursor(t)
 			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > input.min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
 			values := make([]Value, length, t.value_allocator)
 			for i in 0 ..< length {
 				values[i] = draw(t, input.elem)
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
 			}
+			record_collection_suffix_shrink_hints(t, start, input.min_len, length, element_ends)
 			return values
 		},
 	}
@@ -307,11 +317,21 @@ string_ascii :: proc(min_len: int = 0, max_len: int = -1) -> Gen(String_ASCII_In
 				max_len = math.max(input.min_len, t.size)
 			}
 
+			start := choice_cursor(t)
 			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > input.min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
 			bytes := make([]byte, length, t.value_allocator)
 			for i in 0 ..< length {
 				bytes[i] = byte(32 + choice(t, 95))
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
 			}
+			record_collection_suffix_shrink_hints(t, start, input.min_len, length, element_ends)
 			return string(bytes)
 		},
 	}
@@ -340,12 +360,22 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 				max_len = math.max(input.min_len, t.size)
 			}
 
+			start := choice_cursor(t)
 			length := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > input.min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
 			bytes := make([]byte, length, t.value_allocator)
 			for i in 0 ..< length {
 				index := int(choice(t, u64(len(input.alphabet))))
 				bytes[i] = input.alphabet[index]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
 			}
+			record_collection_suffix_shrink_hints(t, start, input.min_len, length, element_ends)
 			return string(bytes)
 		},
 	}
@@ -353,6 +383,30 @@ string_alphabet :: proc(alphabet: string, min_len: int = 0, max_len: int = -1) -
 
 non_empty_string_alphabet :: proc(alphabet: string, max_len: int = -1) -> Gen(String_Alphabet_Input, string) {
 	return string_alphabet(alphabet, 1, max_len)
+}
+
+record_collection_suffix_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
+	if !t.capture_shrink_hints || len(element_ends) == 0 || length <= min_len {
+		return
+	}
+
+	record_collection_length_shrink_hint(t, start, min_len, length, min_len, element_ends)
+	if length - 1 > min_len {
+		record_collection_length_shrink_hint(t, start, min_len, length, length - 1, element_ends)
+	}
+}
+
+record_collection_length_shrink_hint :: proc(t: ^T, start, min_len, length, new_length: int, element_ends: []int) {
+	if new_length < min_len || new_length >= length {
+		return
+	}
+
+	end := choice_cursor(t)
+	retained_choice_count := element_ends[new_length] - element_ends[0]
+	replacement := make([dynamic]u64, 0, 1 + retained_choice_count, t.value_allocator)
+	append(&replacement, u64(new_length - min_len))
+	append_choice_range(&replacement, t, element_ends[0], retained_choice_count)
+	record_choice_shrink_hint(t, start, end - start, replacement[:])
 }
 
 Optional :: struct(Value: typeid) {
