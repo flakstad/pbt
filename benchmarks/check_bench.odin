@@ -89,6 +89,16 @@ collection_property :: proc(t: ^pbt.T) -> pbt.Result {
 	return pbt.assert(len(values) >= 0 && len(name) >= 0)
 }
 
+protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
+	method := pbt.draw(t, pbt.http_method())
+	path := pbt.draw(t, pbt.url_path_ascii(1, 4, 1, 8))
+	query := pbt.draw(t, pbt.query_component_ascii(0, 12))
+	header := pbt.draw(t, pbt.http_header_name_ascii(1, 16))
+	body := pbt.draw(t, pbt.json_object_ascii(0, 4, 12, 16))
+	items := pbt.draw(t, pbt.json_array_ascii(0, 6, 16))
+	return pbt.assert(len(method) > 0 && len(path) > 0 && len(query) >= 0 && len(header) > 0 && len(body) >= 2 && len(items) >= 2)
+}
+
 failure_property :: proc(t: ^pbt.T) -> pbt.Result {
 	value := pbt.draw(t, pbt.int_range(0, 100))
 	return pbt.assert(value < 50)
@@ -324,6 +334,7 @@ main :: proc() {
 
 	ints := measure_check("two integer draws", int_property, tests, samples, {no_shrink = true})
 	collections := measure_check("array and string draws", collection_property, tests, samples, {no_shrink = true})
+	protocol := measure_check("protocol request data", protocol_property, tests, samples, {no_shrink = true})
 	stateful := measure_check("stateful 20-step model", stateful_property, tests / 10, samples, {no_shrink = true})
 	stateful_trace := measure_captured_cases("stateful 20-step captured trace", stateful_property, 10_000, samples)
 	stateful_compact_trace := measure_captured_cases("stateful 20-step compact trace", stateful_compact_trace_property, 10_000, samples)
@@ -333,6 +344,7 @@ main :: proc() {
 	ok := true
 	ok = check_limit(ints, tests, samples, {label = "two integer draws", max_best_ns = 250, max_avg_ns = 350}) && ok
 	ok = check_limit(collections, tests, samples, {label = "array and string draws", max_best_ns = 750, max_avg_ns = 1_000}) && ok
+	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 3_000, max_avg_ns = 4_000}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
 	ok = check_limit(stateful_compact_trace, 10_000, samples, {label = "stateful 20-step compact trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
