@@ -7,6 +7,7 @@ import "core:strings"
 import "core:time"
 
 HTTP_EVENT_PREVIEW_BYTES :: 120
+HTTP_DEFAULT_MAX_BODY_BYTES :: 1_048_576
 
 Http_Header :: struct {
 	name:  string,
@@ -17,6 +18,7 @@ Http_Options :: struct {
 	headers:    []Http_Header,
 	curl:       string,
 	timeout_ms: int,
+	max_body_bytes: int,
 }
 
 Http_Request :: struct {
@@ -26,6 +28,7 @@ Http_Request :: struct {
 	body:    string,
 	curl:    string,
 	timeout_ms: int,
+	max_body_bytes: int,
 }
 
 Http_Response :: struct {
@@ -36,6 +39,7 @@ Http_Response :: struct {
 	exit_code: int,
 	duration_ns: i64,
 	timed_out: bool,
+	body_too_large: bool,
 	error:     string,
 }
 
@@ -54,6 +58,7 @@ http_get_with_options :: proc(t: ^T, url: string, options: Http_Options = {}) ->
 		headers = options.headers,
 		curl = options.curl,
 		timeout_ms = options.timeout_ms,
+		max_body_bytes = options.max_body_bytes,
 	})
 }
 
@@ -77,6 +82,7 @@ http_post_json :: proc(t: ^T, url, body: string, options: Http_Options = {}) -> 
 		headers = headers[:],
 		curl = options.curl,
 		timeout_ms = options.timeout_ms,
+		max_body_bytes = options.max_body_bytes,
 	})
 }
 
@@ -155,10 +161,19 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 		response.status = status
 	}
 
-	body_bytes, read_err := os.read_entire_file(response_path, t.allocator)
+	max_body_bytes := http_max_body_bytes(request)
+	body_bytes, body_too_large, read_err := http_read_response_body(response_path, max_body_bytes, t.allocator)
 	if read_err == nil {
 		response.body = clone_non_empty(string(body_bytes), t.value_allocator)
 		delete(body_bytes)
+		response.body_too_large = body_too_large
+		if body_too_large {
+			response.success = false
+			response.error = clone_non_empty(fmt.tprintf("HTTP response body exceeded %d bytes", max_body_bytes), t.value_allocator)
+		}
+	} else if response.success {
+		response.success = false
+		response.error = clone_non_empty(fmt.tprintf("HTTP response body read error: %v", read_err), t.value_allocator)
 	}
 	response.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 
@@ -166,7 +181,7 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 	if !response.success {
 		event_status = "error"
 	}
-	event_detail := http_event_detail(response, request.timeout_ms, t.allocator)
+	event_detail := http_event_detail(response, request.timeout_ms, max_body_bytes, t.allocator)
 	defer delete(event_detail)
 	record_event(t, "http", http_event_name(request), event_status, event_detail)
 	return response
@@ -209,9 +224,59 @@ http_event_name :: proc(request: Http_Request) -> string {
 	return fmt.tprintf("%s %s", method, request.url)
 }
 
-http_event_detail :: proc(response: Http_Response, timeout_ms: int, allocator := context.allocator) -> string {
+http_max_body_bytes :: proc(request: Http_Request) -> int {
+	if request.max_body_bytes > 0 {
+		return request.max_body_bytes
+	}
+	return HTTP_DEFAULT_MAX_BODY_BYTES
+}
+
+http_read_response_body :: proc(path: string, max_body_bytes: int, allocator := context.allocator) -> ([]byte, bool, os.Error) {
+	file, open_err := os.open(path)
+	if open_err != nil {
+		return nil, false, open_err
+	}
+	defer os.close(file)
+
+	size, size_err := os.file_size(file)
+	if size_err == nil && max_body_bytes > 0 && size > i64(max_body_bytes) {
+		body, read_err := http_read_file_prefix(file, max_body_bytes, allocator)
+		return body, true, read_err
+	}
+
+	body, read_err := os.read_entire_file(file, allocator)
+	return body, false, read_err
+}
+
+http_read_file_prefix :: proc(file: ^os.File, max_bytes: int, allocator := context.allocator) -> ([]byte, os.Error) {
+	if max_bytes <= 0 {
+		return []byte{}, nil
+	}
+
+	body := make([]byte, max_bytes, allocator)
+	total := 0
+	for total < len(body) {
+		n, err := os.read(file, body[total:])
+		total += n
+		if err != nil {
+			if err == .EOF {
+				err = nil
+			}
+			return body[:total], err
+		}
+		if n == 0 {
+			break
+		}
+	}
+	return body[:total], nil
+}
+
+http_event_detail :: proc(response: Http_Response, timeout_ms: int, max_body_bytes: int, allocator := context.allocator) -> string {
 	builder := strings.builder_make(allocator)
-	strings.write_string(&builder, fmt.tprintf("status=%d exit=%d duration_ns=%d timeout_ms=%d", response.status, response.exit_code, response.duration_ns, timeout_ms))
+	strings.write_string(&builder, fmt.tprintf("status=%d exit=%d duration_ns=%d timeout_ms=%d max_body_bytes=%d", response.status, response.exit_code, response.duration_ns, timeout_ms, max_body_bytes))
+	if response.body_too_large {
+		strings.write_string(&builder, " body_truncated=true")
+	}
 	http_write_event_preview(&builder, "body", response.body)
 	http_write_event_preview(&builder, "stderr", response.stderr)
 	return strings.to_string(builder)

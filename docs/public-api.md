@@ -442,6 +442,7 @@ protocol should come next for faster cross-language library adapters.
 ```odin
 res := pbt.http_post_json(t, "http://127.0.0.1:8080/cart/items", body, {
     timeout_ms = 1_000,
+    max_body_bytes = 1_048_576,
 })
 ```
 
@@ -456,7 +457,8 @@ The adapter captures method, URL, status, exit code, body, stderr, and duration
 in nanoseconds. Curl-backed HTTP requests support `timeout_ms`, which maps to
 curl `--max-time`. HTTP event traces include body/stderr byte counts and short
 escaped previews, while the full response body and stderr remain available on
-`Http_Response`.
+`Http_Response`. Response bodies are capped at 1 MiB by default; use
+`max_body_bytes` to set a tighter cap for generated or untrusted targets.
 
 HTTP targets are the main cross-language path: the system under test can be
 written in any language as long as the property can drive and observe it over
