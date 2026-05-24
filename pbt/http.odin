@@ -43,6 +43,122 @@ Http_Response :: struct {
 	error:     string,
 }
 
+HTTP_Request_ASCII_Input :: struct {
+	base_url:        string,
+	max_path_segments: int,
+	max_query_len:   int,
+	max_body_fields: int,
+	max_body_string_len: int,
+	timeout_ms:      int,
+	max_body_bytes:  int,
+}
+
+http_request_ascii :: proc(
+	base_url: string,
+	max_path_segments: int = 4,
+	max_query_len: int = 12,
+	max_body_fields: int = 4,
+	max_body_string_len: int = 16,
+	timeout_ms: int = 1_000,
+	max_body_bytes: int = HTTP_DEFAULT_MAX_BODY_BYTES,
+) -> Gen(HTTP_Request_ASCII_Input, Http_Request) {
+	return {
+		input = {
+			base_url = base_url,
+			max_path_segments = max_path_segments,
+			max_query_len = max_query_len,
+			max_body_fields = max_body_fields,
+			max_body_string_len = max_body_string_len,
+			timeout_ms = timeout_ms,
+			max_body_bytes = max_body_bytes,
+		},
+		produce = proc(t: ^T, input: HTTP_Request_ASCII_Input) -> Http_Request {
+			base_url := input.base_url
+			if base_url == "" {
+				base_url = "http://127.0.0.1"
+			}
+
+			max_path_segments := input.max_path_segments
+			if max_path_segments < 1 {
+				max_path_segments = 1
+			}
+			max_query_len := input.max_query_len
+			if max_query_len < 0 {
+				max_query_len = 0
+			}
+			max_body_fields := input.max_body_fields
+			if max_body_fields < 0 {
+				max_body_fields = 0
+			}
+			max_body_string_len := input.max_body_string_len
+			if max_body_string_len < 0 {
+				max_body_string_len = 0
+			}
+
+			method := draw(t, http_method())
+			path := draw(t, url_path_ascii(1, max_path_segments, 1, 12))
+			query := ""
+			if max_query_len > 0 && draw(t, boolean()) {
+				key := draw(t, non_empty_query_component_ascii(max_query_len))
+				value := draw(t, query_component_ascii(0, max_query_len))
+				query = http_build_query(t, key, value)
+			}
+
+			url := http_build_url(t, base_url, path, query)
+			request := Http_Request {
+				method = method,
+				url = url,
+				timeout_ms = input.timeout_ms,
+				max_body_bytes = input.max_body_bytes,
+			}
+
+			if http_method_supports_generated_body(method) {
+				request.body = draw(t, json_object_ascii(0, max_body_fields, 12, max_body_string_len))
+				headers := make([]Http_Header, 2, t.value_allocator)
+				headers[0] = http_header("Content-Type", "application/json")
+				headers[1] = http_header("Accept", "application/json")
+				request.headers = headers
+			}
+			return request
+		},
+	}
+}
+
+http_method_supports_generated_body :: proc(method: string) -> bool {
+	switch method {
+	case "POST", "PUT", "PATCH":
+		return true
+	}
+	return false
+}
+
+http_build_query :: proc(t: ^T, key, value: string) -> string {
+	values := make([dynamic]byte, 0, len(key) + len(value) + 1, t.value_allocator)
+	append_string_bytes(&values, key)
+	append(&values, '=')
+	append_string_bytes(&values, value)
+	return string(values[:])
+}
+
+http_build_url :: proc(t: ^T, base_url, path, query: string) -> string {
+	capacity := len(base_url) + len(path) + len(query) + 1
+	values := make([dynamic]byte, 0, capacity, t.value_allocator)
+	append_string_bytes(&values, base_url)
+	if len(base_url) > 0 && base_url[len(base_url) - 1] == '/' && len(path) > 0 && path[0] == '/' {
+		append_string_bytes(&values, path[1:])
+	} else if len(base_url) > 0 && base_url[len(base_url) - 1] != '/' && (len(path) == 0 || path[0] != '/') {
+		append(&values, '/')
+		append_string_bytes(&values, path)
+	} else {
+		append_string_bytes(&values, path)
+	}
+	if len(query) > 0 {
+		append(&values, '?')
+		append_string_bytes(&values, query)
+	}
+	return string(values[:])
+}
+
 http_header :: proc(name, value: string) -> Http_Header {
 	return {name = name, value = value}
 }

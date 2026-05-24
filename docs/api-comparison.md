@@ -30,6 +30,8 @@ The current core is in a reasonable place:
   filesystem or URL policy for the caller.
 - HTTP method, status-code, and header-name generators cover common adapter
   inputs without requiring a full HTTP request model.
+- `http_request_ascii` generates adapter-ready HTTP requests from a caller-owned
+  base URL, including path/query data and JSON bodies for body methods.
 - URL path and query component generators cover route and query data while
   keeping base URL and escaping policy explicit in the property.
 - JSON string, boolean, integer, simple object, and simple array generators

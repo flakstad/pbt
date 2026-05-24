@@ -124,6 +124,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	method := draw(t, http_method())
 	status_code := draw(t, http_status_code())
 	header_name := draw(t, http_header_name_ascii(1, 12))
+	request := draw(t, http_request_ascii("http://example.test/api", 3, 8, 3, 8))
 	url_path := draw(t, url_path_ascii(1, 3, 1, 6))
 	query_value := draw(t, query_component_ascii(0, 8))
 	query_key := draw(t, non_empty_query_component_ascii(8))
@@ -173,6 +174,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		status_code >= 100 && status_code <= 599 &&
 		len(header_name) >= 1 && len(header_name) <= 12 &&
 		http_header_name_is_ascii(header_name) &&
+		http_request_is_ascii(request) &&
 		url_path_is_ascii(url_path) &&
 		query_component_is_ascii(query_value) &&
 		len(query_key) >= 1 && len(query_key) <= 8 &&
@@ -291,6 +293,28 @@ http_header_name_is_ascii :: proc(value: string) -> bool {
 		}
 	}
 	return len(value) > 0
+}
+
+http_request_is_ascii :: proc(request: Http_Request) -> bool {
+	if !http_method_is_common(request.method) || !strings.has_prefix(request.url, "http://example.test/api") {
+		return false
+	}
+	if request.timeout_ms != 1_000 || request.max_body_bytes != HTTP_DEFAULT_MAX_BODY_BYTES {
+		return false
+	}
+	if http_method_supports_generated_body(request.method) {
+		if len(request.headers) != 2 || !json_object_is_simple_ascii(request.body) {
+			return false
+		}
+	} else if len(request.headers) != 0 || len(request.body) != 0 {
+		return false
+	}
+	for ch in request.url {
+		if ch < 0x20 || ch > 0x7e || ch == '\\' {
+			return false
+		}
+	}
+	return true
 }
 
 url_path_is_ascii :: proc(value: string) -> bool {

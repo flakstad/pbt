@@ -90,13 +90,9 @@ collection_property :: proc(t: ^pbt.T) -> pbt.Result {
 }
 
 protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
-	method := pbt.draw(t, pbt.http_method())
-	path := pbt.draw(t, pbt.url_path_ascii(1, 4, 1, 8))
-	query := pbt.draw(t, pbt.query_component_ascii(0, 12))
-	header := pbt.draw(t, pbt.http_header_name_ascii(1, 16))
-	body := pbt.draw(t, pbt.json_object_ascii(0, 4, 12, 16))
+	request := pbt.draw(t, pbt.http_request_ascii("http://127.0.0.1:8080/api", 4, 12, 4, 16))
 	items := pbt.draw(t, pbt.json_array_ascii(0, 6, 16))
-	return pbt.assert(len(method) > 0 && len(path) > 0 && len(query) >= 0 && len(header) > 0 && len(body) >= 2 && len(items) >= 2)
+	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2)
 }
 
 failure_property :: proc(t: ^pbt.T) -> pbt.Result {

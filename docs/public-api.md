@@ -204,6 +204,7 @@ path_segment_ascii :: proc(min_len := 1, max_len := -1) -> Gen(Path_Segment_ASCI
 http_method :: proc() -> Gen(HTTP_Method_Input, string)
 http_status_code :: proc(min := 100, max := 599) -> Gen(HTTP_Status_Code_Input, int)
 http_header_name_ascii :: proc(min_len := 1, max_len := -1) -> Gen(HTTP_Header_Name_ASCII_Input, string)
+http_request_ascii :: proc(base_url: string, max_path_segments := 4, max_query_len := 12, max_body_fields := 4, max_body_string_len := 16, timeout_ms := 1_000, max_body_bytes := HTTP_DEFAULT_MAX_BODY_BYTES) -> Gen(HTTP_Request_ASCII_Input, Http_Request)
 url_path_ascii :: proc(min_segments := 1, max_segments := -1, min_segment_len := 1, max_segment_len := -1) -> Gen(URL_Path_ASCII_Input, string)
 query_component_ascii :: proc(min_len := 0, max_len := -1) -> Gen(Query_Component_ASCII_Input, string)
 non_empty_query_component_ascii :: proc(max_len := -1) -> Gen(Query_Component_ASCII_Input, string)
@@ -509,6 +510,17 @@ res := pbt.http_post_json(t, "http://127.0.0.1:8080/cart/items", body, {
     max_body_bytes = 1_048_576,
 })
 ```
+
+Generated request data can use the same adapter struct:
+
+```odin
+request := pbt.draw(t, pbt.http_request_ascii("http://127.0.0.1:8080/api"))
+res := pbt.http_request(t, request)
+```
+
+`http_request_ascii` keeps the base URL caller-owned, then generates a safe
+ASCII path, optional query string, common HTTP method, timeout/body caps, and
+JSON object body with JSON headers for `POST`, `PUT`, and `PATCH`.
 
 `http_request` remains available for fully custom methods, headers, curl path,
 and body handling.
