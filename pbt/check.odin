@@ -363,7 +363,7 @@ shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Ca
 			continue
 		}
 
-		candidate := choices_without_range(best.choices[:], start, end - start)
+		candidate := choices_without_marked_range(best.choices[:], best.choice_marks[i], start, end - start)
 		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts, required_labels) {
 			return true
 		}
@@ -516,6 +516,14 @@ choices_without_range :: proc(src: []u64, start, count: int, allocator := contex
 			continue
 		}
 		append(&dst, value)
+	}
+	return dst
+}
+
+choices_without_marked_range :: proc(src: []u64, mark: Choice_Mark, start, count: int, allocator := context.allocator) -> [dynamic]u64 {
+	dst := choices_without_range(src, start, count, allocator)
+	if mark.length_index >= 0 && mark.length_index < start && mark.length_index < len(dst) && dst[mark.length_index] > 0 {
+		dst[mark.length_index] -= 1
 	}
 	return dst
 }

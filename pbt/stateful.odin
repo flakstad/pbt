@@ -45,7 +45,12 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 	opts := state_run_options(options)
 
 	state := model.initial(t, model.target)
-	length := opts.min_len + int(choice(t, u64(opts.max_len - opts.min_len + 1)))
+	length_width := u64(opts.max_len - opts.min_len + 1)
+	length_index := t.choice_count
+	length := opts.min_len + int(choice(t, length_width))
+	if length_width <= 1 {
+		length_index = -1
+	}
 
 	if model.invariant != nil {
 		invariant_result := model.invariant(t, state)
@@ -61,7 +66,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 		command: Command
 		found_command := false
 		for attempt in 0 ..< opts.max_precondition_retries {
-			mark_choice_boundary(t)
+			mark_choice_boundary_with_length(t, length_index)
 			command = model.command(t, state)
 			if model.precondition == nil || model.precondition(state, command) {
 				found_command = true

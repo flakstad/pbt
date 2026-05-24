@@ -71,8 +71,9 @@ The current shrinker minimizes the choice stream. That gives broad shrinking
 without every generator needing a custom shrinker. It is a good foundation, but
 not enough long-term.
 
-It now tries marked command-boundary ranges for stateful properties, removes
-chunks from the choice stream, tries zeroed suffixes for simpler
+It now tries marked command-boundary ranges for stateful properties, reducing
+the generated command-sequence length when a whole command is removed. It also
+removes chunks from the choice stream, tries zeroed suffixes for simpler
 array/string/payload contents, and lowers individual choice values. When a
 replay candidate consumes fewer choices than it was given, the shrinker keeps
 only the consumed choices, producing cleaner replay strings. `Check_Result`
@@ -82,7 +83,6 @@ Useful additions:
 
 - generator-specific shrink hooks for domain types
 - more structure-aware array/string shrinking
-- more command-aware stateful shrink passes
 - richer coverage-aware shrinking beyond preserving original failure labels
 
 ### Result And Counterexample Diagnostics

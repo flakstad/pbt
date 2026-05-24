@@ -246,6 +246,40 @@ labelled_failure_property :: proc(t: ^T) -> Result {
 	return fail("labelled failure")
 }
 
+bad_command_initial :: proc(t: ^T, target: rawptr) -> int {
+	return 0
+}
+
+bad_command_draw :: proc(t: ^T, state: int) -> int {
+	return draw(t, int_range(0, 9))
+}
+
+bad_command_run :: proc(t: ^T, target: rawptr, state: int, command: int) -> int {
+	return command
+}
+
+bad_command_next :: proc(state: int, command: int, value: int) -> int {
+	return state + 1
+}
+
+bad_command_postcondition :: proc(state: int, command: int, value: int) -> Result {
+	if value == 7 {
+		return fail("bad command")
+	}
+	return pass()
+}
+
+bad_command_stateful_property :: proc(t: ^T) -> Result {
+	model := State_Model(int, int, int) {
+		initial = bad_command_initial,
+		command = bad_command_draw,
+		run = bad_command_run,
+		next_state = bad_command_next,
+		postcondition = bad_command_postcondition,
+	}
+	return run_commands(t, model, {min_len = 0, max_len = 3})
+}
+
 records_structured_event :: proc(t: ^T) -> Result {
 	record_event(t, "process", "cart add", "ok", "exit=0")
 	note(t, "about to fail")
@@ -1020,6 +1054,19 @@ test_shrinker_removes_marked_command_range :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.result.message, "bad marked command")
 	testing.expect_value(t, len(result.choices), 2)
 	testing.expect_value(t, result.choices[0], u64(3))
+	testing.expect_value(t, result.choices[1], u64(7))
+}
+
+@(test)
+test_stateful_shrinker_removes_command_and_reduces_length :: proc(t: ^testing.T) {
+	choices := [?]u64{2, 1, 7}
+	result := shrink_case(bad_command_stateful_property, choices[:], 1, 10, default_options({max_shrinks = 10}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "bad command")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
 	testing.expect_value(t, result.choices[1], u64(7))
 }
 

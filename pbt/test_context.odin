@@ -42,7 +42,8 @@ Test_Case :: struct {
 }
 
 Choice_Mark :: struct {
-	index: int,
+	index:        int,
+	length_index: int,
 }
 
 Event :: struct {
@@ -144,7 +145,14 @@ mark_choice_boundary :: proc(t: ^T) {
 	if !t.capture_choice_marks {
 		return
 	}
-	append(&t.choice_marks, Choice_Mark{index = t.choice_count})
+	append(&t.choice_marks, Choice_Mark{index = t.choice_count, length_index = -1})
+}
+
+mark_choice_boundary_with_length :: proc(t: ^T, length_index: int) {
+	if !t.capture_choice_marks {
+		return
+	}
+	append(&t.choice_marks, Choice_Mark{index = t.choice_count, length_index = length_index})
 }
 
 copy_current_choices :: proc(t: ^T, allocator := context.allocator) -> [dynamic]u64 {

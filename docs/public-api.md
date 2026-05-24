@@ -257,9 +257,10 @@ Later, custom shrink hooks can be added for types where domain-specific
 shrinking is important.
 
 The current choice-stream shrinker removes unused choices, tries marked
-command-boundary ranges for stateful properties, removes contiguous choice
-chunks, tries zeroed suffixes to simplify generated payload contents, and then
-lowers individual choice values.
+command-boundary ranges for stateful properties, reduces the generated command
+sequence length when removing a whole stateful command, removes contiguous
+choice chunks, tries zeroed suffixes to simplify generated payload contents, and
+then lowers individual choice values.
 
 Deterministic choices, such as a fixed-size generator whose bound has only one
 possible value, are not recorded in the replay stream. This keeps replay choices
