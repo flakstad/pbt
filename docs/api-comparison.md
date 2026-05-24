@@ -32,6 +32,8 @@ The current core is in a reasonable place:
 - stateful testing has the important Erlang QuickCheck shape: initial state,
   command generation, preconditions, target run, next-state update,
   postcondition, invariant, command names, and state/value details for traces.
+- stateful traces can suppress successful-step events when long prefixes would
+  obscure the failing step.
 - external target adapters now cover one-shot process calls, one-shot
   request-file protocol calls, persistent line protocol calls, and curl-backed
   HTTP calls.

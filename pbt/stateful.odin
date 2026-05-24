@@ -21,6 +21,7 @@ State_Run_Options :: struct {
 	min_len:                  int,
 	max_len:                  int,
 	max_precondition_retries: int,
+	skip_success_events:      bool,
 }
 
 state_run_options :: proc(options: State_Run_Options) -> State_Run_Options {
@@ -100,7 +101,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			}
 		}
 
-		if t.capture_events {
+		if t.capture_events && !opts.skip_success_events {
 			record_event(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
 		}
 	}

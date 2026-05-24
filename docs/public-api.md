@@ -510,8 +510,10 @@ Model :: struct {
     value_detail: proc(actual: Value) -> string,
 }
 
-commands := pbt_state.commands(model, {max_len = 100})
-result := pbt_state.run_commands(t, model, commands)
+result := pbt.run_commands(t, model, {
+    max_len = 100,
+    skip_success_events = false,
+})
 ```
 
 This should be the foundation for testing HTTP services, subprocesses, and
@@ -526,7 +528,8 @@ When supplied, captured stateful event details include the model state before
 the command, the observed value returned by the target, and the next model state
 for successful steps. Normal passing checks do not capture these traces on the
 hot path; they are captured for failures, shrinking, replay, and explicit event
-capture.
+capture. Set `skip_success_events` when long successful prefixes would add noise
+and only failure/precondition/invariant events should be retained.
 
 ### Statechart Target
 

@@ -177,6 +177,13 @@ counter_command :: proc(t: ^T, state: int) -> Counter_Command {
 	return Counter_Command(index)
 }
 
+counter_command_inc_then_reset :: proc(t: ^T, state: int) -> Counter_Command {
+	if state == 0 {
+		return .Inc
+	}
+	return .Reset
+}
+
 counter_precondition :: proc(state: int, command: Counter_Command) -> bool {
 	if command == .Dec {
 		return state > 0
@@ -254,6 +261,24 @@ counter_stateful_property :: proc(t: ^T) -> Result {
 		value_detail = counter_value_detail,
 	}
 	return run_commands(t, model, {min_len = 1, max_len = 20})
+}
+
+counter_stateful_skip_success_property :: proc(t: ^T) -> Result {
+	target := Counter_Target{}
+	model := State_Model(int, Counter_Command, int) {
+		target = &target,
+		initial = counter_initial,
+		command = counter_command_inc_then_reset,
+		precondition = counter_precondition,
+		run = counter_run_buggy,
+		next_state = counter_next_state,
+		postcondition = counter_postcondition,
+		invariant = counter_invariant,
+		command_name = counter_command_name,
+		state_detail = counter_state_detail,
+		value_detail = counter_value_detail,
+	}
+	return run_commands(t, model, {min_len = 2, max_len = 2, skip_success_events = true})
 }
 
 process_property :: proc(t: ^T) -> Result {
@@ -392,6 +417,20 @@ test_stateful_runner_finds_model_mismatch :: proc(t: ^testing.T) {
 	defer destroy_check_result(&replayed)
 
 	testing.expect_value(t, replayed.status, Status.Fail)
+}
+
+@(test)
+test_stateful_runner_can_skip_success_events :: proc(t: ^testing.T) {
+	choices := [?]u64{0}
+	result := run_case(counter_stateful_skip_success_property, 1, 10, choices[:], true, true, true)
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, len(result.events), 1)
+	if len(result.events) > 0 {
+		testing.expect(t, strings.contains(result.events[0].name, "reset postcondition"))
+		testing.expect_value(t, result.events[0].status, "fail")
+	}
 }
 
 @(test)
