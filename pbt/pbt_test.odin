@@ -55,6 +55,28 @@ is_even :: proc(value: int) -> bool {
 	return value % 2 == 0
 }
 
+Leaf_Count_Input :: struct {}
+
+leaf_count_gen :: proc() -> Gen(Leaf_Count_Input, int) {
+	return {
+		input = {},
+		produce = leaf_count_produce,
+	}
+}
+
+leaf_count_produce :: proc(t: ^T, _: Leaf_Count_Input) -> int {
+	if t.size <= 1 || draw(t, boolean()) {
+		return 1
+	}
+
+	previous := t.size
+	t.size = previous / 2
+	left := draw(t, lazy(leaf_count_gen))
+	right := draw(t, lazy(leaf_count_gen))
+	t.size = previous
+	return left + right
+}
+
 Color :: enum {
 	Red,
 	Green,
@@ -88,6 +110,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	int_triple := draw(t, triple(int_range(1, 3), boolean(), string_alphabet("z", 1, 3)))
 	int_tuple4 := draw(t, tuple4(int_range(1, 3), boolean(), string_alphabet("x", 1, 3), u64_range(10, 20)))
 	int_tuple5 := draw(t, tuple5(int_range(1, 3), boolean(), string_alphabet("y", 1, 3), u64_range(10, 20), f64_range(0, 1)))
+	recursive_leaf_count := draw(t, leaf_count_gen())
 
 	return assert(
 		(color == "red" || color == "green" || color == "blue") &&
@@ -115,7 +138,8 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		int_tuple5.first >= 1 && int_tuple5.first <= 3 &&
 		len(int_tuple5.third) >= 1 && len(int_tuple5.third) <= 3 &&
 		int_tuple5.fourth >= 10 && int_tuple5.fourth <= 20 &&
-		int_tuple5.fifth >= 0 && int_tuple5.fifth <= 1,
+		int_tuple5.fifth >= 0 && int_tuple5.fifth <= 1 &&
+		recursive_leaf_count >= 1 && recursive_leaf_count <= 16,
 		"expected generator catalog values",
 	)
 }

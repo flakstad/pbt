@@ -201,6 +201,7 @@ tuple5 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Sec
 dict :: proc(key: Gen($Key_Input, $Key), value: Gen($Value_Input, $Value), min_len := 0, max_len := -1) -> Gen(Dict_Input(Key_Input, Key, Value_Input, Value), map[Key]Value)
 map_gen :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Mapped) -> Gen(Map_Input(Input, Value, Mapped), Mapped)
 bind :: proc(gen: Gen($Input, $Value), f: proc(Value) -> Gen(Next_Input, Next)) -> Gen(Bind_Input(Input, Value, Next_Input, Next), Next)
+lazy :: proc(f: proc() -> Gen($Input, $Value)) -> Gen(Lazy_Input(Input, Value), Value)
 sized :: proc(f: proc(size: int) -> Gen($Input, $Value)) -> Gen(Sized_Input(Input, Value), Value)
 resize :: proc(gen: Gen($Input, $Value), size: int) -> Gen(Resize_Input(Input, Value), Value)
 scale :: proc(gen: Gen($Input, $Value), f: proc(size: int) -> int) -> Gen(Scale_Input(Input, Value), Value)
@@ -225,9 +226,13 @@ for value in samples.values {
 Generated strings and slices in a sample result live until
 `destroy_sample_result` is called.
 
+`lazy` defers generator construction until draw time. It is useful for recursive
+or mutually recursive generator definitions where a branch needs to call back
+into the generator being defined; combine it with `sized`, `resize`, or `scale`
+so recursive values shrink toward a base case as size decreases.
+
 Likely next generator work:
 
-- more recursive generator conveniences
 - domain-specific shrink hooks
 
 ## Shrinking And Replay

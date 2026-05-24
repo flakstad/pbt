@@ -539,6 +539,19 @@ bind :: proc(gen: Gen($Gen_Input, $Value), f: proc(value: Value) -> Gen($Next_In
 	}
 }
 
+Lazy_Input :: struct(Gen_Input: typeid, Value: typeid) {
+	f: proc() -> Gen(Gen_Input, Value),
+}
+
+lazy :: proc(f: proc() -> Gen($Gen_Input, $Value)) -> Gen(Lazy_Input(Gen_Input, Value), Value) {
+	return {
+		input = {f = f},
+		produce = proc(t: ^T, input: Lazy_Input(Gen_Input, Value)) -> Value {
+			return draw(t, input.f())
+		},
+	}
+}
+
 Sized_Input :: struct(Gen_Input: typeid, Value: typeid) {
 	f: proc(size: int) -> Gen(Gen_Input, Value),
 }
