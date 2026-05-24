@@ -177,6 +177,8 @@ check_suite_result_json :: proc(result: Check_Suite_Result) -> string {
 	json_field_string(&builder, "failing_message", failing.message, false)
 	strings.write_string(&builder, ",\"failing_notes\":")
 	json_write_strings(&builder, failing.shrunk_test.notes[:])
+	strings.write_string(&builder, ",\"failing_events\":")
+	json_write_events(&builder, failing.shrunk_test.events[:])
 	json_field_int(&builder, "failing_num_tests", failing.num_tests, false)
 	json_field_int(&builder, "failing_discards", failing.num_discards, false)
 	json_field_i64(&builder, "failing_duration_ns", failing.duration_ns, false)
