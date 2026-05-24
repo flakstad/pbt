@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import "core:os"
 
 import pbt "../../pbt"
@@ -27,25 +26,7 @@ main :: proc() {
 		{name = "small numbers", property = small_numbers_property, description = "intentional failing integer boundary example", tags = BOUNDARY_TAGS[:]},
 	}
 
-	args := os.args[1:]
-	if pbt.has_list_properties_flag(args) {
-		json := pbt.properties_json(properties[:])
-		fmt.println(json)
-		delete(json)
-		os.exit(0)
-	}
-	if pbt.has_list_tags_flag(args) {
-		json := pbt.tags_json(properties[:])
-		fmt.println(json)
-		delete(json)
-		os.exit(0)
-	}
-
-	result := pbt.check_properties_from_args(properties[:], args, {shrink = true})
-	pbt.print_check_suite_result(result, pbt.use_json_output(args))
-	exit_code := pbt.check_suite_result_exit_code(result)
-	pbt.destroy_check_suite_result(&result)
-	os.exit(exit_code)
+	pbt.run_cli(properties[:], os.args[1:], {shrink = true})
 }
 
 reverse_string :: proc(value: string) -> string {

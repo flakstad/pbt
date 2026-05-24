@@ -1,5 +1,7 @@
 package pbt
 
+import "core:fmt"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
@@ -192,6 +194,27 @@ check_properties_from_args :: proc(properties: []Property_Case, args: []string, 
 	}
 	check_suite_finalize(&result, start_time)
 	return result
+}
+
+run_cli :: proc(properties: []Property_Case, args: []string, defaults: Check_Options = {}) -> ! {
+	if has_list_properties_flag(args) {
+		json := properties_json(properties)
+		fmt.println(json)
+		delete(json)
+		os.exit(0)
+	}
+	if has_list_tags_flag(args) {
+		json := tags_json(properties)
+		fmt.println(json)
+		delete(json)
+		os.exit(0)
+	}
+
+	result := check_properties_from_args(properties, args, defaults)
+	print_check_suite_result(result, use_json_output(args))
+	exit_code := check_suite_result_exit_code(result)
+	destroy_check_suite_result(&result)
+	os.exit(exit_code)
 }
 
 check_suite_add_result :: proc(suite: ^Check_Suite_Result, result: Check_Result) {

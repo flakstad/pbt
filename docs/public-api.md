@@ -294,14 +294,10 @@ pbt.exit_with_check_result(result)
 ```
 
 Runners that should execute every registered property by default can use the
-suite helper instead:
+CLI helper:
 
 ```odin
-result := pbt.check_properties_from_args(properties[:], os.args[1:])
-pbt.print_check_suite_result(result, pbt.use_json_output(os.args[1:]))
-exit_code := pbt.check_suite_result_exit_code(result)
-pbt.destroy_check_suite_result(&result)
-os.exit(exit_code)
+pbt.run_cli(properties[:], os.args[1:], {shrink = true})
 ```
 
 With no `--property`, this runs all registered properties and emits a suite
@@ -313,6 +309,11 @@ Use `--tag <tag>` to run only properties whose registered tags contain that
 exact tag, for example `--tag stateful` or `--tag http`.
 Use `--fail-fast` to stop a suite run after the first failing or errored
 property.
+
+`run_cli` also handles `--list-properties`, `--list-tags`, JSON/text output,
+exit codes, and suite result cleanup. Lower-level runners can still call
+`check_properties_from_args` directly when they need to own process exit or
+embed the suite result in another protocol.
 
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.
