@@ -5,6 +5,8 @@ import "core:os"
 import "core:strings"
 import "core:time"
 
+LINE_PROTOCOL_DEFAULT_MAX_RESPONSE_BYTES :: 1_048_576
+
 Process_Result :: struct {
 	exit_code: int,
 	success:   bool,
@@ -31,6 +33,10 @@ Line_Protocol_Result :: struct {
 	response:    string,
 	duration_ns: i64,
 	error:       string,
+}
+
+Line_Protocol_Call_Options :: struct {
+	max_response_bytes: int,
 }
 
 process_run :: proc(t: ^T, command: []string) -> Process_Result {
@@ -128,6 +134,10 @@ line_protocol_start :: proc(command: []string, options: Process_Options = {}) ->
 }
 
 line_protocol_call :: proc(t: ^T, client: ^Line_Protocol_Client, request: string) -> Line_Protocol_Result {
+	return line_protocol_call_with_options(t, client, request, {})
+}
+
+line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, request: string, options: Line_Protocol_Call_Options = {}) -> Line_Protocol_Result {
 	start_time := time.tick_now()
 	if client == nil || !client.alive || client.stdin == nil || client.stdout == nil {
 		return {
@@ -152,11 +162,14 @@ line_protocol_call :: proc(t: ^T, client: ^Line_Protocol_Client, request: string
 		}
 	}
 
-	response, read_err := line_protocol_read_line(client.stdout, t.value_allocator)
+	response, read_error, response_too_long := line_protocol_read_line(client.stdout, line_protocol_max_response_bytes(options), t.allocator)
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
-	if read_err != nil {
-		err_text := fmt.tprintf("read error: %v", read_err)
+	if read_error != "" {
+		err_text := read_error
 		record_event(t, "protocol", "line", "error", fmt.tprintf("%s duration_ns=%d", err_text, duration_ns))
+		if response_too_long {
+			line_protocol_stop(client)
+		}
 		return {
 			success = false,
 			duration_ns = duration_ns,
@@ -165,9 +178,13 @@ line_protocol_call :: proc(t: ^T, client: ^Line_Protocol_Client, request: string
 	}
 
 	record_event(t, "protocol", "line", "ok", fmt.tprintf("duration_ns=%d", duration_ns))
+	result_response := clone_non_empty(response, t.value_allocator)
+	if len(response) > 0 {
+		delete(response, t.allocator)
+	}
 	return {
 		success = true,
-		response = response,
+		response = result_response,
 		duration_ns = duration_ns,
 	}
 }
@@ -194,27 +211,40 @@ line_protocol_stop :: proc(client: ^Line_Protocol_Client) {
 	}
 }
 
-line_protocol_read_line :: proc(file: ^os.File, allocator := context.allocator) -> (string, os.Error) {
+line_protocol_max_response_bytes :: proc(options: Line_Protocol_Call_Options) -> int {
+	if options.max_response_bytes > 0 {
+		return options.max_response_bytes
+	}
+	return LINE_PROTOCOL_DEFAULT_MAX_RESPONSE_BYTES
+}
+
+line_protocol_read_line :: proc(file: ^os.File, max_response_bytes: int, allocator := context.allocator) -> (string, string, bool) {
 	builder := strings.builder_make(allocator)
+	byte_count := 0
 	buffer: [1]byte
 	for {
 		n, err := os.read(file, buffer[:])
 		if err != nil {
-			delete(strings.to_string(builder))
-			return "", err
+			strings.builder_destroy(&builder)
+			return "", fmt.tprintf("read error: %v", err), false
 		}
 		if n == 0 {
-			delete(strings.to_string(builder))
-			return "", .EOF
+			strings.builder_destroy(&builder)
+			return "", "read error: EOF", false
 		}
 		if buffer[0] == '\n' {
 			break
 		}
 		if buffer[0] != '\r' {
+			if byte_count >= max_response_bytes {
+				strings.builder_destroy(&builder)
+				return "", fmt.tprintf("line protocol response exceeded %d bytes", max_response_bytes), true
+			}
 			strings.write_byte(&builder, buffer[0])
+			byte_count += 1
 		}
 	}
-	return strings.to_string(builder), nil
+	return strings.to_string(builder), "", false
 }
 
 protocol_write_request_file :: proc(t: ^T, request: string) -> (string, bool) {

@@ -453,6 +453,27 @@ test_line_protocol_reuses_process :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_line_protocol_rejects_oversized_response :: proc(t: ^testing.T) {
+	command := [?]string{"/bin/sh", "-c", "while IFS= read -r line; do printf \"123456789\\n\"; done"}
+	client, start_error := line_protocol_start(command[:])
+	defer line_protocol_stop(&client)
+
+	testing.expect(t, start_error == nil)
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	result := line_protocol_call_with_options(&ctx, &client, "anything", {max_response_bytes = 4})
+
+	testing.expect(t, !result.success)
+	testing.expect(t, strings.contains(result.error, "exceeded 4 bytes"))
+	testing.expect(t, !client.alive)
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect_value(t, ctx.events[0].status, "error")
+}
+
+@(test)
 test_http_adapter_fetches_url :: proc(t: ^testing.T) {
 	file, err := os.create("/tmp/pbt-http-adapter-ok")
 	testing.expect(t, err == nil)
