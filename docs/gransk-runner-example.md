@@ -15,6 +15,12 @@ List exposed properties:
 /tmp/pbt-gransk-runner --list-properties
 ```
 
+List runnable tag slices:
+
+```sh
+/tmp/pbt-gransk-runner --list-tags
+```
+
 Run one property:
 
 ```sh

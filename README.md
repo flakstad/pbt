@@ -48,6 +48,7 @@ The current implementation includes:
 - `Property_Case`, `check_property_from_args`, and
   `check_properties_from_args` for multi-property runners
 - `properties_json` and `--list-properties` detection for runner discovery
+- `tags_json` and `--list-tags` detection for runner tag discovery
 - property descriptions/tags in discovery output
 - exact `--tag` filtering for suite runners
 - stable result codes for machine-readable Gransk handling

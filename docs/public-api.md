@@ -318,6 +318,10 @@ Discovery JSON includes property names, descriptions, and tags. `--property`
 first matches an exact property name, then falls back to a unique substring
 match. Ambiguous or missing matches return stable error codes.
 
+Tag discovery can be handled with `pbt.has_list_tags_flag(os.args[1:])` and
+`pbt.tags_json(properties[:])`. Tag JSON lists unique tag names and the number
+of properties carrying each tag.
+
 JSON is the default machine-readable output. Human-oriented runner output can
 use:
 
@@ -333,6 +337,7 @@ Supported runner options:
 - `--property` / `-p`
 - `--tag` / `-t`
 - `--list-properties`
+- `--list-tags`
 - `--json`
 - `--text`
 - `--seed`

@@ -11,6 +11,11 @@ Property_Case :: struct {
 	tags:        []string,
 }
 
+Property_Tag :: struct {
+	name:  string,
+	count: int,
+}
+
 parse_check_options :: proc(args: []string, defaults: Check_Options = {}) -> Check_Options {
 	options := defaults
 
@@ -261,6 +266,35 @@ has_list_properties_flag :: proc(args: []string) -> bool {
 	return false
 }
 
+has_list_tags_flag :: proc(args: []string) -> bool {
+	for arg in args {
+		if arg == "--list-tags" {
+			return true
+		}
+	}
+	return false
+}
+
+property_tags :: proc(properties: []Property_Case) -> [dynamic]Property_Tag {
+	tags := make([dynamic]Property_Tag)
+	for property in properties {
+		for tag in property.tags {
+			property_tags_add(&tags, tag)
+		}
+	}
+	return tags
+}
+
+property_tags_add :: proc(tags: ^[dynamic]Property_Tag, name: string) {
+	for i := 0; i < len(tags^); i += 1 {
+		if tags^[i].name == name {
+			tags^[i].count += 1
+			return
+		}
+	}
+	append(tags, Property_Tag{name = name, count = 1})
+}
+
 has_replay_args :: proc(args: []string) -> bool {
 	return has_arg(args, "--replay-seed") || has_arg(args, "--replay-choices")
 }
@@ -301,6 +335,27 @@ properties_json :: proc(properties: []Property_Case) -> string {
 		json_field_string(&builder, "description", property.description, false)
 		strings.write_string(&builder, ",\"tags\":")
 		json_write_strings(&builder, property.tags)
+		strings.write_string(&builder, "}")
+	}
+	strings.write_string(&builder, "]}")
+	return strings.to_string(builder)
+}
+
+tags_json :: proc(properties: []Property_Case) -> string {
+	tags := property_tags(properties)
+	defer delete(tags)
+
+	builder: strings.Builder
+	strings.builder_init(&builder)
+
+	strings.write_string(&builder, "{\"tool\":\"pbt\",\"schema_version\":1,\"tags\":[")
+	for tag, i in tags {
+		if i > 0 {
+			strings.write_string(&builder, ",")
+		}
+		strings.write_string(&builder, "{")
+		json_field_string(&builder, "name", tag.name, true)
+		json_field_int(&builder, "count", tag.count, false)
 		strings.write_string(&builder, "}")
 	}
 	strings.write_string(&builder, "]}")

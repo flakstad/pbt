@@ -34,6 +34,12 @@ main :: proc() {
 		delete(json)
 		os.exit(0)
 	}
+	if pbt.has_list_tags_flag(args) {
+		json := pbt.tags_json(properties[:])
+		fmt.println(json)
+		delete(json)
+		os.exit(0)
+	}
 
 	result := pbt.check_properties_from_args(properties[:], args, {shrink = true})
 	pbt.print_check_suite_result(result, pbt.use_json_output(args))

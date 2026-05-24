@@ -756,6 +756,24 @@ test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_tags_json_lists_unique_tags_and_counts :: proc(t: ^testing.T) {
+	core_tag := [?]string{"core"}
+	collection_tag := [?]string{"collection", "core"}
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative, tags = core_tag[:]},
+		{name = "collections", property = collections_are_generated_in_case_arena, tags = collection_tag[:]},
+	}
+
+	json := tags_json(properties[:])
+	defer delete(json)
+
+	testing.expect(t, strings.contains(json, "\"tool\":\"pbt\""))
+	testing.expect(t, strings.contains(json, "\"schema_version\":1"))
+	testing.expect(t, strings.contains(json, "\"name\":\"core\",\"count\":2"))
+	testing.expect(t, strings.contains(json, "\"name\":\"collection\",\"count\":1"))
+}
+
+@(test)
 test_check_suite_result_json_includes_summary_and_results :: proc(t: ^testing.T) {
 	properties := [?]Property_Case{
 		{name = "sum", property = sum_is_commutative},
