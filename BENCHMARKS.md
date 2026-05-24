@@ -38,6 +38,49 @@ The benchmark includes these modes:
 - `failing property with shrink`: a failing property that shrinks an integer
   boundary case
 
+## Adapter Benchmark
+
+Benchmark source:
+
+```text
+benchmarks/adapter_bench.odin
+```
+
+Run:
+
+```sh
+odin run benchmarks/adapter_bench.odin -file -o:speed
+```
+
+The benchmark measures external-target adapter call overhead:
+
+- `one-shot process adapter`: starts a short shell process for each call
+- `persistent line protocol adapter`: starts one shell process and exchanges one
+  newline-terminated request/response per call
+
+Subprocess timings are OS-dependent, so this benchmark is mainly for comparing
+relative shape on the same machine while developing adapters.
+
+Measured on May 24, 2026 with:
+
+```sh
+odin run benchmarks/adapter_bench.odin -file -o:speed
+```
+
+```text
+one-shot process adapter
+  calls/sample: 50
+  samples:      3
+  best ns/call: 3187494.16
+  avg ns/call:  3310309.72
+
+persistent line protocol adapter
+  calls/sample: 50
+  samples:      3
+  best ns/call: 79288.32
+  avg ns/call:  85878.89
+```
+
 ## Interpreting Results
 
 The current implementation prioritizes correctness and API shape. It allocates
