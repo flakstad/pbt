@@ -191,6 +191,18 @@ payload_irrelevant_failure_property :: proc(t: ^T) -> Result {
 	return assert(marker == 0, "marker triggers failure")
 }
 
+marked_command_failure_property :: proc(t: ^T) -> Result {
+	prefix := choice(t, 10)
+	for _ in 0 ..< 3 {
+		mark_choice_boundary(t)
+		command := choice(t, 10)
+		if prefix == 3 && command == 7 {
+			return fail("bad marked command")
+		}
+	}
+	return pass()
+}
+
 records_structured_event :: proc(t: ^T) -> Result {
 	record_event(t, "process", "cart add", "ok", "exit=0")
 	note(t, "about to fail")
@@ -948,6 +960,19 @@ test_shrinker_zeroes_irrelevant_choice_suffix :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.choices[1], u64(0))
 	testing.expect_value(t, result.choices[2], u64(0))
 	testing.expect_value(t, len(result.choices), 3)
+}
+
+@(test)
+test_shrinker_removes_marked_command_range :: proc(t: ^testing.T) {
+	choices := [?]u64{3, 1, 7, 2}
+	result := shrink_case(marked_command_failure_property, choices[:], 1, 10, default_options({max_shrinks = 4}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "bad marked command")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(3))
+	testing.expect_value(t, result.choices[1], u64(7))
 }
 
 @(test)

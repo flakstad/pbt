@@ -354,7 +354,7 @@ shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Ca
 		if i + 1 < len(best.choice_marks) {
 			end = best.choice_marks[i + 1].index
 		}
-		if start <= 0 || start >= end || end > len(best.choices) {
+		if start < 0 || start >= end || end > len(best.choices) {
 			continue
 		}
 
