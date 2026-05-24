@@ -116,8 +116,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           22.41
-  avg ns/unit:            23.47
+  best ns/unit:           22.35
+  avg ns/unit:            23.11
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -126,8 +126,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           131.62
-  avg ns/unit:            133.76
+  best ns/unit:           134.45
+  avg ns/unit:            135.11
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -136,8 +136,8 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           146.47
-  avg ns/unit:            148.04
+  best ns/unit:           146.51
+  avg ns/unit:            147.50
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -146,18 +146,18 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           4914.99
-  avg ns/unit:            4948.73
-  alloc calls max:        830000
+  best ns/unit:           3789.91
+  avg ns/unit:            3877.19
+  alloc calls max:        430000
   resize calls max:       10000
-  free calls max:         830000
-  bytes req max:          45320000
+  free calls max:         430000
+  bytes req max:          43320000
 
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           299.24
-  avg ns/unit:            300.65
+  best ns/unit:           298.94
+  avg ns/unit:            301.64
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -166,8 +166,8 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           2250.00
-  avg ns/unit:            2691.80
+  best ns/unit:           2291.00
+  avg ns/unit:            2716.60
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -182,7 +182,8 @@ normal benchmark because event traces are captured lazily: normal passing runs
 skip events, while failing/replay/shrink runs recapture diagnostics. The
 explicit captured-trace benchmark shows the cost of recording every successful
 step. Stateful event records avoid cloning repeated static kind/status strings,
-which keeps rich traces cheaper while preserving owned dynamic name/detail
+and copied traces preserve those static fields instead of cloning them again.
+That keeps rich traces cheaper while preserving owned dynamic name/detail
 strings. The compact trace path shows why `skip_success_events` is useful for
 long model runs where only failure/precondition/invariant evidence matters.
 Collection generation now reuses a per-check test context and value arena across

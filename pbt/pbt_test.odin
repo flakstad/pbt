@@ -816,6 +816,25 @@ test_counterexample_adds_failure_context :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_copy_events_preserves_static_fields :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	record_event_static_kind_status(&ctx, "stateful", "step 0", "ok", "detail")
+	copied := copy_events(ctx.events[:])
+	defer destroy_events(&copied)
+
+	testing.expect_value(t, len(copied), 1)
+	testing.expect_value(t, copied[0].kind, "stateful")
+	testing.expect_value(t, copied[0].status, "ok")
+	testing.expect(t, !copied[0].kind_owned)
+	testing.expect(t, !copied[0].status_owned)
+	testing.expect(t, copied[0].name_owned)
+	testing.expect(t, copied[0].detail_owned)
+}
+
+@(test)
 test_shrinker_keeps_consumed_choices_only :: proc(t: ^testing.T) {
 	choices := [?]u64{3, 7, 1, 2}
 	result := shrink_case(sequence_failure_property, choices[:], 1, 10, default_options({}))

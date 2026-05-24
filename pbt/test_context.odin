@@ -213,18 +213,29 @@ cover :: proc(t: ^T, condition: bool, required_percent: f64, name: string) {
 copy_events :: proc(src: []Event, allocator := context.allocator) -> [dynamic]Event {
 	dst := make([dynamic]Event, 0, len(src), allocator)
 	for event in src {
+		kind, kind_owned := copy_event_string(event.kind, event.kind_owned, allocator)
+		name, name_owned := copy_event_string(event.name, event.name_owned, allocator)
+		status, status_owned := copy_event_string(event.status, event.status_owned, allocator)
+		detail, detail_owned := copy_event_string(event.detail, event.detail_owned, allocator)
 		append(&dst, Event {
-			kind = clone_non_empty(event.kind, allocator),
-			name = clone_non_empty(event.name, allocator),
-			status = clone_non_empty(event.status, allocator),
-			detail = clone_non_empty(event.detail, allocator),
-			kind_owned = event.kind != "",
-			name_owned = event.name != "",
-			status_owned = event.status != "",
-			detail_owned = event.detail != "",
+			kind = kind,
+			name = name,
+			status = status,
+			detail = detail,
+			kind_owned = kind_owned,
+			name_owned = name_owned,
+			status_owned = status_owned,
+			detail_owned = detail_owned,
 		})
 	}
 	return dst
+}
+
+copy_event_string :: proc(value: string, owned: bool, allocator := context.allocator) -> (string, bool) {
+	if !owned {
+		return value, false
+	}
+	return clone_non_empty(value, allocator), value != ""
 }
 
 copy_strings :: proc(src: []string, allocator := context.allocator) -> [dynamic]string {
