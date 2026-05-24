@@ -111,6 +111,7 @@ Check_Options :: struct {
     no_shrink: bool,
     max_shrinks: int,
     coverage_warning_only: bool,
+    preserve_shrink_labels: bool,
 }
 
 Check_Result :: struct {
@@ -262,6 +263,11 @@ Deterministic choices, such as a fixed-size generator whose bound has only one
 possible value, are not recorded in the replay stream. This keeps replay choices
 aligned with the decisions that can actually vary.
 
+Set `preserve_shrink_labels` or pass `--preserve-shrink-labels` when the
+shrinker should reject candidates that lose labels from the original failing
+case. This is useful when labels/classification identify the interesting
+subclass of failures and a smaller unlabeled counterexample would be less useful.
+
 ## Diagnostics
 
 Properties need low-friction ways to add useful failure context:
@@ -379,6 +385,7 @@ Supported runner options:
 - `--shrink`
 - `--no-shrink`, equivalent to `no_shrink = true`
 - `--coverage-warning-only`
+- `--preserve-shrink-labels`
 - `--replay-seed`
 - `--replay-choices` as a comma-separated choice stream
 

@@ -55,10 +55,8 @@ has the first useful version of this:
 - warning-only coverage mode for exploratory runs
 - coverage failure messages name the first unmet label and observed percentage
 - JSON coverage summaries for Gransk reports
-
-Useful additions still missing:
-
-- coverage-aware shrinking when a property wants to preserve interesting cases
+- optional label-preserving shrinking when a smaller counterexample would
+  otherwise lose the interesting classification
 
 ### Generator Catalog
 
@@ -85,7 +83,7 @@ Useful additions:
 - generator-specific shrink hooks for domain types
 - more structure-aware array/string shrinking
 - more command-aware stateful shrink passes
-- preserve interesting coverage during shrinking when requested
+- richer coverage-aware shrinking beyond preserving original failure labels
 
 ### Result And Counterexample Diagnostics
 

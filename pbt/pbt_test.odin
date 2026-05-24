@@ -211,6 +211,15 @@ fixed_array_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+labelled_failure_property :: proc(t: ^T) -> Result {
+	marker := choice(t, 2)
+	_ = choice(t, 10)
+	if marker == 1 {
+		label(t, "interesting")
+	}
+	return fail("labelled failure")
+}
+
 records_structured_event :: proc(t: ^T) -> Result {
 	record_event(t, "process", "cart add", "ok", "exit=0")
 	note(t, "about to fail")
@@ -1001,6 +1010,20 @@ test_fixed_size_generator_replay_stays_aligned :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_shrinker_can_preserve_original_failure_labels :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 9}
+	result := shrink_case(labelled_failure_property, choices[:], 1, 10, default_options({max_shrinks = 20, preserve_shrink_labels = true}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "labelled failure")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(0))
+	testing.expect(t, labels_contain(result.labels[:], "interesting"))
+}
+
+@(test)
 test_parse_check_options :: proc(t: ^testing.T) {
 	args := [?]string{
 		"--num-tests",
@@ -1015,6 +1038,7 @@ test_parse_check_options :: proc(t: ^testing.T) {
 		"30",
 		"--no-shrink",
 		"--coverage-warning-only",
+		"--preserve-shrink-labels",
 	}
 	options := parse_check_options(args[:])
 
@@ -1025,6 +1049,7 @@ test_parse_check_options :: proc(t: ^testing.T) {
 	testing.expect_value(t, options.max_shrinks, 30)
 	testing.expect(t, options.no_shrink)
 	testing.expect(t, options.coverage_warning_only)
+	testing.expect(t, options.preserve_shrink_labels)
 }
 
 @(test)
@@ -1048,6 +1073,7 @@ test_runner_help_text_lists_options_and_properties :: proc(t: ^testing.T) {
 
 	testing.expect(t, strings.contains(text, "Usage: pbt-runner"))
 	testing.expect(t, strings.contains(text, "--coverage-warning-only"))
+	testing.expect(t, strings.contains(text, "--preserve-shrink-labels"))
 	testing.expect(t, strings.contains(text, "--list-properties"))
 	testing.expect(t, strings.contains(text, "sum [integer,shrinking] - adds numbers"))
 }

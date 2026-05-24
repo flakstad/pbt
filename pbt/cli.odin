@@ -67,6 +67,8 @@ parse_check_options :: proc(args: []string, defaults: Check_Options = {}) -> Che
 			options.no_shrink = true
 		case "--coverage-warning-only":
 			options.coverage_warning_only = true
+		case "--preserve-shrink-labels":
+			options.preserve_shrink_labels = true
 		}
 	}
 
@@ -337,6 +339,7 @@ help_text :: proc(properties: []Property_Case) -> string {
 	strings.write_string(&builder, "  --shrink                   Enable shrinking\n")
 	strings.write_string(&builder, "  --no-shrink                Disable shrinking\n")
 	strings.write_string(&builder, "  --coverage-warning-only    Report coverage misses without failing\n")
+	strings.write_string(&builder, "  --preserve-shrink-labels   Keep original failing labels while shrinking\n")
 	strings.write_string(&builder, "  --replay-seed <n>          Replay a failing case seed\n")
 	strings.write_string(&builder, "  --replay-choices <csv>     Replay a comma-separated choice stream\n")
 	strings.write_string(&builder, "  --fail-fast                Stop a suite after the first non-pass\n")

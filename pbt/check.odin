@@ -15,6 +15,7 @@ Check_Options :: struct {
 	no_shrink:    bool,
 	max_shrinks:  int,
 	coverage_warning_only: bool,
+	preserve_shrink_labels: bool,
 }
 
 Replay :: struct {
@@ -306,34 +307,38 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 		labels = copy_strings(initial.labels[:]),
 		result = initial.result,
 	}
+	preserved_labels: []string
+	if options.preserve_shrink_labels {
+		preserved_labels = initial.labels[:]
+	}
 
 	attempts := 0
 	changed := true
 	for changed && attempts < options.max_shrinks {
 		changed = false
 
-		if len(best.choices) > 0 && try_candidate(&runner, property, &best, best.choices[:len(best.choices) - 1], seed, size, &attempts, options.max_shrinks) {
+		if len(best.choices) > 0 && try_candidate(&runner, property, &best, best.choices[:len(best.choices) - 1], seed, size, &attempts, options.max_shrinks, preserved_labels) {
 			changed = true
 			continue
 		}
 
-		if shrink_choice_mark_ranges(&runner, property, &best, seed, size, &attempts, options.max_shrinks) {
+		if shrink_choice_mark_ranges(&runner, property, &best, seed, size, &attempts, options.max_shrinks, preserved_labels) {
 			changed = true
 			continue
 		}
 
-		if shrink_choice_chunks(&runner, property, &best, seed, size, &attempts, options.max_shrinks) {
+		if shrink_choice_chunks(&runner, property, &best, seed, size, &attempts, options.max_shrinks, preserved_labels) {
 			changed = true
 			continue
 		}
 
-		if shrink_choice_suffix_values(&runner, property, &best, seed, size, &attempts, options.max_shrinks) {
+		if shrink_choice_suffix_values(&runner, property, &best, seed, size, &attempts, options.max_shrinks, preserved_labels) {
 			changed = true
 			continue
 		}
 
 		for i in 0 ..< len(best.choices) {
-			if shrink_choice_value(&runner, property, &best, i, seed, size, &attempts, options.max_shrinks) {
+			if shrink_choice_value(&runner, property, &best, i, seed, size, &attempts, options.max_shrinks, preserved_labels) {
 				changed = true
 				break
 			}
@@ -343,7 +348,7 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 	return {test = best, attempts = attempts}
 }
 
-shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
 	if len(best.choice_marks) == 0 || len(best.choices) < 2 {
 		return false
 	}
@@ -359,7 +364,7 @@ shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Ca
 		}
 
 		candidate := choices_without_range(best.choices[:], start, end - start)
-		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts, required_labels) {
 			return true
 		}
 		if attempts^ >= max_attempts {
@@ -370,7 +375,7 @@ shrink_choice_mark_ranges :: proc(runner: ^T, property: Property, best: ^Test_Ca
 	return false
 }
 
-shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
 	if len(best.choices) < 2 {
 		return false
 	}
@@ -380,7 +385,7 @@ shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, s
 		start := 0
 		for start + chunk <= len(best.choices) && attempts^ < max_attempts {
 			candidate := choices_without_range(best.choices[:], start, chunk)
-			if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+			if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts, required_labels) {
 				return true
 			}
 			start += 1
@@ -391,7 +396,7 @@ shrink_choice_chunks :: proc(runner: ^T, property: Property, best: ^Test_Case, s
 	return false
 }
 
-shrink_choice_suffix_values :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+shrink_choice_suffix_values :: proc(runner: ^T, property: Property, best: ^Test_Case, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
 	if len(best.choices) < 2 {
 		return false
 	}
@@ -409,7 +414,7 @@ shrink_choice_suffix_values :: proc(runner: ^T, property: Property, best: ^Test_
 			delete(candidate)
 			continue
 		}
-		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts, required_labels) {
 			return true
 		}
 		if attempts^ >= max_attempts {
@@ -420,7 +425,7 @@ shrink_choice_suffix_values :: proc(runner: ^T, property: Property, best: ^Test_
 	return false
 }
 
-shrink_choice_value :: proc(runner: ^T, property: Property, best: ^Test_Case, index: int, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+shrink_choice_value :: proc(runner: ^T, property: Property, best: ^Test_Case, index: int, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
 	current := best.choices[index]
 	if current == 0 {
 		return false
@@ -434,7 +439,7 @@ shrink_choice_value :: proc(runner: ^T, property: Property, best: ^Test_Case, in
 		candidate := copy_choices(best.choices[:])
 		candidate[index] = mid
 
-		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts) {
+		if try_candidate_dynamic(runner, property, best, candidate, seed, size, attempts, max_attempts, required_labels) {
 			changed = true
 			high = best.choices[index]
 		} else {
@@ -445,12 +450,12 @@ shrink_choice_value :: proc(runner: ^T, property: Property, best: ^Test_Case, in
 	return changed
 }
 
-try_candidate :: proc(runner: ^T, property: Property, best: ^Test_Case, candidate: []u64, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+try_candidate :: proc(runner: ^T, property: Property, best: ^Test_Case, candidate: []u64, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
 	candidate_copy := copy_choices(candidate)
-	return try_candidate_dynamic(runner, property, best, candidate_copy, seed, size, attempts, max_attempts)
+	return try_candidate_dynamic(runner, property, best, candidate_copy, seed, size, attempts, max_attempts, required_labels)
 }
 
-try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, candidate: [dynamic]u64, seed: u64, size: int, attempts: ^int, max_attempts: int) -> bool {
+try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, candidate: [dynamic]u64, seed: u64, size: int, attempts: ^int, max_attempts: int, required_labels: []string) -> bool {
 	if attempts^ >= max_attempts {
 		delete(candidate)
 		return false
@@ -459,6 +464,11 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 	attempts^ += 1
 	tc := run_case_with_context(runner, property, seed, size, candidate[:], true, true, true, nil, true)
 	if tc.result.status == .Fail || tc.result.status == .Error {
+		if !labels_contain_all(tc.labels[:], required_labels) {
+			destroy_test_case(&tc)
+			delete(candidate)
+			return false
+		}
 		actual_choices := copy_choices(tc.choices[:])
 		actual_marks := copy_choice_marks(tc.choice_marks[:])
 		destroy_test_case(best)
@@ -475,6 +485,27 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 
 	destroy_test_case(&tc)
 	delete(candidate)
+	return false
+}
+
+labels_contain_all :: proc(labels: []string, required: []string) -> bool {
+	for label, i in required {
+		if label_seen_before(required, i, label) {
+			continue
+		}
+		if !labels_contain(labels, label) {
+			return false
+		}
+	}
+	return true
+}
+
+labels_contain :: proc(labels: []string, label: string) -> bool {
+	for item in labels {
+		if item == label {
+			return true
+		}
+	}
 	return false
 }
 
