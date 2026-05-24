@@ -98,7 +98,9 @@ cli_command_property :: proc(t: ^pbt.T) -> pbt.Result {
 protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
 	request := pbt.draw(t, pbt.http_request_ascii("http://127.0.0.1:8080/api", 4, 12, 4, 16))
 	items := pbt.draw(t, pbt.json_array_ascii(0, 6, 16))
-	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2)
+	fields := [?]string{"sku", "quantity", "active"}
+	body := pbt.draw(t, pbt.json_object_fields_ascii(fields[:], 16))
+	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2 && len(body) >= 2)
 }
 
 failure_property :: proc(t: ^pbt.T) -> pbt.Result {

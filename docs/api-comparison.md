@@ -38,6 +38,8 @@ The current core is in a reasonable place:
   keeping base URL and escaping policy explicit in the property.
 - JSON string, boolean, integer, simple object, and simple array generators
   cover request-body construction without committing to a full JSON AST model.
+- `json_object_fields_ascii` covers schema-shaped JSON bodies where field names
+  are fixed by the API and generated values provide the variation.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.

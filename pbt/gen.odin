@@ -965,6 +965,38 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 	}
 }
 
+JSON_Object_Fields_ASCII_Input :: struct {
+	fields:         []string,
+	max_string_len: int,
+}
+
+json_object_fields_ascii :: proc(fields: []string, max_string_len: int = 16) -> Gen(JSON_Object_Fields_ASCII_Input, string) {
+	return {
+		input = {fields = fields, max_string_len = max_string_len},
+		produce = proc(t: ^T, input: JSON_Object_Fields_ASCII_Input) -> string {
+			max_string_len := input.max_string_len
+			if max_string_len < 0 {
+				max_string_len = 0
+			}
+
+			values := make([dynamic]byte, 0, 2 + len(input.fields) * (max_string_len + 12), t.value_allocator)
+			append(&values, '{')
+			string_gen := json_string_literal_ascii(0, max_string_len)
+			int_gen := json_int_literal()
+			for field, i in input.fields {
+				if i > 0 {
+					append(&values, ',')
+				}
+				append_json_quoted_ascii_content(&values, field)
+				append(&values, ':')
+				append_json_simple_value(t, &values, string_gen, int_gen)
+			}
+			append(&values, '}')
+			return string(values[:])
+		},
+	}
+}
+
 JSON_Array_ASCII_Input :: struct {
 	min_items:      int,
 	max_items:      int,
@@ -1065,6 +1097,29 @@ append_int_decimal :: proc(dst: ^[dynamic]byte, value: int) {
 append_json_quoted_content :: proc(dst: ^[dynamic]byte, value: string) {
 	append(dst, '"')
 	append_string_bytes(dst, value)
+	append(dst, '"')
+}
+
+append_json_quoted_ascii_content :: proc(dst: ^[dynamic]byte, value: string) {
+	append(dst, '"')
+	for ch in value {
+		switch ch {
+		case '"':
+			append_string_bytes(dst, "\\\"")
+		case '\\':
+			append_string_bytes(dst, "\\\\")
+		case '\n':
+			append_string_bytes(dst, "\\n")
+		case '\r':
+			append_string_bytes(dst, "\\r")
+		case '\t':
+			append_string_bytes(dst, "\\t")
+		case:
+			if ch >= 0x20 && ch <= 0x7e {
+				append(dst, byte(ch))
+			}
+		}
+	}
 	append(dst, '"')
 }
 
