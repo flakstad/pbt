@@ -37,6 +37,8 @@ check_result_json :: proc(result: Check_Result) -> string {
 
 	strings.write_string(&builder, ",\"events\":")
 	json_write_events(&builder, result.shrunk_test.events[:])
+	strings.write_string(&builder, ",\"notes\":")
+	json_write_strings(&builder, result.shrunk_test.notes[:])
 
 	strings.write_string(&builder, ",\"failing_test\":")
 	json_write_test_case(&builder, result.failing_test)
@@ -74,6 +76,7 @@ check_result_text :: proc(result: Check_Result) -> string {
 		if result.shrink_attempts > 0 {
 			strings.write_string(&builder, fmt.tprintf("shrink: %d attempts, %d ns\n", result.shrink_attempts, result.shrink_duration_ns))
 		}
+		write_notes_text(&builder, result.shrunk_test.notes[:])
 		write_event_trace_text(&builder, result.shrunk_test.events[:])
 	}
 	if len(result.coverage) > 0 {
@@ -91,6 +94,17 @@ check_result_text :: proc(result: Check_Result) -> string {
 		}
 	}
 	return strings.to_string(builder)
+}
+
+write_notes_text :: proc(builder: ^strings.Builder, notes: []string) {
+	if len(notes) == 0 {
+		return
+	}
+
+	strings.write_string(builder, "notes:\n")
+	for note in notes {
+		strings.write_string(builder, fmt.tprintf("  - %s\n", note))
+	}
 }
 
 write_event_trace_text :: proc(builder: ^strings.Builder, events: []Event) {
@@ -295,6 +309,8 @@ json_write_test_case :: proc(builder: ^strings.Builder, tc: Test_Case) {
 	json_write_u64_array(builder, tc.choices[:])
 	strings.write_string(builder, ",\"events\":")
 	json_write_events(builder, tc.events[:])
+	strings.write_string(builder, ",\"notes\":")
+	json_write_strings(builder, tc.notes[:])
 	strings.write_string(builder, ",\"labels\":")
 	json_write_strings(builder, tc.labels[:])
 	strings.write_string(builder, "}")

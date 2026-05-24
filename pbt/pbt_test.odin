@@ -342,6 +342,7 @@ test_events_are_reported_as_json :: proc(t: ^testing.T) {
 	defer delete(json)
 
 	testing.expect(t, strings.contains(json, "\"events\""))
+	testing.expect(t, strings.contains(json, "\"notes\":[\"about to fail\"]"))
 	testing.expect(t, strings.contains(json, "\"kind\":\"process\""))
 	testing.expect(t, strings.contains(json, "\"name\":\"cart add\""))
 	testing.expect(t, strings.contains(json, "\"about to fail\""))
@@ -349,9 +350,11 @@ test_events_are_reported_as_json :: proc(t: ^testing.T) {
 
 	text := check_result_text(result)
 	defer delete(text)
+	testing.expect(t, strings.contains(text, "notes:"))
+	testing.expect(t, strings.contains(text, "  - about to fail"))
 	testing.expect(t, strings.contains(text, "events:"))
 	testing.expect(t, strings.contains(text, "process cart add [ok]: exit=0"))
-	testing.expect(t, strings.contains(text, "note [ok]: about to fail"))
+	testing.expect(t, !strings.contains(text, "note [ok]: about to fail"))
 }
 
 @(test)

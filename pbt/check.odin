@@ -140,6 +140,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 				result.shrunk_test = Test_Case {
 					choices = copy_choices(tc.choices[:]),
 					events = copy_events(tc.events[:]),
+					notes = copy_strings(tc.notes[:]),
 					labels = copy_strings(tc.labels[:]),
 					result = tc.result,
 				}
@@ -176,6 +177,7 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 		shrunk_test = Test_Case {
 			choices = copy_choices(tc.choices[:]),
 			events = copy_events(tc.events[:]),
+			notes = copy_strings(tc.notes[:]),
 			labels = copy_strings(tc.labels[:]),
 			result = tc.result,
 		},
@@ -265,6 +267,7 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 	if capture_pass || result.status == .Fail || result.status == .Error {
 		tc.choices = copy_current_choices(t)
 		tc.events = copy_events(t.events[:])
+		tc.notes = copy_strings(t.notes[:])
 		tc.labels = copy_strings(t.labels[:])
 	}
 	return tc
@@ -290,6 +293,7 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 	best := Test_Case {
 		choices = copy_choices(choices),
 		events = copy_events(initial.events[:]),
+		notes = copy_strings(initial.notes[:]),
 		labels = copy_strings(initial.labels[:]),
 		result = initial.result,
 	}
@@ -384,6 +388,7 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 		destroy_test_case(best)
 		best.choices = actual_choices
 		best.events = copy_events(tc.events[:])
+		best.notes = copy_strings(tc.notes[:])
 		best.labels = copy_strings(tc.labels[:])
 		best.result = tc.result
 		destroy_test_case(&tc)

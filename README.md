@@ -32,7 +32,8 @@ The current implementation includes:
   processes
 - persistent line protocol adapter for faster non-Odin library wrappers
 - curl-backed HTTP adapter for external APIs and services
-- diagnostic helpers: `note`, `label`, `classify`, `collect`, and `cover`
+- diagnostic helpers: first-class `note`, plus `label`, `classify`, `collect`,
+  and `cover`
 - coverage/classification aggregation in `Check_Result` and JSON output
 - richer failure context with `counterexample` and value-printing `equal`
 - structured event capture for HTTP/process/statechart adapters

@@ -19,6 +19,7 @@ T :: struct {
 	choice_extra:    [dynamic]u64,
 	events:          [dynamic]Event,
 	capture_events:  bool,
+	notes:           [dynamic]string,
 	labels:          [dynamic]string,
 	coverage_requirements: [dynamic]Coverage_Requirement,
 	replay_choices:  []u64,
@@ -32,6 +33,7 @@ T :: struct {
 Test_Case :: struct {
 	choices: [dynamic]u64,
 	events:  [dynamic]Event,
+	notes:   [dynamic]string,
 	labels:  [dynamic]string,
 	result:  Result,
 }
@@ -52,6 +54,7 @@ test_init :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_str
 	t^ = T {
 		allocator = allocator,
 		events = make([dynamic]Event, allocator),
+		notes = make([dynamic]string, allocator),
 		labels = make([dynamic]string, allocator),
 		coverage_requirements = make([dynamic]Coverage_Requirement, allocator),
 	}
@@ -62,6 +65,7 @@ test_init :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_str
 
 test_destroy :: proc(t: ^T) {
 	destroy_events(&t.events)
+	destroy_strings(&t.notes)
 	destroy_strings(&t.labels)
 	delete(t.coverage_requirements)
 	mem.dynamic_arena_destroy(&t.value_arena)
@@ -70,6 +74,7 @@ test_destroy :: proc(t: ^T) {
 
 test_reset :: proc(t: ^T, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_events: bool) {
 	destroy_events_keep_storage(&t.events)
+	destroy_strings_keep_storage(&t.notes)
 	destroy_strings_keep_storage(&t.labels)
 	clear(&t.coverage_requirements)
 	clear(&t.choice_extra)
@@ -153,7 +158,10 @@ record_event :: proc(t: ^T, kind, name, status, detail: string) {
 }
 
 note :: proc(t: ^T, message: string) {
-	record_event(t, "note", "", "ok", message)
+	if !t.capture_events {
+		return
+	}
+	append(&t.notes, clone_non_empty(message, t.allocator))
 }
 
 label :: proc(t: ^T, name: string) {
@@ -264,6 +272,7 @@ destroy_events_keep_storage :: proc(events: ^[dynamic]Event) {
 
 destroy_test_case :: proc(tc: ^Test_Case) {
 	destroy_events(&tc.events)
+	destroy_strings(&tc.notes)
 	destroy_strings(&tc.labels)
 	delete(tc.choices)
 }

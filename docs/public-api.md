@@ -264,6 +264,10 @@ completed check reports `Error` with `coverage requirement not met` when a
 requirement is missed. Coverage summaries are included in JSON so Gransk can
 show distribution and unmet requirement details.
 
+`note` records explanatory text separately from adapter/state-machine events.
+That keeps human context visible without making notes look like target actions
+or protocol events.
+
 Runner helpers should make it easy for a project-specific executable to act as a
 Gransk engine:
 
@@ -581,6 +585,7 @@ The result payload should include:
 - replay choices as `choices_csv`, directly usable with `--replay-choices`
 - original failure
 - shrunk failure
+- notes
 - labels/classification stats
 - adapter events
 - stateful trace when present
