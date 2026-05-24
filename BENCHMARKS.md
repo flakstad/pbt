@@ -118,8 +118,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           34.40
-  avg ns/unit:            34.52
+  best ns/unit:           32.18
+  avg ns/unit:            33.73
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -128,8 +128,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           143.07
-  avg ns/unit:            143.77
+  best ns/unit:           142.81
+  avg ns/unit:            143.20
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -138,8 +138,8 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           162.30
-  avg ns/unit:            163.09
+  best ns/unit:           161.96
+  avg ns/unit:            162.26
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -148,8 +148,8 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3809.19
-  avg ns/unit:            3832.88
+  best ns/unit:           3821.76
+  avg ns/unit:            3851.06
   alloc calls max:        250000
   resize calls max:       10000
   free calls max:         250000
@@ -158,8 +158,8 @@ stateful 20-step captured trace
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           324.64
-  avg ns/unit:            332.90
+  best ns/unit:           342.98
+  avg ns/unit:            343.78
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -168,8 +168,8 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           3208.00
-  avg ns/unit:            4474.80
+  best ns/unit:           3166.00
+  avg ns/unit:            3850.00
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -178,8 +178,8 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           15458.00
-  avg ns/unit:            18508.40
+  best ns/unit:           15084.00
+  avg ns/unit:            16750.00
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124

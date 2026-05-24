@@ -951,19 +951,7 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 				key := draw(t, key_gen)
 				append_json_quoted_content(&values, key)
 				append(&values, ':')
-				switch choice(t, 4) {
-				case 0:
-					value := draw(t, string_gen)
-					append_string_bytes(&values, value)
-				case 1:
-					value := draw(t, json_bool_literal())
-					append_string_bytes(&values, value)
-				case 2:
-					append_string_bytes(&values, "null")
-				case 3:
-					value := draw(t, int_gen)
-					append_string_bytes(&values, value)
-				}
+				append_json_simple_value(t, &values, string_gen, int_gen)
 				if len(element_ends) > 0 {
 					element_ends[i + 1] = choice_cursor(t)
 				}
@@ -974,6 +962,77 @@ json_object_ascii :: proc(min_fields: int = 0, max_fields: int = -1, max_key_len
 			}
 			return string(values[:])
 		},
+	}
+}
+
+JSON_Array_ASCII_Input :: struct {
+	min_items:      int,
+	max_items:      int,
+	max_string_len: int,
+}
+
+json_array_ascii :: proc(min_items: int = 0, max_items: int = -1, max_string_len: int = 16) -> Gen(JSON_Array_ASCII_Input, string) {
+	return {
+		input = {min_items = min_items, max_items = max_items, max_string_len = max_string_len},
+		produce = proc(t: ^T, input: JSON_Array_ASCII_Input) -> string {
+			min_items := input.min_items
+			if min_items < 0 {
+				min_items = 0
+			}
+			max_items := input.max_items
+			if max_items < min_items {
+				max_items = math.max(min_items, t.size)
+			}
+			max_string_len := input.max_string_len
+			if max_string_len < 0 {
+				max_string_len = 0
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			item_count := min_items + int(choice(t, u64(max_items - min_items + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && item_count > min_items {
+				element_ends = make([]int, item_count + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			values := make([dynamic]byte, 0, 2 + item_count * (max_string_len + 8), t.value_allocator)
+			append(&values, '[')
+			string_gen := json_string_literal_ascii(0, max_string_len)
+			int_gen := json_int_literal()
+			for i in 0 ..< item_count {
+				if i > 0 {
+					append(&values, ',')
+				}
+				append_json_simple_value(t, &values, string_gen, int_gen)
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			append(&values, ']')
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_items, item_count, element_ends)
+			}
+			return string(values[:])
+		},
+	}
+}
+
+append_json_simple_value :: proc(t: ^T, dst: ^[dynamic]byte, string_gen: Gen(JSON_String_Literal_ASCII_Input, string), int_gen: Gen(JSON_Int_Literal_Input, string)) {
+	switch choice(t, 4) {
+	case 0:
+		value := draw(t, string_gen)
+		append_string_bytes(dst, value)
+	case 1:
+		value := draw(t, json_bool_literal())
+		append_string_bytes(dst, value)
+	case 2:
+		append_string_bytes(dst, "null")
+	case 3:
+		value := draw(t, int_gen)
+		append_string_bytes(dst, value)
 	}
 }
 

@@ -32,8 +32,8 @@ The current core is in a reasonable place:
   inputs without requiring a full HTTP request model.
 - URL path and query component generators cover route and query data while
   keeping base URL and escaping policy explicit in the property.
-- JSON string, boolean, integer, and simple object generators cover request-body
-  construction without committing to a full JSON AST model.
+- JSON string, boolean, integer, simple object, and simple array generators
+  cover request-body construction without committing to a full JSON AST model.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
