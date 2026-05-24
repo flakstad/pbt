@@ -12,8 +12,9 @@ Property_Case :: struct {
 }
 
 Property_Tag :: struct {
-	name:  string,
-	count: int,
+	name:       string,
+	count:      int,
+	properties: [dynamic]string,
 }
 
 parse_check_options :: proc(args: []string, defaults: Check_Options = {}) -> Check_Options {
@@ -279,20 +280,30 @@ property_tags :: proc(properties: []Property_Case) -> [dynamic]Property_Tag {
 	tags := make([dynamic]Property_Tag)
 	for property in properties {
 		for tag in property.tags {
-			property_tags_add(&tags, tag)
+			property_tags_add(&tags, tag, property.name)
 		}
 	}
 	return tags
 }
 
-property_tags_add :: proc(tags: ^[dynamic]Property_Tag, name: string) {
+destroy_property_tags :: proc(tags: ^[dynamic]Property_Tag) {
+	for i := 0; i < len(tags^); i += 1 {
+		delete(tags^[i].properties)
+	}
+	delete(tags^)
+}
+
+property_tags_add :: proc(tags: ^[dynamic]Property_Tag, name, property_name: string) {
 	for i := 0; i < len(tags^); i += 1 {
 		if tags^[i].name == name {
 			tags^[i].count += 1
+			append(&tags^[i].properties, property_name)
 			return
 		}
 	}
-	append(tags, Property_Tag{name = name, count = 1})
+	properties := make([dynamic]string)
+	append(&properties, property_name)
+	append(tags, Property_Tag{name = name, count = 1, properties = properties})
 }
 
 has_replay_args :: proc(args: []string) -> bool {
@@ -343,7 +354,7 @@ properties_json :: proc(properties: []Property_Case) -> string {
 
 tags_json :: proc(properties: []Property_Case) -> string {
 	tags := property_tags(properties)
-	defer delete(tags)
+	defer destroy_property_tags(&tags)
 
 	builder: strings.Builder
 	strings.builder_init(&builder)
@@ -356,6 +367,8 @@ tags_json :: proc(properties: []Property_Case) -> string {
 		strings.write_string(&builder, "{")
 		json_field_string(&builder, "name", tag.name, true)
 		json_field_int(&builder, "count", tag.count, false)
+		strings.write_string(&builder, ",\"properties\":")
+		json_write_strings(&builder, tag.properties[:])
 		strings.write_string(&builder, "}")
 	}
 	strings.write_string(&builder, "]}")

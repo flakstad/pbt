@@ -770,7 +770,9 @@ test_tags_json_lists_unique_tags_and_counts :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"tool\":\"pbt\""))
 	testing.expect(t, strings.contains(json, "\"schema_version\":1"))
 	testing.expect(t, strings.contains(json, "\"name\":\"core\",\"count\":2"))
+	testing.expect(t, strings.contains(json, "\"properties\":[\"sum\",\"collections\"]"))
 	testing.expect(t, strings.contains(json, "\"name\":\"collection\",\"count\":1"))
+	testing.expect(t, strings.contains(json, "\"properties\":[\"collections\"]"))
 }
 
 @(test)

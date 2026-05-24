@@ -320,7 +320,7 @@ match. Ambiguous or missing matches return stable error codes.
 
 Tag discovery can be handled with `pbt.has_list_tags_flag(os.args[1:])` and
 `pbt.tags_json(properties[:])`. Tag JSON lists unique tag names and the number
-of properties carrying each tag.
+of properties carrying each tag, plus the property names for each tag.
 
 JSON is the default machine-readable output. Human-oriented runner output can
 use:
