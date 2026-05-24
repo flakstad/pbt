@@ -28,6 +28,8 @@ The current core is in a reasonable place:
   and fixtures.
 - `path_segment_ascii` covers reusable path/key segments without choosing a
   filesystem or URL policy for the caller.
+- CLI argument, flag, and command-vector generators cover safe process adapter
+  inputs without forcing generated values through shell quoting.
 - HTTP method, status-code, and header-name generators cover common adapter
   inputs without requiring a full HTTP request model.
 - `http_request_ascii` generates adapter-ready HTTP requests from a caller-owned

@@ -48,6 +48,131 @@ Line_Protocol_Call_Options :: struct {
 	max_response_bytes: int,
 }
 
+CLI_Arg_ASCII_Input :: struct {
+	min_len: int,
+	max_len: int,
+}
+
+cli_arg_ascii :: proc(min_len: int = 1, max_len: int = -1) -> Gen(CLI_Arg_ASCII_Input, string) {
+	return {
+		input = {min_len = min_len, max_len = max_len},
+		produce = proc(t: ^T, input: CLI_Arg_ASCII_Input) -> string {
+			min_len := input.min_len
+			if min_len < 0 {
+				min_len = 0
+			}
+			max_len := input.max_len
+			if max_len < min_len {
+				max_len = max(min_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			length := min_len + int(choice(t, u64(max_len - min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-"
+			values := make([]byte, length, t.value_allocator)
+			for i in 0 ..< length {
+				index := int(choice(t, u64(len(chars))))
+				values[i] = chars[index]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_len, length, element_ends)
+			}
+			return string(values)
+		},
+	}
+}
+
+CLI_Flag_ASCII_Input :: struct {
+	max_len: int,
+	long:    bool,
+}
+
+cli_flag_ascii :: proc(max_len: int = 12, long: bool = true) -> Gen(CLI_Flag_ASCII_Input, string) {
+	return {
+		input = {max_len = max_len, long = long},
+		produce = proc(t: ^T, input: CLI_Flag_ASCII_Input) -> string {
+			max_len := input.max_len
+			if max_len < 1 {
+				max_len = 1
+			}
+			name := draw(t, path_segment_ascii(1, max_len))
+			values := make([dynamic]byte, 0, len(name) + 2, t.value_allocator)
+			append(&values, '-')
+			if input.long {
+				append(&values, '-')
+			}
+			append_string_bytes(&values, name)
+			return string(values[:])
+		},
+	}
+}
+
+Process_Command_ASCII_Input :: struct {
+	program:     string,
+	min_args:    int,
+	max_args:    int,
+	max_arg_len: int,
+}
+
+process_command_ascii :: proc(program: string, min_args: int = 0, max_args: int = -1, max_arg_len: int = 16) -> Gen(Process_Command_ASCII_Input, []string) {
+	return {
+		input = {program = program, min_args = min_args, max_args = max_args, max_arg_len = max_arg_len},
+		produce = proc(t: ^T, input: Process_Command_ASCII_Input) -> []string {
+			program := input.program
+			if program == "" {
+				program = "target"
+			}
+			min_args := input.min_args
+			if min_args < 0 {
+				min_args = 0
+			}
+			max_args := input.max_args
+			if max_args < min_args {
+				max_args = max(min_args, t.size)
+			}
+			max_arg_len := input.max_arg_len
+			if max_arg_len < 1 {
+				max_arg_len = 1
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			arg_count := min_args + int(choice(t, u64(max_args - min_args + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && arg_count > min_args {
+				element_ends = make([]int, arg_count + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			command := make([]string, arg_count + 1, t.value_allocator)
+			command[0] = program
+			arg_gen := cli_arg_ascii(1, max_arg_len)
+			for i in 0 ..< arg_count {
+				command[i + 1] = draw(t, arg_gen)
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_args, arg_count, element_ends)
+			}
+			return command
+		},
+	}
+}
+
 process_run :: proc(t: ^T, command: []string) -> Process_Result {
 	return process_run_with_options(t, command, {})
 }

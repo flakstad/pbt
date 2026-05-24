@@ -201,6 +201,9 @@ hex_string :: proc(min_bytes := 0, max_bytes := -1, uppercase := false) -> Gen(H
 non_empty_hex_string :: proc(max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
 identifier_ascii :: proc(min_len := 1, max_len := -1) -> Gen(Identifier_ASCII_Input, string)
 path_segment_ascii :: proc(min_len := 1, max_len := -1) -> Gen(Path_Segment_ASCII_Input, string)
+cli_arg_ascii :: proc(min_len := 1, max_len := -1) -> Gen(CLI_Arg_ASCII_Input, string)
+cli_flag_ascii :: proc(max_len := 12, long := true) -> Gen(CLI_Flag_ASCII_Input, string)
+process_command_ascii :: proc(program: string, min_args := 0, max_args := -1, max_arg_len := 16) -> Gen(Process_Command_ASCII_Input, []string)
 http_method :: proc() -> Gen(HTTP_Method_Input, string)
 http_status_code :: proc(min := 100, max := 599) -> Gen(HTTP_Status_Code_Input, int)
 http_header_name_ascii :: proc(min_len := 1, max_len := -1) -> Gen(HTTP_Header_Name_ASCII_Input, string)
@@ -480,6 +483,18 @@ back from the target so failures can be replayed and shrunk.
 command := [?]string{"my-cli", "cart", "add", sku, qty}
 result := pbt.process_run(t, command[:])
 ```
+
+Generated command data stays in argv form, not shell text:
+
+```odin
+command := pbt.draw(t, pbt.process_command_ascii("my-cli", 1, 5))
+result := pbt.process_run(t, command)
+```
+
+`cli_arg_ascii`, `cli_flag_ascii`, and `process_command_ascii` generate
+conservative ASCII values intended for direct argv usage. They avoid shell
+metacharacters so properties can pass command vectors to `process_run` without
+quoting generated text.
 
 Use `process_run_with_options` when the target needs a working directory or
 controlled environment:

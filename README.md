@@ -17,7 +17,7 @@ The current implementation includes:
 - `Result` values with pass/fail/discard/error
 - integer, unsigned integer, boolean, array, optional, ASCII string, and fixed
   alphabet string generators
-- byte, hex, identifier, URL, HTTP, and simple JSON generators for protocol
+- byte, hex, identifier, CLI, URL, HTTP, and simple JSON generators for protocol
   inputs
 - fixed value, element, enum range, float range, size-aware, resized, scaled,
   and filtered generators

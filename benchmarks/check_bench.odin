@@ -89,6 +89,12 @@ collection_property :: proc(t: ^pbt.T) -> pbt.Result {
 	return pbt.assert(len(values) >= 0 && len(name) >= 0)
 }
 
+cli_command_property :: proc(t: ^pbt.T) -> pbt.Result {
+	command := pbt.draw(t, pbt.process_command_ascii("target-cli", 0, 8, 16))
+	flag := pbt.draw(t, pbt.cli_flag_ascii(12))
+	return pbt.assert(len(command) > 0 && command[0] == "target-cli" && len(flag) > 2)
+}
+
 protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
 	request := pbt.draw(t, pbt.http_request_ascii("http://127.0.0.1:8080/api", 4, 12, 4, 16))
 	items := pbt.draw(t, pbt.json_array_ascii(0, 6, 16))
@@ -330,6 +336,7 @@ main :: proc() {
 
 	ints := measure_check("two integer draws", int_property, tests, samples, {no_shrink = true})
 	collections := measure_check("array and string draws", collection_property, tests, samples, {no_shrink = true})
+	cli_commands := measure_check("cli command data", cli_command_property, tests, samples, {no_shrink = true})
 	protocol := measure_check("protocol request data", protocol_property, tests, samples, {no_shrink = true})
 	stateful := measure_check("stateful 20-step model", stateful_property, tests / 10, samples, {no_shrink = true})
 	stateful_trace := measure_captured_cases("stateful 20-step captured trace", stateful_property, 10_000, samples)
@@ -340,6 +347,7 @@ main :: proc() {
 	ok := true
 	ok = check_limit(ints, tests, samples, {label = "two integer draws", max_best_ns = 250, max_avg_ns = 350}) && ok
 	ok = check_limit(collections, tests, samples, {label = "array and string draws", max_best_ns = 750, max_avg_ns = 1_000}) && ok
+	ok = check_limit(cli_commands, tests, samples, {label = "cli command data", max_best_ns = 1_000, max_avg_ns = 1_500}) && ok
 	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 3_000, max_avg_ns = 4_000}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok

@@ -121,6 +121,9 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	upper_hex := draw(t, non_empty_hex_string(4, true))
 	identifier := draw(t, identifier_ascii(1, 8))
 	path_segment := draw(t, path_segment_ascii(1, 8))
+	cli_arg := draw(t, cli_arg_ascii(1, 8))
+	cli_flag := draw(t, cli_flag_ascii(8))
+	cli_command := draw(t, process_command_ascii("target-cli", 0, 3, 8))
 	method := draw(t, http_method())
 	status_code := draw(t, http_status_code())
 	header_name := draw(t, http_header_name_ascii(1, 12))
@@ -170,6 +173,9 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		identifier_is_ascii(identifier) &&
 		len(path_segment) >= 1 && len(path_segment) <= 8 &&
 		path_segment_is_ascii(path_segment) &&
+		cli_arg_is_ascii(cli_arg) &&
+		cli_flag_is_ascii(cli_flag) &&
+		process_command_is_ascii(cli_command) &&
 		http_method_is_common(method) &&
 		status_code >= 100 && status_code <= 599 &&
 		len(header_name) >= 1 && len(header_name) <= 12 &&
@@ -276,6 +282,31 @@ path_segment_is_ascii :: proc(value: string) -> bool {
 		}
 	}
 	return len(value) > 0
+}
+
+cli_arg_is_ascii :: proc(value: string) -> bool {
+	for ch in value {
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.') {
+			return false
+		}
+	}
+	return len(value) > 0
+}
+
+cli_flag_is_ascii :: proc(value: string) -> bool {
+	return strings.has_prefix(value, "--") && cli_arg_is_ascii(value[2:])
+}
+
+process_command_is_ascii :: proc(command: []string) -> bool {
+	if len(command) == 0 || command[0] != "target-cli" || len(command) > 4 {
+		return false
+	}
+	for arg in command[1:] {
+		if !cli_arg_is_ascii(arg) {
+			return false
+		}
+	}
+	return true
 }
 
 http_method_is_common :: proc(value: string) -> bool {
