@@ -19,6 +19,7 @@ Process_Result :: struct {
 Process_Options :: struct {
 	working_dir: string,
 	env:         []string,
+	timeout_ms:  int,
 }
 
 Line_Protocol_Client :: struct {
@@ -48,11 +49,24 @@ process_run_with_options :: proc(t: ^T, command: []string, options: Process_Opti
 	defer delete(detail)
 
 	start_time := time.tick_now()
-	state, stdout_bytes, stderr_bytes, err := os.process_exec(os.Process_Desc {
-		command = command,
-		working_dir = options.working_dir,
-		env = options.env,
-	}, t.allocator)
+	state: os.Process_State
+	stdout_bytes: []byte
+	stderr_bytes: []byte
+	err: os.Error
+	timed_out := false
+	if options.timeout_ms > 0 {
+		state, stdout_bytes, stderr_bytes, err, timed_out = process_exec_timed(os.Process_Desc {
+			command = command,
+			working_dir = options.working_dir,
+			env = options.env,
+		}, options.timeout_ms, t.allocator)
+	} else {
+		state, stdout_bytes, stderr_bytes, err = os.process_exec(os.Process_Desc {
+			command = command,
+			working_dir = options.working_dir,
+			env = options.env,
+		}, t.allocator)
+	}
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	defer delete(stdout_bytes)
 	defer delete(stderr_bytes)
@@ -66,12 +80,15 @@ process_run_with_options :: proc(t: ^T, command: []string, options: Process_Opti
 	}
 
 	status := "ok"
-	if err != nil || !state.success {
+	if timed_out {
+		status = "error"
+		result.error = clone_non_empty(fmt.tprintf("process timed out after %d ms", options.timeout_ms), t.value_allocator)
+	} else if err != nil || !state.success {
 		status = "error"
 		result.error = clone_non_empty(fmt.tprintf("%v", err), t.value_allocator)
 	}
 
-	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d", detail, state.exit_code, duration_ns))
+	record_event(t, "process", command[0] if len(command) > 0 else "", status, fmt.tprintf("%s exit=%d duration_ns=%d timeout_ms=%d", detail, state.exit_code, duration_ns, options.timeout_ms))
 	return result
 }
 
@@ -216,6 +233,117 @@ line_protocol_max_response_bytes :: proc(options: Line_Protocol_Call_Options) ->
 		return options.max_response_bytes
 	}
 	return LINE_PROTOCOL_DEFAULT_MAX_RESPONSE_BYTES
+}
+
+process_exec_timed :: proc(desc: os.Process_Desc, timeout_ms: int, allocator := context.allocator) -> (os.Process_State, []byte, []byte, os.Error, bool) {
+	stdout_r, stdout_w, stdout_pipe_err := os.pipe()
+	if stdout_pipe_err != nil {
+		return {}, nil, nil, stdout_pipe_err, false
+	}
+	defer os.close(stdout_r)
+
+	stderr_r, stderr_w, stderr_pipe_err := os.pipe()
+	if stderr_pipe_err != nil {
+		os.close(stdout_w)
+		return {}, nil, nil, stderr_pipe_err, false
+	}
+	defer os.close(stderr_r)
+
+	process_desc := desc
+	process_desc.stdout = stdout_w
+	process_desc.stderr = stderr_w
+	process, start_err := os.process_start(process_desc)
+	os.close(stdout_w)
+	os.close(stderr_w)
+	if start_err != nil {
+		return {}, nil, nil, start_err, false
+	}
+
+	stdout_b := make([dynamic]byte, allocator)
+	stderr_b := make([dynamic]byte, allocator)
+	stdout_done := false
+	stderr_done := false
+	exited := false
+	timed_out := false
+	state: os.Process_State
+	err: os.Error
+	start := time.tick_now()
+
+	for !stdout_done || !stderr_done || !exited {
+		if !stdout_done {
+			err = process_drain_pipe(stdout_r, &stdout_b, &stdout_done)
+			if err != nil {
+				break
+			}
+		}
+		if !stderr_done {
+			err = process_drain_pipe(stderr_r, &stderr_b, &stderr_done)
+			if err != nil {
+				break
+			}
+		}
+
+		if !exited {
+			wait_state, wait_err := os.process_wait(process, 0)
+			if wait_err == nil {
+				state = wait_state
+				exited = state.exited
+			} else if wait_err != .Timeout {
+				err = wait_err
+				break
+			}
+		}
+
+		if !exited && time.duration_milliseconds(time.tick_diff(start, time.tick_now())) >= f64(timeout_ms) {
+			timed_out = true
+			_ = os.process_kill(process)
+			state, _ = os.process_wait(process)
+			exited = true
+			stdout_done = true
+			stderr_done = true
+		}
+
+		if (!stdout_done || !stderr_done || !exited) && err == nil {
+			time.sleep(1 * time.Millisecond)
+		}
+	}
+
+	if err != nil {
+		state, _ = os.process_wait(process, 0)
+		if !state.exited {
+			_ = os.process_kill(process)
+			state, _ = os.process_wait(process)
+		}
+	}
+
+	return state, stdout_b[:], stderr_b[:], err, timed_out
+}
+
+process_drain_pipe :: proc(file: ^os.File, out: ^[dynamic]byte, done: ^bool) -> os.Error {
+	buffer: [1024]byte
+	for {
+		has_data, data_err := os.pipe_has_data(file)
+		if data_err == .Broken_Pipe || data_err == .EOF {
+			done^ = true
+			return nil
+		}
+		if data_err != nil {
+			return data_err
+		}
+		if !has_data {
+			return nil
+		}
+		n, read_err := os.read(file, buffer[:])
+		switch read_err {
+		case nil:
+			append(out, ..buffer[:n])
+		case .EOF, .Broken_Pipe:
+			done^ = true
+			return nil
+		case:
+			return read_err
+		}
+	}
 }
 
 line_protocol_read_line :: proc(file: ^os.File, max_response_bytes: int, allocator := context.allocator) -> (string, string, bool) {
