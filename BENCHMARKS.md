@@ -35,6 +35,10 @@ The benchmark includes these modes:
   fixed-alphabet string
 - `stateful 20-step model`: a passing stateful model with a fixed 20-command
   sequence
+- `stateful 20-step captured trace`: the same model run with explicit event
+  capture, measuring rich successful-step trace cost
+- `stateful 20-step compact trace`: the same captured run with
+  `skip_success_events`, measuring the compact trace path
 - `failing property with shrink`: a failing property that shrinks an integer
   boundary case
 
@@ -132,18 +136,38 @@ array and string draws
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           194.12
-  avg ns/unit:            196.28
+  best ns/unit:           146.47
+  avg ns/unit:            148.04
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
   bytes req max:          0
 
+stateful 20-step captured trace
+  captured cases/sample:  10000
+  samples:                5
+  best ns/unit:           5788.40
+  avg ns/unit:            5827.31
+  alloc calls max:        1230000
+  resize calls max:       10000
+  free calls max:         1230000
+  bytes req max:          43160000
+
+stateful 20-step compact trace
+  captured cases/sample:  10000
+  samples:                5
+  best ns/unit:           299.24
+  avg ns/unit:            300.65
+  alloc calls max:        10000
+  resize calls max:       0
+  free calls max:         10000
+  bytes req max:          1680000
+
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           1959.00
-  avg ns/unit:            2500.00
+  best ns/unit:           2250.00
+  avg ns/unit:            2691.80
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -153,12 +177,16 @@ failing property with shrink
 The integer hot path is now allocation-free for short choice streams because
 choices are stored inline in the test context. Coverage aggregation added a
 small amount of per-test bookkeeping, but did not add allocations to unlabeled
-passing properties. Passing stateful checks are now also allocation-free in this
-benchmark because event traces are captured lazily: normal passing runs skip
-events, while failing/replay/shrink runs recapture diagnostics. Collection
-generation now reuses a per-check test context and value arena across passing
-generated tests. That moves collection allocation from per generated case to a
-small fixed cost per `check` run while preserving failure/replay diagnostics.
-Shrinking reuses a candidate runner context and can delete chunks from the
-choice stream, which helps remove irrelevant sequence choices while keeping the
-final replay stream to the choices actually consumed by the failing case.
+passing properties. Passing stateful checks are now allocation-free in the
+normal benchmark because event traces are captured lazily: normal passing runs
+skip events, while failing/replay/shrink runs recapture diagnostics. The
+explicit captured-trace benchmark shows the cost of recording every successful
+step; the compact trace path shows why `skip_success_events` is useful for long
+model runs where only failure/precondition/invariant evidence matters.
+Collection generation now reuses a per-check test context and value arena across
+passing generated tests. That moves collection allocation from per generated
+case to a small fixed cost per `check` run while preserving failure/replay
+diagnostics. Shrinking reuses a candidate runner context and can delete chunks
+from the choice stream, which helps remove irrelevant sequence choices while
+keeping the final replay stream to the choices actually consumed by the failing
+case.

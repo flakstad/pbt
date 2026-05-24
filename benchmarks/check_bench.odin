@@ -153,6 +153,18 @@ stateful_property :: proc(t: ^pbt.T) -> pbt.Result {
 	return pbt.run_commands(t, model, {min_len = 20, max_len = 20})
 }
 
+stateful_compact_trace_property :: proc(t: ^pbt.T) -> pbt.Result {
+	model := pbt.State_Model(State, Command, int) {
+		initial = stateful_initial,
+		command = stateful_command,
+		run = stateful_run,
+		next_state = stateful_next,
+		postcondition = stateful_postcondition,
+		command_name = stateful_command_name,
+	}
+	return pbt.run_commands(t, model, {min_len = 20, max_len = 20, skip_success_events = true})
+}
+
 measure_check :: proc(
 	label: string,
 	property: pbt.Property,
@@ -205,6 +217,44 @@ measure_check_units :: proc(
 	}
 
 	print_summary(label, units, unit_label, sample_count, summary)
+	return summary
+}
+
+measure_captured_cases :: proc(
+	label: string,
+	property: pbt.Property,
+	case_count: int,
+	sample_count: int,
+) -> Bench_Summary {
+	summary := Bench_Summary{}
+
+	for sample_index in 0 ..< sample_count {
+		counter := Counting_Allocator{backing = context.allocator}
+		old_allocator := context.allocator
+		context.allocator = counting_allocator(&counter)
+
+		start := time.tick_now()
+		checksum := 0
+		for case_index in 0 ..< case_count {
+			tc := pbt.run_case(property, u64(2_000 + sample_index * case_count + case_index), 20, nil, false, true, true)
+			checksum += len(tc.events) + len(tc.choices)
+			pbt.destroy_test_case(&tc)
+		}
+		duration := time.tick_diff(start, time.tick_now())
+
+		context.allocator = old_allocator
+
+		summarize_sample(&summary, Bench_Sample {
+			ns_total = time.duration_nanoseconds(duration),
+			alloc_calls = counter.alloc_calls,
+			resize_calls = counter.resize_calls,
+			free_calls = counter.free_calls,
+			bytes_requested = counter.bytes_requested,
+			checksum = checksum,
+		}, sample_index)
+	}
+
+	print_summary(label, case_count, "captured cases/sample", sample_count, summary)
 	return summary
 }
 
@@ -268,12 +318,16 @@ main :: proc() {
 	ints := measure_check("two integer draws", int_property, tests, samples, {no_shrink = true})
 	collections := measure_check("array and string draws", collection_property, tests, samples, {no_shrink = true})
 	stateful := measure_check("stateful 20-step model", stateful_property, tests / 10, samples, {no_shrink = true})
+	stateful_trace := measure_captured_cases("stateful 20-step captured trace", stateful_property, 10_000, samples)
+	stateful_compact_trace := measure_captured_cases("stateful 20-step compact trace", stateful_compact_trace_property, 10_000, samples)
 	failing := measure_check_units("failing property with shrink", failure_property, 100, 1, "checks/sample", samples)
 
 	ok := true
 	ok = check_limit(ints, tests, samples, {label = "two integer draws", max_best_ns = 250, max_avg_ns = 350}) && ok
 	ok = check_limit(collections, tests, samples, {label = "array and string draws", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
+	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
+	ok = check_limit(stateful_compact_trace, 10_000, samples, {label = "stateful 20-step compact trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(failing, 100, samples, {label = "failing property with shrink", max_best_ns = 250_000, max_avg_ns = 350_000}) && ok
 
 	if ok {
