@@ -121,6 +121,9 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	upper_hex := draw(t, non_empty_hex_string(4, true))
 	identifier := draw(t, identifier_ascii(1, 8))
 	path_segment := draw(t, path_segment_ascii(1, 8))
+	method := draw(t, http_method())
+	status_code := draw(t, http_status_code())
+	header_name := draw(t, http_header_name_ascii(1, 12))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
 	unique_values := draw(t, unique_array(int_range(0, 20), 0, 8))
@@ -158,6 +161,10 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		identifier_is_ascii(identifier) &&
 		len(path_segment) >= 1 && len(path_segment) <= 8 &&
 		path_segment_is_ascii(path_segment) &&
+		http_method_is_common(method) &&
+		status_code >= 100 && status_code <= 599 &&
+		len(header_name) >= 1 && len(header_name) <= 12 &&
+		http_header_name_is_ascii(header_name) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
 		len(table) <= 4 &&
@@ -246,6 +253,23 @@ path_segment_is_ascii :: proc(value: string) -> bool {
 			continue
 		}
 		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.') {
+			return false
+		}
+	}
+	return len(value) > 0
+}
+
+http_method_is_common :: proc(value: string) -> bool {
+	switch value {
+	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS":
+		return true
+	}
+	return false
+}
+
+http_header_name_is_ascii :: proc(value: string) -> bool {
+	for ch in value {
+		if !((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '!' || ch == '#' || ch == '$' || ch == '%' || ch == '&' || ch == '\'' || ch == '*' || ch == '+' || ch == '-' || ch == '.' || ch == '^' || ch == '_' || ch == '`' || ch == '|' || ch == '~') {
 			return false
 		}
 	}

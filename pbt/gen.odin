@@ -618,6 +618,101 @@ path_segment_ascii :: proc(min_len: int = 1, max_len: int = -1) -> Gen(Path_Segm
 	}
 }
 
+HTTP_Method_Input :: struct {}
+
+http_method :: proc() -> Gen(HTTP_Method_Input, string) {
+	return {
+		input = {},
+		produce = proc(t: ^T, _: HTTP_Method_Input) -> string {
+			switch choice(t, 7) {
+			case 0:
+				return "GET"
+			case 1:
+				return "POST"
+			case 2:
+				return "PUT"
+			case 3:
+				return "PATCH"
+			case 4:
+				return "DELETE"
+			case 5:
+				return "HEAD"
+			}
+			return "OPTIONS"
+		},
+	}
+}
+
+HTTP_Status_Code_Input :: struct {
+	min: int,
+	max: int,
+}
+
+http_status_code :: proc(min: int = 100, max: int = 599) -> Gen(HTTP_Status_Code_Input, int) {
+	return {
+		input = {min = min, max = max},
+		produce = proc(t: ^T, input: HTTP_Status_Code_Input) -> int {
+			min := input.min
+			max := input.max
+			if min < 100 {
+				min = 100
+			}
+			if max > 599 {
+				max = 599
+			}
+			if max <= min {
+				return min
+			}
+			return min + int(choice(t, u64(max - min + 1)))
+		},
+	}
+}
+
+HTTP_Header_Name_ASCII_Input :: struct {
+	min_len: int,
+	max_len: int,
+}
+
+http_header_name_ascii :: proc(min_len: int = 1, max_len: int = -1) -> Gen(HTTP_Header_Name_ASCII_Input, string) {
+	return {
+		input = {min_len = min_len, max_len = max_len},
+		produce = proc(t: ^T, input: HTTP_Header_Name_ASCII_Input) -> string {
+			min_len := input.min_len
+			if min_len < 1 {
+				min_len = 1
+			}
+			max_len := input.max_len
+			if max_len < min_len {
+				max_len = math.max(min_len, t.size)
+			}
+
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
+			length := min_len + int(choice(t, u64(max_len - min_len + 1)))
+			element_ends: []int
+			if t.capture_shrink_hints && length > min_len {
+				element_ends = make([]int, length + 1, t.value_allocator)
+				element_ends[0] = choice_cursor(t)
+			}
+			token_chars := "!#$%&'*+-.^_`|~0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+			values := make([]byte, length, t.value_allocator)
+			for i in 0 ..< length {
+				index := int(choice(t, u64(len(token_chars))))
+				values[i] = token_chars[index]
+				if len(element_ends) > 0 {
+					element_ends[i + 1] = choice_cursor(t)
+				}
+			}
+			if len(element_ends) > 0 {
+				record_collection_shrink_hints(t, start, min_len, length, element_ends)
+			}
+			return string(values)
+		},
+	}
+}
+
 record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
 	if length <= min_len {
 		return

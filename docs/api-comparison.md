@@ -28,6 +28,8 @@ The current core is in a reasonable place:
   and fixtures.
 - `path_segment_ascii` covers reusable path/key segments without choosing a
   filesystem or URL policy for the caller.
+- HTTP method, status-code, and header-name generators cover common adapter
+  inputs without requiring a full HTTP request model.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.
@@ -72,7 +74,7 @@ has the first useful version of this:
 test.check has a broad generator catalog: scalar types, collections, and
 combinators. `pbt` has a useful starter set. The remaining generator work is now
 mostly about richer built-in domain generators for structured protocol data
-rather than basic shape.
+beyond HTTP basics rather than basic shape.
 
 ### Shrinking
 
