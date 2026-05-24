@@ -87,9 +87,9 @@ notes, labels, messages, JSON, and compact text output, but still needs:
 
 The runner API is already useful for Gransk. `--json` and `--text` output modes
 are supported by the shared CLI helpers, discovery includes property metadata,
-and `--property` supports exact or unique substring matching. Still missing:
-
-- multiple property execution in one runner invocation
+`--property` supports exact or unique substring matching, and
+`check_properties_from_args` can execute every registered property in one
+invocation with aggregate suite JSON.
 
 ## Performance Notes
 

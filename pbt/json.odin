@@ -104,7 +104,104 @@ print_check_result :: proc(result: Check_Result, json: bool = true) {
 	}
 }
 
+check_suite_result_json :: proc(result: Check_Suite_Result) -> string {
+	builder: strings.Builder
+	strings.builder_init(&builder)
+
+	strings.write_string(&builder, "{")
+	json_field_string(&builder, "tool", "pbt", true)
+	json_field_int(&builder, "schema_version", 1, false)
+	json_field_string(&builder, "kind", "suite", false)
+	json_field_string(&builder, "status", status_string(result.status), false)
+	json_field_string(&builder, "code", result.code, false)
+	json_field_int(&builder, "properties", result.num_properties, false)
+	json_field_int(&builder, "passed", result.passed, false)
+	json_field_int(&builder, "failed", result.failed, false)
+	json_field_int(&builder, "errors", result.errors, false)
+	json_field_int(&builder, "checks", result.checks, false)
+	json_field_int(&builder, "discards", result.discards, false)
+	json_field_i64(&builder, "duration_ns", result.duration_ns, false)
+	json_field_string(&builder, "message", result.message, false)
+	failing := check_suite_first_non_pass(result)
+	json_field_string(&builder, "failing_property", failing.name, false)
+	json_field_string(&builder, "failing_code", failing.code, false)
+	json_field_string(&builder, "failing_message", failing.message, false)
+	json_field_u64(&builder, "replay_seed", failing.replay.seed, false)
+	failing_replay_choices := replay_choices_csv(failing.replay)
+	defer delete(failing_replay_choices)
+	json_field_string(&builder, "replay_choices", failing_replay_choices, false)
+	strings.write_string(&builder, ",\"results\":[")
+	for item, i in result.results {
+		if i > 0 {
+			strings.write_string(&builder, ",")
+		}
+		item_json := check_result_json(item)
+		strings.write_string(&builder, item_json)
+		delete(item_json)
+	}
+	strings.write_string(&builder, "]}")
+
+	return strings.to_string(builder)
+}
+
+check_suite_first_non_pass :: proc(result: Check_Suite_Result) -> Check_Result {
+	for item in result.results {
+		if item.status != .Pass {
+			return item
+		}
+	}
+	return {}
+}
+
+print_check_suite_result_json :: proc(result: Check_Suite_Result) {
+	json := check_suite_result_json(result)
+	defer delete(json)
+	fmt.println(json)
+}
+
+check_suite_result_text :: proc(result: Check_Suite_Result) -> string {
+	builder: strings.Builder
+	strings.builder_init(&builder)
+
+	strings.write_string(&builder, fmt.tprintf("suite: %s\n", status_string(result.status)))
+	if len(result.code) > 0 {
+		strings.write_string(&builder, fmt.tprintf("code: %s\n", result.code))
+	}
+	strings.write_string(&builder, fmt.tprintf("properties: %d, passed: %d, failed: %d, errors: %d, checks: %d, discards: %d, duration: %d ns\n", result.num_properties, result.passed, result.failed, result.errors, result.checks, result.discards, result.duration_ns))
+	if len(result.message) > 0 {
+		strings.write_string(&builder, fmt.tprintf("message: %s\n", result.message))
+	}
+	for item in result.results {
+		strings.write_string(&builder, "\n")
+		item_text := check_result_text(item)
+		strings.write_string(&builder, item_text)
+		delete(item_text)
+	}
+	return strings.to_string(builder)
+}
+
+print_check_suite_result_text :: proc(result: Check_Suite_Result) {
+	text := check_suite_result_text(result)
+	defer delete(text)
+	fmt.print(text)
+}
+
+print_check_suite_result :: proc(result: Check_Suite_Result, json: bool = true) {
+	if json {
+		print_check_suite_result_json(result)
+	} else {
+		print_check_suite_result_text(result)
+	}
+}
+
 check_result_exit_code :: proc(result: Check_Result) -> int {
+	if result.status == .Pass {
+		return 0
+	}
+	return 1
+}
+
+check_suite_result_exit_code :: proc(result: Check_Suite_Result) -> int {
 	if result.status == .Pass {
 		return 0
 	}
@@ -114,6 +211,11 @@ check_result_exit_code :: proc(result: Check_Result) -> int {
 exit_with_check_result :: proc(result: Check_Result) -> ! {
 	print_check_result_json(result)
 	os.exit(check_result_exit_code(result))
+}
+
+exit_with_check_suite_result :: proc(result: Check_Suite_Result) -> ! {
+	print_check_suite_result_json(result)
+	os.exit(check_suite_result_exit_code(result))
 }
 
 replay_choices_csv :: proc(replay: Replay) -> string {

@@ -16,6 +16,10 @@ fails_for_large_values :: proc(t: ^T) -> Result {
 	return assert(value < 50, "value should be below 50")
 }
 
+always_fails :: proc(t: ^T) -> Result {
+	return fail("always fails")
+}
+
 same_seed_generates_same_choices :: proc(t: ^T) -> Result {
 	a := draw(t, int_range(0, 1000))
 	b := draw(t, int_range(0, 1000))
@@ -618,6 +622,84 @@ test_check_property_from_args_rejects_ambiguous_substring :: proc(t: ^testing.T)
 }
 
 @(test)
+test_check_properties_from_args_runs_all_when_no_property_selected :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative},
+		{name = "collections", property = collections_are_generated_in_case_arena},
+	}
+	args := [?]string{"--num-tests", "5", "--seed", "88"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Pass)
+	testing.expect_value(t, result.code, "ok")
+	testing.expect_value(t, result.num_properties, 2)
+	testing.expect_value(t, result.passed, 2)
+	testing.expect_value(t, result.failed, 0)
+	testing.expect_value(t, result.errors, 0)
+	testing.expect_value(t, result.checks, 10)
+	testing.expect_value(t, len(result.results), 2)
+}
+
+@(test)
+test_check_properties_from_args_runs_selected_property_as_suite :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative},
+		{name = "collections", property = collections_are_generated_in_case_arena},
+	}
+	args := [?]string{"--property", "collections", "--num-tests", "5", "--seed", "88"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Pass)
+	testing.expect_value(t, result.num_properties, 1)
+	testing.expect_value(t, result.passed, 1)
+	testing.expect_value(t, result.checks, 5)
+	testing.expect_value(t, len(result.results), 1)
+	testing.expect_value(t, result.results[0].name, "collections")
+}
+
+@(test)
+test_check_properties_from_args_reports_suite_failure :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative},
+		{name = "always fails", property = always_fails},
+	}
+	args := [?]string{"--num-tests", "5", "--seed", "88", "--no-shrink"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Fail)
+	testing.expect_value(t, result.code, "suite_failed")
+	testing.expect_value(t, result.passed, 1)
+	testing.expect_value(t, result.failed, 1)
+	testing.expect_value(t, result.errors, 0)
+	testing.expect_value(t, result.checks, 6)
+	testing.expect_value(t, len(result.results), 2)
+	testing.expect_value(t, result.results[1].name, "always fails")
+	testing.expect_value(t, result.results[1].status, Status.Fail)
+}
+
+@(test)
+test_check_properties_from_args_requires_property_for_replay :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative},
+		{name = "always fails", property = always_fails},
+	}
+	args := [?]string{"--replay-seed", "1", "--replay-choices", "50"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Error)
+	testing.expect_value(t, result.code, "property_required_for_replay")
+	testing.expect_value(t, len(result.results), 0)
+}
+
+@(test)
 test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
 	core_tag := [?]string{"core"}
 	collection_tag := [?]string{"collection", "arena"}
@@ -636,4 +718,30 @@ test_properties_json_lists_registered_properties :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"tags\":[\"core\"]"))
 	testing.expect(t, strings.contains(json, "\"name\":\"collections\""))
 	testing.expect(t, strings.contains(json, "\"tags\":[\"collection\",\"arena\"]"))
+}
+
+@(test)
+test_check_suite_result_json_includes_summary_and_results :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "sum", property = sum_is_commutative},
+		{name = "always fails", property = always_fails},
+	}
+	args := [?]string{"--num-tests", "5", "--seed", "88", "--no-shrink"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+	json := check_suite_result_json(result)
+	defer delete(json)
+
+	testing.expect(t, strings.contains(json, "\"kind\":\"suite\""))
+	testing.expect(t, strings.contains(json, "\"status\":\"fail\""))
+	testing.expect(t, strings.contains(json, "\"code\":\"suite_failed\""))
+	testing.expect(t, strings.contains(json, "\"properties\":2"))
+	testing.expect(t, strings.contains(json, "\"passed\":1"))
+	testing.expect(t, strings.contains(json, "\"failed\":1"))
+	testing.expect(t, strings.contains(json, "\"failing_property\":\"always fails\""))
+	testing.expect(t, strings.contains(json, "\"failing_code\":\"property_failed\""))
+	testing.expect(t, strings.contains(json, "\"failing_message\":\"always fails\""))
+	testing.expect(t, strings.contains(json, "\"results\":["))
+	testing.expect(t, strings.contains(json, "\"name\":\"always fails\""))
 }

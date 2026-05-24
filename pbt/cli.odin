@@ -2,6 +2,7 @@ package pbt
 
 import "core:strconv"
 import "core:strings"
+import "core:time"
 
 Property_Case :: struct {
 	name:        string,
@@ -120,6 +121,80 @@ check_property_from_args :: proc(properties: []Property_Case, args: []string, de
 	}
 }
 
+check_properties_from_args :: proc(properties: []Property_Case, args: []string, defaults: Check_Options = {}) -> Check_Suite_Result {
+	start_time := time.tick_now()
+	result := Check_Suite_Result {
+		status = .Pass,
+		code = "ok",
+	}
+
+	if len(properties) == 0 {
+		result.status = .Error
+		result.code = "no_properties_registered"
+		result.message = "no properties registered"
+		result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+		return result
+	}
+
+	name := parse_property_name(args)
+	if name == "" && has_replay_args(args) && len(properties) > 1 {
+		result.status = .Error
+		result.code = "property_required_for_replay"
+		result.message = "replay requires --property when multiple properties are registered"
+		result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+		return result
+	}
+
+	result.results = make([dynamic]Check_Result)
+
+	if name != "" || len(properties) == 1 {
+		property_result := check_property_from_args(properties, args, defaults)
+		append(&result.results, property_result)
+		check_suite_add_result(&result, property_result)
+		check_suite_finalize(&result, start_time)
+		return result
+	}
+
+	for property in properties {
+		property_result := check_from_args(property.name, property.property, args, defaults)
+		append(&result.results, property_result)
+		check_suite_add_result(&result, property_result)
+	}
+	check_suite_finalize(&result, start_time)
+	return result
+}
+
+check_suite_add_result :: proc(suite: ^Check_Suite_Result, result: Check_Result) {
+	suite.num_properties += 1
+	suite.checks += check_result_effective_checks(result)
+	suite.discards += result.num_discards
+	switch result.status {
+	case .Pass:
+		suite.passed += 1
+	case .Fail:
+		suite.failed += 1
+	case .Discard, .Error:
+		suite.errors += 1
+	}
+}
+
+check_suite_finalize :: proc(suite: ^Check_Suite_Result, start_time: time.Tick) {
+	if suite.errors > 0 {
+		suite.status = .Error
+		suite.code = "suite_error"
+		suite.message = "one or more properties errored"
+	} else if suite.failed > 0 {
+		suite.status = .Fail
+		suite.code = "suite_failed"
+		suite.message = "one or more properties failed"
+	} else {
+		suite.status = .Pass
+		suite.code = "ok"
+		suite.message = ""
+	}
+	suite.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
+}
+
 parse_property_name :: proc(args: []string) -> string {
 	for i := 0; i < len(args); i += 1 {
 		switch args[i] {
@@ -137,6 +212,19 @@ parse_property_name :: proc(args: []string) -> string {
 has_list_properties_flag :: proc(args: []string) -> bool {
 	for arg in args {
 		if arg == "--list-properties" {
+			return true
+		}
+	}
+	return false
+}
+
+has_replay_args :: proc(args: []string) -> bool {
+	return has_arg(args, "--replay-seed") || has_arg(args, "--replay-choices")
+}
+
+has_arg :: proc(args: []string, name: string) -> bool {
+	for arg in args {
+		if arg == name {
 			return true
 		}
 	}

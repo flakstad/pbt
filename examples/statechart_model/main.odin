@@ -81,10 +81,10 @@ main :: proc() {
 		os.exit(0)
 	}
 
-	result := pbt.check_property_from_args(properties[:], args, {shrink = true})
-	pbt.print_check_result(result, pbt.use_json_output(args))
-	exit_code := pbt.check_result_exit_code(result)
-	pbt.destroy_check_result(&result)
+	result := pbt.check_properties_from_args(properties[:], args, {shrink = true})
+	pbt.print_check_suite_result(result, pbt.use_json_output(args))
+	exit_code := pbt.check_suite_result_exit_code(result)
+	pbt.destroy_check_suite_result(&result)
 	os.exit(exit_code)
 }
 

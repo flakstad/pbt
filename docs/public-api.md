@@ -293,6 +293,23 @@ result := pbt.check_property_from_args(properties[:], os.args[1:])
 pbt.exit_with_check_result(result)
 ```
 
+Runners that should execute every registered property by default can use the
+suite helper instead:
+
+```odin
+result := pbt.check_properties_from_args(properties[:], os.args[1:])
+pbt.print_check_suite_result(result, pbt.use_json_output(os.args[1:]))
+exit_code := pbt.check_suite_result_exit_code(result)
+pbt.destroy_check_suite_result(&result)
+os.exit(exit_code)
+```
+
+With no `--property`, this runs all registered properties and emits a suite
+JSON object containing `properties`, `passed`, `failed`, `errors`, `checks`,
+`discards`, `duration_ns`, and per-property `results`. With `--property`, it
+runs the exact or unique substring match and still emits the same suite shape.
+Replay flags require `--property` when more than one property is registered.
+
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.
 Discovery JSON includes property names, descriptions, and tags. `--property`

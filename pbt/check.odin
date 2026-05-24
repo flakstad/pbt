@@ -44,6 +44,20 @@ Check_Result :: struct {
 	message:      string,
 }
 
+Check_Suite_Result :: struct {
+	status:       Status,
+	code:         string,
+	num_properties: int,
+	passed:       int,
+	failed:       int,
+	errors:       int,
+	checks:       int,
+	discards:     int,
+	duration_ns:  i64,
+	message:      string,
+	results:      [dynamic]Check_Result,
+}
+
 default_options :: proc(options: Check_Options) -> Check_Options {
 	o := options
 	if o.num_tests <= 0 {
@@ -193,6 +207,23 @@ destroy_check_result :: proc(result: ^Check_Result) {
 	destroy_test_case(&result.failing_test)
 	destroy_test_case(&result.shrunk_test)
 	delete(result.replay.choices)
+}
+
+destroy_check_suite_result :: proc(result: ^Check_Suite_Result) {
+	for i := 0; i < len(result.results); i += 1 {
+		destroy_check_result(&result.results[i])
+	}
+	delete(result.results)
+}
+
+check_result_effective_checks :: proc(result: Check_Result) -> int {
+	if result.num_tests > 0 {
+		return result.num_tests
+	}
+	if result.status != .Pass {
+		return 1
+	}
+	return 0
 }
 
 require_pass :: proc(t: ^testing.T, result: Check_Result) {

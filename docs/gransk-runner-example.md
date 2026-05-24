@@ -21,6 +21,12 @@ Run one property:
 /tmp/pbt-gransk-runner --property "reverse twice" --num-tests 100 --seed 123
 ```
 
+Run all registered properties:
+
+```sh
+/tmp/pbt-gransk-runner --num-tests 100 --seed 123
+```
+
 Run the intentionally failing example:
 
 ```sh
@@ -37,6 +43,7 @@ from the JSON result:
   --replay-choices 50
 ```
 
-The runner prints one JSON result and exits with `0` on pass or `1` on
-fail/error. That gives Gransk a stable process boundary without requiring every
-property file to implement its own CLI.
+The runner prints suite JSON by default and exits with `0` on pass or `1` on
+fail/error. Suite JSON includes aggregate counts plus each property result. That
+gives Gransk a stable process boundary without requiring every property file to
+implement its own CLI.

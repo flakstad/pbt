@@ -38,11 +38,15 @@ The current implementation includes:
 - text result output for direct human runner use
 - runner helpers: `print_check_result_json`, `print_check_result_text`,
   `print_check_result`, `check_result_exit_code`, and `exit_with_check_result`
+- suite runner helpers: `check_properties_from_args`,
+  `print_check_suite_result`, `check_suite_result_exit_code`, and
+  `destroy_check_suite_result`
 - runner option parsing with `parse_check_options`
 - replay parsing with `parse_replay`
 - replay choice CSV formatting for CLI reruns
 - `check_from_args` for normal runs and replay runs from one CLI path
-- `Property_Case` and `check_property_from_args` for multi-property runners
+- `Property_Case`, `check_property_from_args`, and
+  `check_properties_from_args` for multi-property runners
 - `properties_json` and `--list-properties` detection for runner discovery
 - property descriptions/tags in discovery output
 - stable result codes for machine-readable Gransk handling
