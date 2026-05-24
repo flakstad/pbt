@@ -7,6 +7,11 @@ The statechart is the executable model. The target is a deliberately buggy door
 implementation. A generated event sequence drives both. After each event, the
 property compares the target's observed state with the model state.
 
+The example uses `pbt_statechart` helpers to generate triggers that are enabled
+from the current model state and to record statechart dispatch events in the PBT
+trace. The adapter package is separate from core `pbt` so projects can use the
+core library without depending on `statecharts`.
+
 Build it:
 
 ```sh

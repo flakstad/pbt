@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:os"
 import pbt "../../pbt"
+import pbt_statechart "../../pbt_statechart"
 import sc "../../../statecharts/statecharts"
 
 STATECHART_TAGS := [?]string{"stateful", "statechart"}
@@ -112,19 +113,14 @@ door_initial :: proc(t: ^pbt.T, target: rawptr) -> ^Door_Context {
 }
 
 door_command :: proc(t: ^pbt.T, state: ^Door_Context) -> Door_Event {
-	return Door_Event(pbt.draw(t, pbt.int_range(0, 3)))
+	return pbt_statechart.draw_enabled_trigger_or_discard(t, &state.model, Door_Event.Open)
 }
 
 door_run :: proc(t: ^pbt.T, target: rawptr, state: ^Door_Context, command: Door_Event) -> Door_Observation {
 	ctx := cast(^Door_Context)target
 
-	dispatch_result := sc.dispatch(&ctx.model, sc.Event(Door_Event){id = command})
+	dispatch_result := pbt_statechart.dispatch_record(t, &ctx.model, command, door_event_name)
 	defer sc.destroy_dispatch_result(&dispatch_result)
-	if dispatch_result.status == .Transitioned {
-		pbt.record_event(t, "statechart", door_event_name(command), "transitioned", fmt.tprintf("%v -> %v", dispatch_result.source, dispatch_result.target))
-	} else {
-		pbt.record_event(t, "statechart", door_event_name(command), "ignored", fmt.tprintf("%v", dispatch_result.status))
-	}
 
 	door_target_apply_buggy(&ctx.target, command)
 

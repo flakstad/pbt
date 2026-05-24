@@ -542,11 +542,18 @@ common mechanics, but the project-specific property still decides:
 - which observations are compared
 - which invariants must hold after each step
 
-The statechart library may need a few PBT-facing helpers over time:
+The first `pbt_statechart` adapter package provides:
 
-- enumerate or ask for currently enabled events
+- `enabled_triggers(instance, &out)` for active-state trigger enumeration
+- `draw_enabled_trigger_or_discard(t, instance, fallback)` for generated legal
+  event selection
+- `dispatch_record(t, instance, trigger, name_proc)` for dispatch plus compact
+  PBT trace events
+
+The statechart library may need a few more PBT-facing helpers over time:
+
 - dry-run or clone a model step without mutating the original instance
-- emit compact structured transition traces
+- emit richer structured transition traces
 - attach event metadata used by generators and adapters
 
 ## Gransk Integration

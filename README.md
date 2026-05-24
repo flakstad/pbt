@@ -26,6 +26,7 @@ The current implementation includes:
 - per-test arena allocation for generated values
 - `sample` for quick generator exploration
 - stateful model runner for command-sequence properties
+- statechart adapter helpers for enabled trigger generation and trace events
 - one-shot process adapter for CLI-style targets
 - request-file protocol adapter for wrapping non-Odin libraries in small target
   processes
