@@ -40,6 +40,8 @@ The current core is in a reasonable place:
   cover request-body construction without committing to a full JSON AST model.
 - `json_object_fields_ascii` covers schema-shaped JSON bodies where field names
   are fixed by the API and generated values provide the variation.
+- `json_object_field_subset_ascii` covers optional/missing-field API cases while
+  still keeping the generated body inside a known field set.
 - `enum_range` covers the common state-machine command enum case.
 - `sample` supports quick generator exploration outside a full property.
 - `counterexample` and value-printing `equal` give failures more useful context.

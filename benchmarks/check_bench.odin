@@ -100,7 +100,8 @@ protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
 	items := pbt.draw(t, pbt.json_array_ascii(0, 6, 16))
 	fields := [?]string{"sku", "quantity", "active"}
 	body := pbt.draw(t, pbt.json_object_fields_ascii(fields[:], 16))
-	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2 && len(body) >= 2)
+	partial_body := pbt.draw(t, pbt.json_object_field_subset_ascii(fields[:], 1, 2, 16))
+	return pbt.assert(len(request.method) > 0 && len(request.url) > 0 && len(items) >= 2 && len(body) >= 2 && len(partial_body) >= 2)
 }
 
 failure_property :: proc(t: ^pbt.T) -> pbt.Result {

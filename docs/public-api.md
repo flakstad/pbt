@@ -216,6 +216,7 @@ json_bool_literal :: proc() -> Gen(JSON_Bool_Literal_Input, string)
 json_int_literal :: proc(min := -1000, max := 1000) -> Gen(JSON_Int_Literal_Input, string)
 json_object_ascii :: proc(min_fields := 0, max_fields := -1, max_key_len := 12, max_string_len := 16) -> Gen(JSON_Object_ASCII_Input, string)
 json_object_fields_ascii :: proc(fields: []string, max_string_len := 16) -> Gen(JSON_Object_Fields_ASCII_Input, string)
+json_object_field_subset_ascii :: proc(fields: []string, min_fields := 0, max_fields := -1, max_string_len := 16) -> Gen(JSON_Object_Field_Subset_ASCII_Input, string)
 json_array_ascii :: proc(min_items := 0, max_items := -1, max_string_len := 16) -> Gen(JSON_Array_ASCII_Input, string)
 optional :: proc(elem: Gen($Input, $Value)) -> Gen(Optional_Input(Input, Value), Optional(Value))
 pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Second)) -> Gen(Pair_Input(First_Input, First, Second_Input, Second), Pair(First, Second))
@@ -546,6 +547,9 @@ fields := [?]string{"sku", "quantity", "active"}
 body := pbt.draw(t, pbt.json_object_fields_ascii(fields[:]))
 res := pbt.http_post_json(t, "http://127.0.0.1:8080/cart/items", body)
 ```
+
+Use `json_object_field_subset_ascii` when a property should explore missing or
+optional fields while staying within a known schema key set.
 
 `http_request` remains available for fully custom methods, headers, curl path,
 and body handling.

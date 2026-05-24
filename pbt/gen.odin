@@ -997,6 +997,76 @@ json_object_fields_ascii :: proc(fields: []string, max_string_len: int = 16) -> 
 	}
 }
 
+JSON_Object_Field_Subset_ASCII_Input :: struct {
+	fields:         []string,
+	min_fields:     int,
+	max_fields:     int,
+	max_string_len: int,
+}
+
+json_object_field_subset_ascii :: proc(fields: []string, min_fields: int = 0, max_fields: int = -1, max_string_len: int = 16) -> Gen(JSON_Object_Field_Subset_ASCII_Input, string) {
+	return {
+		input = {fields = fields, min_fields = min_fields, max_fields = max_fields, max_string_len = max_string_len},
+		produce = proc(t: ^T, input: JSON_Object_Field_Subset_ASCII_Input) -> string {
+			min_fields := input.min_fields
+			if min_fields < 0 {
+				min_fields = 0
+			}
+			if min_fields > len(input.fields) {
+				min_fields = len(input.fields)
+			}
+			max_fields := input.max_fields
+			if max_fields < min_fields || max_fields > len(input.fields) {
+				max_fields = len(input.fields)
+			}
+			max_string_len := input.max_string_len
+			if max_string_len < 0 {
+				max_string_len = 0
+			}
+
+			included := make([]bool, len(input.fields), t.value_allocator)
+			included_count := 0
+			for _, i in input.fields {
+				if included_count < max_fields && draw(t, boolean()) {
+					included[i] = true
+					included_count += 1
+				}
+			}
+			if included_count < min_fields {
+				for _, i in input.fields {
+					if !included[i] {
+						included[i] = true
+						included_count += 1
+						if included_count >= min_fields {
+							break
+						}
+					}
+				}
+			}
+
+			values := make([dynamic]byte, 0, 2 + included_count * (max_string_len + 12), t.value_allocator)
+			append(&values, '{')
+			string_gen := json_string_literal_ascii(0, max_string_len)
+			int_gen := json_int_literal()
+			written := 0
+			for field, i in input.fields {
+				if !included[i] {
+					continue
+				}
+				if written > 0 {
+					append(&values, ',')
+				}
+				append_json_quoted_ascii_content(&values, field)
+				append(&values, ':')
+				append_json_simple_value(t, &values, string_gen, int_gen)
+				written += 1
+			}
+			append(&values, '}')
+			return string(values[:])
+		},
+	}
+}
+
 JSON_Array_ASCII_Input :: struct {
 	min_items:      int,
 	max_items:      int,

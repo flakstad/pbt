@@ -137,6 +137,7 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	json_body := draw(t, json_object_ascii(0, 3, 8, 8))
 	json_fields := [?]string{"sku", "quantity", "active"}
 	json_schema_body := draw(t, json_object_fields_ascii(json_fields[:], 8))
+	json_subset_body := draw(t, json_object_field_subset_ascii(json_fields[:], 1, 2, 8))
 	json_items := draw(t, json_array_ascii(0, 4, 8))
 	int_pair := draw(t, pair(int_range(1, 3), string_alphabet("q", 1, 3)))
 	table := draw(t, dict(string_alphabet("ab", 1, 2), int_range(0, 10), 0, 4))
@@ -192,6 +193,8 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		json_int_literal_is_decimal(json_count) &&
 		json_object_is_simple_ascii(json_body) &&
 		json_object_has_fields(json_schema_body, json_fields[:]) &&
+		json_object_field_count(json_subset_body) >= 1 &&
+		json_object_field_count(json_subset_body) <= 2 &&
 		json_array_is_simple_ascii(json_items) &&
 		int_pair.first >= 1 && int_pair.first <= 3 &&
 		len(int_pair.second) >= 1 && len(int_pair.second) <= 3 &&
@@ -431,6 +434,20 @@ json_object_has_fields :: proc(value: string, fields: []string) -> bool {
 		}
 	}
 	return true
+}
+
+json_object_field_count :: proc(value: string) -> int {
+	if !json_object_is_simple_ascii(value) || value == "{}" {
+		return 0
+	}
+
+	count := 1
+	for ch in value {
+		if ch == ',' {
+			count += 1
+		}
+	}
+	return count
 }
 
 json_array_is_simple_ascii :: proc(value: string) -> bool {
