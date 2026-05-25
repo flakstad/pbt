@@ -199,6 +199,9 @@ string_alphabet :: proc(alphabet: string, min_len := 0, max_len := -1) -> Gen(St
 non_empty_string_alphabet :: proc(alphabet: string, max_len := -1) -> Gen(String_Alphabet_Input, string)
 hex_string :: proc(min_bytes := 0, max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
 non_empty_hex_string :: proc(max_bytes := -1, uppercase := false) -> Gen(Hex_String_Input, string)
+uuid_v4_ascii :: proc(uppercase := false) -> Gen(UUID_V4_ASCII_Input, string)
+email_ascii :: proc(min_local_len := 1, max_local_len := -1, min_domain_label_len := 1, max_domain_label_len := -1) -> Gen(Email_ASCII_Input, string)
+date_ymd_ascii :: proc(min_year := 1970, max_year := 2100) -> Gen(Date_YMD_ASCII_Input, string)
 identifier_ascii :: proc(min_len := 1, max_len := -1) -> Gen(Identifier_ASCII_Input, string)
 path_segment_ascii :: proc(min_len := 1, max_len := -1) -> Gen(Path_Segment_ASCII_Input, string)
 cli_arg_ascii :: proc(min_len := 1, max_len := -1) -> Gen(CLI_Arg_ASCII_Input, string)
@@ -223,6 +226,9 @@ json_string_enum_field_ascii :: proc(name: string, values: []string) -> JSON_Fie
 json_int_field_ascii :: proc(name: string, min := -1000, max := 1000) -> JSON_Field_ASCII
 json_bool_field_ascii :: proc(name: string) -> JSON_Field_ASCII
 json_null_field_ascii :: proc(name: string) -> JSON_Field_ASCII
+json_uuid_v4_field_ascii :: proc(name: string) -> JSON_Field_ASCII
+json_email_field_ascii :: proc(name: string, min_local_len := 1, max_local_len := 16, min_domain_label_len := 1, max_domain_label_len := 12) -> JSON_Field_ASCII
+json_date_ymd_field_ascii :: proc(name: string, min_year := 1970, max_year := 2100) -> JSON_Field_ASCII
 json_object_schema_ascii :: proc(fields: []JSON_Field_ASCII) -> Gen(JSON_Object_Schema_ASCII_Input, string)
 json_object_schema_subset_ascii :: proc(fields: []JSON_Field_ASCII, min_fields := 0, max_fields := -1) -> Gen(JSON_Object_Schema_Subset_ASCII_Input, string)
 json_array_ascii :: proc(min_items := 0, max_items := -1, max_string_len := 16) -> Gen(JSON_Array_ASCII_Input, string)
@@ -570,10 +576,13 @@ per-field JSON kinds:
 ```odin
 statuses := [?]string{"draft", "active"}
 schema := [?]pbt.JSON_Field_ASCII {
+    pbt.json_uuid_v4_field_ascii("id"),
     pbt.json_string_field_ascii("sku", 16),
+    pbt.json_email_field_ascii("owner"),
     pbt.json_string_enum_field_ascii("status", statuses[:]),
     pbt.json_int_field_ascii("quantity", 1, 100),
     pbt.json_bool_field_ascii("active"),
+    pbt.json_date_ymd_field_ascii("created_on", 2020, 2030),
 }
 body := pbt.draw(t, pbt.json_object_schema_ascii(schema[:]))
 ```

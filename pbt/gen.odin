@@ -541,6 +541,128 @@ non_empty_hex_string :: proc(max_bytes: int = -1, uppercase: bool = false) -> Ge
 	return hex_string(1, max_bytes, uppercase)
 }
 
+UUID_V4_ASCII_Input :: struct {
+	uppercase: bool,
+}
+
+uuid_v4_ascii :: proc(uppercase: bool = false) -> Gen(UUID_V4_ASCII_Input, string) {
+	return {
+		input = {uppercase = uppercase},
+		produce = proc(t: ^T, input: UUID_V4_ASCII_Input) -> string {
+			table := "0123456789abcdef"
+			if input.uppercase {
+				table = "0123456789ABCDEF"
+			}
+			values := make([]byte, 36, t.value_allocator)
+			for i in 0 ..< len(values) {
+				switch i {
+				case 8, 13, 18, 23:
+					values[i] = '-'
+				case 14:
+					values[i] = '4'
+				case 19:
+					values[i] = table[8 + int(choice(t, 4))]
+				case:
+					values[i] = table[int(choice(t, 16))]
+				}
+			}
+			return string(values)
+		},
+	}
+}
+
+Email_ASCII_Input :: struct {
+	min_local_len:        int,
+	max_local_len:        int,
+	min_domain_label_len: int,
+	max_domain_label_len: int,
+}
+
+email_ascii :: proc(min_local_len: int = 1, max_local_len: int = -1, min_domain_label_len: int = 1, max_domain_label_len: int = -1) -> Gen(Email_ASCII_Input, string) {
+	return {
+		input = {
+			min_local_len = min_local_len,
+			max_local_len = max_local_len,
+			min_domain_label_len = min_domain_label_len,
+			max_domain_label_len = max_domain_label_len,
+		},
+		produce = proc(t: ^T, input: Email_ASCII_Input) -> string {
+			min_local_len := input.min_local_len
+			if min_local_len < 1 {
+				min_local_len = 1
+			}
+			max_local_len := input.max_local_len
+			if max_local_len < min_local_len {
+				max_local_len = math.max(min_local_len, t.size)
+			}
+			min_domain_label_len := input.min_domain_label_len
+			if min_domain_label_len < 1 {
+				min_domain_label_len = 1
+			}
+			max_domain_label_len := input.max_domain_label_len
+			if max_domain_label_len < min_domain_label_len {
+				max_domain_label_len = math.max(min_domain_label_len, t.size)
+			}
+
+			local_len := min_local_len + int(choice(t, u64(max_local_len - min_local_len + 1)))
+			domain_len := min_domain_label_len + int(choice(t, u64(max_domain_label_len - min_domain_label_len + 1)))
+			values := make([dynamic]byte, 0, local_len + domain_len + 6, t.value_allocator)
+			alpha := "abcdefghijklmnopqrstuvwxyz"
+			local_rest := "abcdefghijklmnopqrstuvwxyz0123456789._-"
+			domain_rest := "abcdefghijklmnopqrstuvwxyz0123456789-"
+			append(&values, alpha[int(choice(t, u64(len(alpha))))])
+			for _ in 1 ..< local_len {
+				append(&values, local_rest[int(choice(t, u64(len(local_rest))))])
+			}
+			append(&values, '@')
+			append(&values, alpha[int(choice(t, u64(len(alpha))))])
+			for _ in 1 ..< domain_len {
+				append(&values, domain_rest[int(choice(t, u64(len(domain_rest))))])
+			}
+			append_string_bytes(&values, ".test")
+			return string(values[:])
+		},
+	}
+}
+
+Date_YMD_ASCII_Input :: struct {
+	min_year: int,
+	max_year: int,
+}
+
+date_ymd_ascii :: proc(min_year: int = 1970, max_year: int = 2100) -> Gen(Date_YMD_ASCII_Input, string) {
+	return {
+		input = {min_year = min_year, max_year = max_year},
+		produce = proc(t: ^T, input: Date_YMD_ASCII_Input) -> string {
+			min_year := input.min_year
+			if min_year < 0 {
+				min_year = 0
+			}
+			if min_year > 9999 {
+				min_year = 9999
+			}
+			max_year := input.max_year
+			if max_year > 9999 {
+				max_year = 9999
+			}
+			if max_year < min_year {
+				max_year = min_year
+			}
+			year := min_year + int(choice(t, u64(max_year - min_year + 1)))
+			month := 1 + int(choice(t, 12))
+			day := 1 + int(choice(t, u64(days_in_month(year, month))))
+
+			values := make([dynamic]byte, 0, 10, t.value_allocator)
+			append_fixed_digits(&values, year, 4)
+			append(&values, '-')
+			append_fixed_digits(&values, month, 2)
+			append(&values, '-')
+			append_fixed_digits(&values, day, 2)
+			return string(values[:])
+		},
+	}
+}
+
 Identifier_ASCII_Input :: struct {
 	min_len: int,
 	max_len: int,
@@ -1117,6 +1239,9 @@ JSON_Value_Kind :: enum {
 	Int,
 	Bool,
 	Null,
+	UUID_V4,
+	Email,
+	Date_YMD,
 }
 
 JSON_Field_ASCII :: struct {
@@ -1126,6 +1251,12 @@ JSON_Field_ASCII :: struct {
 	min_int:        int,
 	max_int:        int,
 	max_string_len: int,
+	min_year:       int,
+	max_year:       int,
+	min_local_len:  int,
+	max_local_len:  int,
+	min_domain_label_len: int,
+	max_domain_label_len: int,
 }
 
 json_string_field_ascii :: proc(name: string, max_string_len: int = 16) -> JSON_Field_ASCII {
@@ -1146,6 +1277,25 @@ json_bool_field_ascii :: proc(name: string) -> JSON_Field_ASCII {
 
 json_null_field_ascii :: proc(name: string) -> JSON_Field_ASCII {
 	return {name = name, kind = .Null}
+}
+
+json_uuid_v4_field_ascii :: proc(name: string) -> JSON_Field_ASCII {
+	return {name = name, kind = .UUID_V4}
+}
+
+json_email_field_ascii :: proc(name: string, min_local_len: int = 1, max_local_len: int = 16, min_domain_label_len: int = 1, max_domain_label_len: int = 12) -> JSON_Field_ASCII {
+	return {
+		name = name,
+		kind = .Email,
+		min_local_len = min_local_len,
+		max_local_len = max_local_len,
+		min_domain_label_len = min_domain_label_len,
+		max_domain_label_len = max_domain_label_len,
+	}
+}
+
+json_date_ymd_field_ascii :: proc(name: string, min_year: int = 1970, max_year: int = 2100) -> JSON_Field_ASCII {
+	return {name = name, kind = .Date_YMD, min_year = min_year, max_year = max_year}
 }
 
 JSON_Object_Schema_ASCII_Input :: struct {
@@ -1278,6 +1428,15 @@ append_json_schema_value :: proc(t: ^T, dst: ^[dynamic]byte, field: JSON_Field_A
 		append_string_bytes(dst, value)
 	case .Null:
 		append_string_bytes(dst, "null")
+	case .UUID_V4:
+		value := draw(t, uuid_v4_ascii())
+		append_json_quoted_ascii_content(dst, value)
+	case .Email:
+		value := draw(t, email_ascii(field.min_local_len, field.max_local_len, field.min_domain_label_len, field.max_domain_label_len))
+		append_json_quoted_ascii_content(dst, value)
+	case .Date_YMD:
+		value := draw(t, date_ymd_ascii(field.min_year, field.max_year))
+		append_json_quoted_ascii_content(dst, value)
 	}
 }
 
@@ -1426,6 +1585,45 @@ append_int_decimal :: proc(dst: ^[dynamic]byte, value: int) {
 	for i := count; i > 0; i -= 1 {
 		append(dst, digits[i - 1])
 	}
+}
+
+append_fixed_digits :: proc(dst: ^[dynamic]byte, value, width: int) {
+	if width <= 0 {
+		return
+	}
+	n := value
+	if n < 0 {
+		n = 0
+	}
+	divisor := 1
+	for _ in 1 ..< width {
+		divisor *= 10
+	}
+	remaining := n
+	for divisor > 0 {
+		digit := (remaining / divisor) % 10
+		append(dst, byte('0' + digit))
+		divisor /= 10
+	}
+}
+
+days_in_month :: proc(year, month: int) -> int {
+	switch month {
+	case 1, 3, 5, 7, 8, 10, 12:
+		return 31
+	case 4, 6, 9, 11:
+		return 30
+	case 2:
+		if is_leap_year(year) {
+			return 29
+		}
+		return 28
+	}
+	return 31
+}
+
+is_leap_year :: proc(year: int) -> bool {
+	return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 append_json_quoted_content :: proc(dst: ^[dynamic]byte, value: string) {

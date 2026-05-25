@@ -45,7 +45,7 @@ The current core is in a reasonable place:
 - `json_object_field_subset_ascii` covers optional/missing-field API cases while
   still keeping the generated body inside a known field set.
 - `json_object_schema_ascii` covers simple typed API bodies with per-field
-  string, string-enum, integer, boolean, or null values.
+  string, string-enum, integer, boolean, null, UUID, email, or date values.
 - `json_object_schema_subset_ascii` combines missing-field coverage with typed
   schema-shaped JSON values.
 - `json_array_of_ascii` composes any JSON body generator into bounded JSON

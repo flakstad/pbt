@@ -20,8 +20,8 @@ The current implementation includes:
 - `Result` values with pass/fail/discard/error
 - integer, unsigned integer, boolean, array, optional, ASCII string, and fixed
   alphabet string generators
-- byte, hex, identifier, CLI, URL, HTTP, and composable JSON generators for
-  protocol inputs
+- byte, hex, UUID, email, date, identifier, CLI, URL, HTTP, and composable JSON
+  generators for protocol inputs
 - fixed value, element, enum range, float range, size-aware, resized, scaled,
   and filtered generators
 - pair, triple, dictionary, non-empty collection/string, and unique array

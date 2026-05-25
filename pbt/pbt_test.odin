@@ -124,6 +124,10 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	non_empty_payload := draw(t, non_empty_byte_array(6, 1, 3))
 	token_hex := draw(t, hex_string(1, 4))
 	upper_hex := draw(t, non_empty_hex_string(4, true))
+	uuid := draw(t, uuid_v4_ascii())
+	upper_uuid := draw(t, uuid_v4_ascii(true))
+	email := draw(t, email_ascii(1, 12, 1, 8))
+	birth_date := draw(t, date_ymd_ascii(1990, 2020))
 	identifier := draw(t, identifier_ascii(1, 8))
 	path_segment := draw(t, path_segment_ascii(1, 8))
 	cli_arg := draw(t, cli_arg_ascii(1, 8))
@@ -150,10 +154,13 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 	json_subset_body := draw(t, json_object_field_subset_ascii(json_fields[:], 1, 2, 8))
 	status_values := [?]string{"draft", "active", "archived"}
 	json_typed_fields := [?]JSON_Field_ASCII {
+		json_uuid_v4_field_ascii("id"),
 		json_string_field_ascii("sku", 8),
+		json_email_field_ascii("owner", 1, 12, 1, 8),
 		json_string_enum_field_ascii("status", status_values[:]),
 		json_int_field_ascii("quantity", 1, 99),
 		json_bool_field_ascii("active"),
+		json_date_ymd_field_ascii("born_on", 1990, 2020),
 		json_null_field_ascii("deleted_at"),
 	}
 	json_typed_body := draw(t, json_object_schema_ascii(json_typed_fields[:]))
@@ -193,6 +200,10 @@ generator_catalog_values :: proc(t: ^T) -> Result {
 		hex_is_lower(token_hex) &&
 		len(upper_hex) >= 2 && len(upper_hex) <= 8 && len(upper_hex) % 2 == 0 &&
 		hex_is_upper(upper_hex) &&
+		uuid_v4_is_ascii(uuid, false) &&
+		uuid_v4_is_ascii(upper_uuid, true) &&
+		email_is_ascii(email) &&
+		date_ymd_is_valid(birth_date, 1990, 2020) &&
 		len(identifier) >= 1 && len(identifier) <= 8 &&
 		identifier_is_ascii(identifier) &&
 		len(path_segment) >= 1 && len(path_segment) <= 8 &&
@@ -502,11 +513,14 @@ json_object_schema_is_typed :: proc(value: string) -> bool {
 	if !json_object_is_simple_ascii(value) {
 		return false
 	}
-	return strings.contains(value, "\"sku\":\"") &&
+	return strings.contains(value, "\"id\":\"") &&
+		strings.contains(value, "\"sku\":\"") &&
+		strings.contains(value, "\"owner\":\"") &&
 		(strings.contains(value, "\"status\":\"draft\"") || strings.contains(value, "\"status\":\"active\"") || strings.contains(value, "\"status\":\"archived\"")) &&
 		strings.contains(value, "\"quantity\":") &&
 		!strings.contains(value, "\"quantity\":\"") &&
 		(strings.contains(value, "\"active\":true") || strings.contains(value, "\"active\":false")) &&
+		strings.contains(value, "\"born_on\":\"") &&
 		strings.contains(value, "\"deleted_at\":null")
 }
 
@@ -532,10 +546,13 @@ json_array_of_schema_is_typed :: proc(value: string) -> bool {
 			return false
 		}
 	}
-	return strings.contains(value, "{\"sku\":\"") &&
+	return strings.contains(value, "\"sku\":\"") &&
+		strings.contains(value, "\"id\":\"") &&
+		strings.contains(value, "\"owner\":\"") &&
 		(strings.contains(value, "\"status\":\"draft\"") || strings.contains(value, "\"status\":\"active\"") || strings.contains(value, "\"status\":\"archived\"")) &&
 		strings.contains(value, "\"quantity\":") &&
 		!strings.contains(value, "\"quantity\":\"") &&
+		strings.contains(value, "\"born_on\":\"") &&
 		strings.contains(value, "\"deleted_at\":null")
 }
 
@@ -547,7 +564,96 @@ json_simple_ascii_char_is_allowed :: proc(ch: rune) -> bool {
 		(ch >= 'a' && ch <= 'z') ||
 		(ch >= '0' && ch <= '9') ||
 		ch == '_' || ch == '-' || ch == '.' || ch == ' ' ||
-		ch == '"' || ch == ','
+		ch == '"' || ch == ',' || ch == '@'
+}
+
+uuid_v4_is_ascii :: proc(value: string, uppercase: bool) -> bool {
+	if len(value) != 36 {
+		return false
+	}
+	for ch, i in value {
+		switch i {
+		case 8, 13, 18, 23:
+			if ch != '-' {
+				return false
+			}
+		case 14:
+			if ch != '4' {
+				return false
+			}
+		case 19:
+			if uppercase {
+				if !(ch >= '8' && ch <= '9' || ch >= 'A' && ch <= 'B') {
+					return false
+				}
+			} else if !(ch >= '8' && ch <= '9' || ch >= 'a' && ch <= 'b') {
+				return false
+			}
+		case:
+			if uppercase {
+				if !((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F')) {
+					return false
+				}
+			} else if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+email_is_ascii :: proc(value: string) -> bool {
+	at := strings.index(value, "@")
+	if at <= 0 || !strings.has_suffix(value, ".test") {
+		return false
+	}
+	domain_len := len(value) - at - len("@.test")
+	if domain_len <= 0 {
+		return false
+	}
+	for ch, i in value {
+		if i < at {
+			if !((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '.' || ch == '_' || ch == '-') {
+				return false
+			}
+		} else if i == at {
+			if ch != '@' {
+				return false
+			}
+		} else if i < len(value) - len(".test") {
+			if !((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+date_ymd_is_valid :: proc(value: string, min_year, max_year: int) -> bool {
+	if len(value) != 10 || value[4] != '-' || value[7] != '-' {
+		return false
+	}
+	year, ok_year := parse_fixed_digits(value[0:4])
+	month, ok_month := parse_fixed_digits(value[5:7])
+	day, ok_day := parse_fixed_digits(value[8:10])
+	if !ok_year || !ok_month || !ok_day {
+		return false
+	}
+	if year < min_year || year > max_year || month < 1 || month > 12 {
+		return false
+	}
+	return day >= 1 && day <= days_in_month(year, month)
+}
+
+parse_fixed_digits :: proc(value: string) -> (int, bool) {
+	result := 0
+	for ch in value {
+		if ch < '0' || ch > '9' {
+			return 0, false
+		}
+		result = result * 10 + int(ch - '0')
+	}
+	return result, true
 }
 
 values_are_unique :: proc(values: []int) -> bool {
