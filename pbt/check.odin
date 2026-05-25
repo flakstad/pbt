@@ -138,6 +138,9 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 				result.shrunk_test = shrink_result.test
 				result.shrink_attempts = shrink_result.attempts
 				result.shrink_duration_ns = time.duration_nanoseconds(time.tick_diff(shrink_start, time.tick_now()))
+				result.status = result.shrunk_test.result.status
+				result.code = result_code_for_status(result.shrunk_test.result.status)
+				result.message = result.shrunk_test.result.message
 			} else {
 				result.shrunk_test = Test_Case {
 					choices = copy_choices(tc.choices[:]),

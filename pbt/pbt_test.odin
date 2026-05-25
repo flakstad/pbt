@@ -16,6 +16,11 @@ fails_for_large_values :: proc(t: ^T) -> Result {
 	return assert(value < 50, "value should be below 50")
 }
 
+fails_with_value_message :: proc(t: ^T) -> Result {
+	value := draw(t, int_range(0, 100))
+	return assert(value < 50, fmt.tprintf("value should be below 50: %d", value))
+}
+
 always_fails :: proc(t: ^T) -> Result {
 	return fail("always fails")
 }
@@ -926,6 +931,17 @@ test_check_finds_and_shrinks_failure :: proc(t: ^testing.T) {
 	defer destroy_check_result(&replayed)
 
 	testing.expect_value(t, replayed.status, Status.Fail)
+}
+
+@(test)
+test_check_failure_message_uses_shrunk_case :: proc(t: ^testing.T) {
+	result := check("large values fail", fails_with_value_message, {num_tests = 100, seed = 123, shrink = true})
+	defer destroy_check_result(&result)
+
+	testing.expect_value(t, result.status, Status.Fail)
+	testing.expect_value(t, result.replay.choices[0], u64(50))
+	testing.expect_value(t, result.message, "value should be below 50: 50")
+	testing.expect_value(t, result.shrunk_test.result.message, result.message)
 }
 
 @(test)
