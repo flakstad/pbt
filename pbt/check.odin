@@ -272,10 +272,10 @@ run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64
 	t.capture_choice_marks = capture_choice_marks
 	defer test_destroy(&t)
 
-	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, capture_pass, capture_events, coverage, capture_choice_marks)
+	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, capture_pass, capture_events, coverage, capture_choice_marks, true)
 }
 
-run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false) -> Test_Case {
+run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false, move_events: bool = false) -> Test_Case {
 	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
 	t.capture_choice_marks = capture_choice_marks
 	t.capture_shrink_hints = capture_choice_marks
@@ -299,7 +299,11 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 			tc.choice_shrink_candidates = copy_current_choice_shrink_candidates(t)
 			tc.choice_shrink_values = copy_current_choice_shrink_values(t)
 		}
-		copy_events_to_test_case(&tc, t.events[:])
+		if move_events {
+			move_events_to_test_case(&tc, &t.events)
+		} else {
+			copy_events_to_test_case(&tc, t.events[:])
+		}
 		tc.notes = copy_strings(t.notes[:])
 		tc.labels = copy_strings(t.labels[:])
 		tc.shrink_labels = copy_strings(t.shrink_labels[:])

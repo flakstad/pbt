@@ -699,6 +699,11 @@ counterexample_property :: proc(t: ^T) -> Result {
 	return counterexample("while checking invoice total", equal(value, 13))
 }
 
+transient_event_property :: proc(t: ^T) -> Result {
+	record_event_transient_static_kind_status(t, "stateful", fmt.tprintf("step %d inc", 0), "ok", fmt.tprintf("state=%d value=%d next=%d", 0, 1, 1))
+	return pass()
+}
+
 sequence_failure_property :: proc(t: ^T) -> Result {
 	length := draw(t, int_range(0, 3))
 	for i in 0 ..< length {
@@ -1882,6 +1887,20 @@ test_transient_event_fields_are_copied_to_test_case :: proc(t: ^testing.T) {
 
 	tc: Test_Case
 	copy_events_to_test_case(&tc, ctx.events[:])
+	defer destroy_test_case(&tc)
+
+	testing.expect_value(t, len(tc.events), 1)
+	testing.expect_value(t, tc.events[0].kind, "stateful")
+	testing.expect_value(t, tc.events[0].name, "step 0 inc")
+	testing.expect_value(t, tc.events[0].status, "ok")
+	testing.expect_value(t, tc.events[0].detail, "state=0 value=1 next=1")
+	testing.expect(t, tc.events[0].name_copy)
+	testing.expect(t, tc.events[0].detail_copy)
+}
+
+@(test)
+test_run_case_moves_events_with_copied_transient_fields :: proc(t: ^testing.T) {
+	tc := run_case(transient_event_property, 1, 1, nil, false, true, true)
 	defer destroy_test_case(&tc)
 
 	testing.expect_value(t, len(tc.events), 1)

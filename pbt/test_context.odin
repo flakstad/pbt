@@ -456,6 +456,33 @@ copy_events_to_test_case :: proc(tc: ^Test_Case, src: []Event, allocator := cont
 	}
 }
 
+move_events_to_test_case :: proc(tc: ^Test_Case, events: ^[dynamic]Event, allocator := context.allocator) {
+	storage_size := event_storage_size(events^[:])
+	if storage_size > 0 {
+		tc.event_string_storage = make([dynamic]byte, 0, storage_size, allocator)
+	}
+	for i := 0; i < len(events^); i += 1 {
+		kind_copy := events^[i].kind_owned || events^[i].kind_copy
+		name_copy := events^[i].name_owned || events^[i].name_copy
+		status_copy := events^[i].status_owned || events^[i].status_copy
+		detail_copy := events^[i].detail_owned || events^[i].detail_copy
+		events^[i].kind = copy_event_string_to_test_case(tc, events^[i].kind, kind_copy)
+		events^[i].name = copy_event_string_to_test_case(tc, events^[i].name, name_copy)
+		events^[i].status = copy_event_string_to_test_case(tc, events^[i].status, status_copy)
+		events^[i].detail = copy_event_string_to_test_case(tc, events^[i].detail, detail_copy)
+		events^[i].kind_owned = false
+		events^[i].name_owned = false
+		events^[i].status_owned = false
+		events^[i].detail_owned = false
+		events^[i].kind_copy = kind_copy
+		events^[i].name_copy = name_copy
+		events^[i].status_copy = status_copy
+		events^[i].detail_copy = detail_copy
+	}
+	tc.events = events^
+	events^ = nil
+}
+
 event_storage_size :: proc(src: []Event) -> int {
 	total := 0
 	for event in src {

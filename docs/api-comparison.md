@@ -168,8 +168,9 @@ Known performance work:
 - copied rich stateful traces still move substantial human-readable detail, but
   dynamic event strings are pooled per captured `Test_Case`, and stateful trace
   formatting avoids an intermediate arena copy before that final evidence copy;
-  command-only success traces remain much cheaper when stable command names are
-  enough
+  one-shot captured runs also move the event array into the returned
+  `Test_Case` instead of allocating a second event array. Command-only success
+  traces remain much cheaper when stable command names are enough
 - one-shot process adapters are orders of magnitude slower than the persistent
   line protocol path and should be reserved for simple targets
 - guarded process execution adds some overhead versus bare `os.process_exec`,

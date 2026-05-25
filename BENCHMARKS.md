@@ -181,22 +181,22 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3647.28
-  avg ns/unit:            3694.34
-  alloc calls max:        40000
+  best ns/unit:           3633.40
+  avg ns/unit:            3670.95
+  alloc calls max:        30000
   resize calls max:       0
-  free calls max:         40000
-  bytes req max:          32500000
+  free calls max:         30000
+  bytes req max:          18100000
 
 stateful 20-step command trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           768.38
-  avg ns/unit:            776.65
-  alloc calls max:        30000
+  best ns/unit:           725.69
+  avg ns/unit:            726.04
+  alloc calls max:        20000
   resize calls max:       0
-  free calls max:         30000
-  bytes req max:          30400000
+  free calls max:         20000
+  bytes req max:          16000000
 
 stateful 20-step compact trace
   captured cases/sample:  10000
