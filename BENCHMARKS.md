@@ -43,6 +43,9 @@ The benchmark includes these modes:
   sequence
 - `stateful 20-step captured trace`: the same model run with explicit event
   capture, measuring rich successful-step trace cost
+- `stateful 20-step command trace`: the same captured run with
+  `compact_success_events`, recording stable command names without rich
+  per-step detail
 - `stateful 20-step compact trace`: the same captured run with
   `skip_success_events`, measuring the compact trace path
 - `failing property with shrink`: a failing property that shrinks an integer
@@ -114,7 +117,7 @@ Likely optimization areas:
 
 ## Current Measurement
 
-Measured on May 24, 2026 with:
+Measured on May 25, 2026 with:
 
 ```sh
 odin run benchmarks/check_bench.odin -file -o:speed
@@ -124,8 +127,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           34.53
-  avg ns/unit:            34.83
+  best ns/unit:           33.26
+  avg ns/unit:            33.45
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -134,8 +137,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           143.15
-  avg ns/unit:            145.44
+  best ns/unit:           144.38
+  avg ns/unit:            147.18
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -144,8 +147,8 @@ array and string draws
 cli command data
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           388.52
-  avg ns/unit:            390.35
+  best ns/unit:           388.63
+  avg ns/unit:            396.75
   alloc calls max:        3
   resize calls max:       3
   free calls max:         3
@@ -154,8 +157,8 @@ cli command data
 protocol request data
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           4959.89
-  avg ns/unit:            4978.19
+  best ns/unit:           5072.45
+  avg ns/unit:            5082.97
   alloc calls max:        6
   resize calls max:       5
   free calls max:         6
@@ -164,8 +167,8 @@ protocol request data
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           161.91
-  avg ns/unit:            165.29
+  best ns/unit:           161.58
+  avg ns/unit:            162.69
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -174,18 +177,28 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3773.32
-  avg ns/unit:            3797.87
+  best ns/unit:           3745.48
+  avg ns/unit:            3782.68
   alloc calls max:        250000
-  resize calls max:       10000
+  resize calls max:       0
   free calls max:         250000
-  bytes req max:          62260000
+  bytes req max:          53620000
+
+stateful 20-step command trace
+  captured cases/sample:  10000
+  samples:                5
+  best ns/unit:           768.38
+  avg ns/unit:            776.65
+  alloc calls max:        30000
+  resize calls max:       0
+  free calls max:         30000
+  bytes req max:          30400000
 
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           336.84
-  avg ns/unit:            339.40
+  best ns/unit:           339.73
+  avg ns/unit:            341.28
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -194,8 +207,8 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           3166.00
-  avg ns/unit:            5341.40
+  best ns/unit:           3041.00
+  avg ns/unit:            3699.80
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -204,8 +217,8 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           14875.00
-  avg ns/unit:            17508.40
+  best ns/unit:           14958.00
+  avg ns/unit:            18066.60
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124
@@ -222,9 +235,12 @@ explicit captured-trace benchmark shows the cost of recording every successful
 step. Stateful event records avoid cloning repeated static kind/status strings,
 store per-run dynamic event strings in the case arena, and copy those strings
 only when materializing the captured `Test_Case`. That cuts rich trace allocation
-calls while preserving owned diagnostics in the returned result. The compact
-trace path shows why `skip_success_events` is useful for
-long model runs where only failure/precondition/invariant evidence matters.
+calls while preserving owned diagnostics in the returned result. Stateful runs
+preallocate event storage when the generated sequence length is known, avoiding
+dynamic-array resize churn. The command trace path shows the cheaper full
+sequence when stable command names are enough; the compact trace path shows why
+`skip_success_events` is useful for long model runs where only
+failure/precondition/invariant evidence matters.
 Collection generation now reuses a per-check test context and value arena across
 passing generated tests. That moves collection allocation from per generated
 case to a small fixed cost per `check` run while preserving failure/replay

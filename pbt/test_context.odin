@@ -340,6 +340,26 @@ record_event_static_kind_status :: proc(t: ^T, kind, name, status, detail: strin
 	})
 }
 
+record_event_static :: proc(t: ^T, kind, name, status, detail: string) {
+	if !t.capture_events {
+		return
+	}
+	append(&t.events, Event {
+		kind = kind,
+		name = name,
+		status = status,
+		detail = detail,
+	})
+}
+
+reserve_events_empty :: proc(t: ^T, capacity: int) {
+	if !t.capture_events || capacity <= 0 || len(t.events) > 0 || cap(t.events) >= capacity {
+		return
+	}
+	delete(t.events)
+	t.events = make([dynamic]Event, 0, capacity, t.allocator)
+}
+
 note :: proc(t: ^T, message: string) {
 	if !t.capture_events {
 		return

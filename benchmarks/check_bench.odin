@@ -198,6 +198,18 @@ stateful_compact_trace_property :: proc(t: ^pbt.T) -> pbt.Result {
 	return pbt.run_commands(t, model, {min_len = 20, max_len = 20, skip_success_events = true})
 }
 
+stateful_command_trace_property :: proc(t: ^pbt.T) -> pbt.Result {
+	model := pbt.State_Model(State, Command, int) {
+		initial = stateful_initial,
+		command = stateful_command,
+		run = stateful_run,
+		next_state = stateful_next,
+		postcondition = stateful_postcondition,
+		command_name = stateful_command_name,
+	}
+	return pbt.run_commands(t, model, {min_len = 20, max_len = 20, compact_success_events = true})
+}
+
 measure_check :: proc(
 	label: string,
 	property: pbt.Property,
@@ -354,6 +366,7 @@ main :: proc() {
 	protocol := measure_check("protocol request data", protocol_property, tests, samples, {no_shrink = true})
 	stateful := measure_check("stateful 20-step model", stateful_property, tests / 10, samples, {no_shrink = true})
 	stateful_trace := measure_captured_cases("stateful 20-step captured trace", stateful_property, 10_000, samples)
+	stateful_command_trace := measure_captured_cases("stateful 20-step command trace", stateful_command_trace_property, 10_000, samples)
 	stateful_compact_trace := measure_captured_cases("stateful 20-step compact trace", stateful_compact_trace_property, 10_000, samples)
 	failing := measure_check_units("failing property with shrink", failure_property, 100, 1, "checks/sample", samples)
 	payload_failing := measure_check_units("payload failure with shrink", payload_failure_property, 100, 1, "checks/sample", samples)
@@ -365,6 +378,7 @@ main :: proc() {
 	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 5_500, max_avg_ns = 6_500}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
+	ok = check_limit(stateful_command_trace, 10_000, samples, {label = "stateful 20-step command trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(stateful_compact_trace, 10_000, samples, {label = "stateful 20-step compact trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(failing, 100, samples, {label = "failing property with shrink", max_best_ns = 250_000, max_avg_ns = 350_000}) && ok
 	ok = check_limit(payload_failing, 100, samples, {label = "payload failure with shrink", max_best_ns = 350_000, max_avg_ns = 500_000}) && ok

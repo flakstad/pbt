@@ -697,6 +697,7 @@ Model :: struct {
 result := pbt.run_commands(t, model, {
     max_len = 100,
     skip_success_events = false,
+    compact_success_events = false,
 })
 ```
 
@@ -713,7 +714,10 @@ the command, the observed value returned by the target, and the next model state
 for successful steps. Normal passing checks do not capture these traces on the
 hot path; they are captured for failures, shrinking, replay, and explicit event
 capture. Set `skip_success_events` when long successful prefixes would add noise
-and only failure/precondition/invariant events should be retained.
+and only failure/precondition/invariant events should be retained. Set
+`compact_success_events` when successful prefixes are still useful, but the
+trace only needs stable command names in order, not rich `step N` names or
+state/value detail. Use it only when `command_name` returns stable strings.
 
 ### Statechart Target
 

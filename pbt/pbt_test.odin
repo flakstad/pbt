@@ -889,6 +889,37 @@ counter_stateful_skip_success_property :: proc(t: ^T) -> Result {
 	return run_commands(t, model, {min_len = 2, max_len = 2, skip_success_events = true})
 }
 
+counter_run_correct :: proc(t: ^T, target: rawptr, state: int, command: Counter_Command) -> int {
+	counter := cast(^Counter_Target)target
+	switch command {
+	case .Inc:
+		counter.value += 1
+	case .Dec:
+		counter.value -= 1
+	case .Reset:
+		counter.value = 0
+	}
+	return counter.value
+}
+
+counter_stateful_compact_success_property :: proc(t: ^T) -> Result {
+	target := Counter_Target{}
+	model := State_Model(int, Counter_Command, int) {
+		target = &target,
+		initial = counter_initial,
+		command = counter_command,
+		precondition = counter_precondition,
+		run = counter_run_correct,
+		next_state = counter_next_state,
+		postcondition = counter_postcondition,
+		invariant = counter_invariant,
+		command_name = counter_command_name,
+		state_detail = counter_state_detail,
+		value_detail = counter_value_detail,
+	}
+	return run_commands(t, model, {min_len = 2, max_len = 2, compact_success_events = true})
+}
+
 process_property :: proc(t: ^T) -> Result {
 	command := [?]string{"/bin/sh", "-c", "printf ok"}
 	result := process_run(t, command[:])
@@ -1050,6 +1081,23 @@ test_stateful_runner_can_skip_success_events :: proc(t: ^testing.T) {
 	if len(result.events) > 0 {
 		testing.expect(t, strings.contains(result.events[0].name, "reset postcondition"))
 		testing.expect_value(t, result.events[0].status, "fail")
+	}
+}
+
+@(test)
+test_stateful_runner_can_record_compact_success_events :: proc(t: ^testing.T) {
+	choices := [?]u64{0, 0}
+	result := run_case(counter_stateful_compact_success_property, 1, 10, choices[:], true, true, true)
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Pass)
+	testing.expect_value(t, len(result.events), 2)
+	if len(result.events) > 0 {
+		testing.expect_value(t, result.events[0].kind, "stateful")
+		testing.expect_value(t, result.events[0].name, "inc")
+		testing.expect_value(t, result.events[0].status, "ok")
+		testing.expect_value(t, result.events[0].detail, "")
+		testing.expect(t, !result.events[0].name_owned)
 	}
 }
 

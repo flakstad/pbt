@@ -22,6 +22,7 @@ State_Run_Options :: struct {
 	max_len:                  int,
 	max_precondition_retries: int,
 	skip_success_events:      bool,
+	compact_success_events:   bool,
 }
 
 state_run_options :: proc(options: State_Run_Options) -> State_Run_Options {
@@ -50,6 +51,9 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 	length := opts.min_len + int(choice(t, length_width))
 	if length_width <= 1 {
 		length_index = -1
+	}
+	if t.capture_events && !opts.skip_success_events {
+		reserve_events_empty(t, length)
 	}
 
 	if model.invariant != nil {
@@ -108,22 +112,30 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 		}
 
 		if t.capture_events && !opts.skip_success_events {
-			record_event_static_kind_status(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
+			if opts.compact_success_events {
+				record_event_static(t, "stateful", stateful_command_name(model, command), "ok", "")
+			} else {
+				record_event_static_kind_status(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
+			}
 		}
 	}
 
 	return pass()
 }
 
-stateful_step_name :: proc(model: State_Model($State, $Command, $Value), step: int, command: Command, phase: string) -> string {
+stateful_command_name :: proc(model: State_Model($State, $Command, $Value), command: Command) -> string {
 	command_name := ""
 	if model.command_name != nil {
 		command_name = model.command_name(command)
 	}
-
 	if command_name == "" {
 		command_name = "command"
 	}
+	return command_name
+}
+
+stateful_step_name :: proc(model: State_Model($State, $Command, $Value), step: int, command: Command, phase: string) -> string {
+	command_name := stateful_command_name(model, command)
 	if phase == "" {
 		return fmt.tprintf("step %d %s", step, command_name)
 	}

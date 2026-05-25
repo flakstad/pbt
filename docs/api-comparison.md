@@ -154,13 +154,14 @@ The current fast path is promising:
 - collection generation reuses per-check storage for passing cases
 - normal passing stateful checks avoid event allocation unless diagnostics are
   captured
-- compact stateful traces are available when rich successful-step traces would
-  add noise or cost
+- command-only and skip-success stateful traces are available when rich
+  successful-step traces would add noise or cost
 
 Known performance work:
 
 - captured rich stateful traces still allocate heavily because each step stores
-  human-readable event strings
+  human-readable event strings, but command-only success traces give a much
+  cheaper full sequence when stable command names are enough
 - one-shot process adapters are orders of magnitude slower than the persistent
   line protocol path and should be reserved for simple targets
 - guarded process execution adds some overhead versus bare `os.process_exec`,
