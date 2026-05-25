@@ -660,6 +660,8 @@ response would otherwise desynchronize later generated calls.
 See `examples/line_protocol_runner` for a runnable property using this shape.
 See `examples/external_targets` for runnable one-shot CLI argv and stdin
 protocol properties.
+See `examples/stateful_line_protocol_runner` for the same adapter shape used by
+a stateful command-sequence model.
 
 Line-delimited JSON is a good transport because it is easy to implement in Go,
 Clojure, Python, JavaScript/TypeScript, Odin, and shell wrappers.

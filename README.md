@@ -88,6 +88,10 @@ statechart-backed stateful model example.
 See [docs/line-protocol-example.md](docs/line-protocol-example.md) for a
 persistent subprocess adapter example.
 
+See
+[docs/stateful-line-protocol-example.md](docs/stateful-line-protocol-example.md)
+for a stateful external-target model using the persistent line protocol.
+
 See [BENCHMARKS.md](BENCHMARKS.md) for performance measurement commands and
 current benchmark coverage.
 

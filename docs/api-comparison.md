@@ -67,6 +67,9 @@ The current core is in a reasonable place:
   postcondition, invariant, command names, and state/value details for traces.
 - stateful traces can suppress successful-step events when long prefixes would
   obscure the failing step.
+- the stateful line-protocol example shows the core cross-language model:
+  generated commands, persistent target wrapper, independent model state, and
+  per-step observations.
 - external target adapters now cover one-shot process calls, one-shot
   request-file protocol calls, persistent line protocol calls, and curl-backed
   HTTP calls.
