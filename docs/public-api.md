@@ -175,12 +175,17 @@ borrowed := pbt.case_runner_run_borrowed(&runner, property, seed, size, choices,
 for event in borrowed.events {
     fmt.println(event.name)
 }
+
+choices_csv := pbt.borrowed_choices_csv(borrowed)
+defer delete(choices_csv)
 ```
 
-Borrowed events, notes, and labels are owned by the runner and are valid only
-until the next `case_runner_run`, `case_runner_run_borrowed`, or
+Borrowed replay choices, events, notes, and labels are owned by the runner and
+are valid only until the next `case_runner_run`, `case_runner_run_borrowed`, or
 `case_runner_destroy` call. Use owned `Test_Case` capture for failures,
-persisted reports, or anything that must outlive the next run.
+persisted reports, or anything that must outlive the next run. Set
+`skip_choices` for pass cases when only immediate events are needed; failing and
+errored cases still expose replay choices.
 
 ## Result Helpers
 

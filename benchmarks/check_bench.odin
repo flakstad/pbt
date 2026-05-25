@@ -347,7 +347,7 @@ measure_borrowed_cases :: proc(
 				capture_events = true,
 				skip_choices = skip_choices,
 			})
-			checksum += len(tc.events)
+			checksum += len(tc.events) + tc.choice_count
 		}
 		pbt.case_runner_destroy(&runner)
 		duration := time.tick_diff(start, time.tick_now())

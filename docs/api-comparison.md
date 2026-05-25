@@ -75,8 +75,8 @@ The current core is in a reasonable place:
   HTTP calls.
 - reusable `Case_Runner` supports repeated replay/capture loops without
   reinitializing the per-case PBT context every time.
-- borrowed case capture supports immediate diagnostic consumption without
-  materializing owned `Test_Case` evidence.
+- borrowed case capture supports immediate replay and diagnostic consumption
+  without materializing owned `Test_Case` evidence.
 - process and protocol target calls have basic generated-input guardrails:
   timeouts, process output caps, line-protocol response caps, and
   line-protocol per-call timeouts.
@@ -168,8 +168,8 @@ The current fast path is promising:
   when rich successful-step traces would add noise or cost
 - reusable case runners keep scratch PBT state hot across repeated captured-case
   runs
-- borrowed rich stateful traces keep allocation nearly flat when diagnostics are
-  consumed before the next run
+- borrowed rich stateful traces keep allocation nearly flat when replay data and
+  diagnostics are consumed before the next run
 
 Known performance work:
 

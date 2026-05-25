@@ -279,6 +279,9 @@ Case_Runner :: struct {
 }
 
 Borrowed_Test_Case :: struct {
+	choice_inline: []u64,
+	choice_extra:  []u64,
+	choice_count:  int,
 	events:        []Event,
 	notes:         []string,
 	labels:        []string,
@@ -358,13 +361,41 @@ case_runner_run_borrowed :: proc(runner: ^Case_Runner, property: Property, seed:
 	if !(opts.capture_pass || result.status == .Fail || result.status == .Error) {
 		return {result = result}
 	}
-	return {
+	tc := Borrowed_Test_Case {
 		events = runner.t.events[:],
 		notes = runner.t.notes[:],
 		labels = runner.t.labels[:],
 		shrink_labels = runner.t.shrink_labels[:],
 		result = result,
 	}
+	if !opts.skip_choices || result.status == .Fail || result.status == .Error {
+		borrow_current_choices(&tc, &runner.t)
+	}
+	return tc
+}
+
+borrow_current_choices :: proc(tc: ^Borrowed_Test_Case, t: ^T) {
+	inline_count := t.choice_count
+	if inline_count > INLINE_CHOICE_CAP {
+		inline_count = INLINE_CHOICE_CAP
+	}
+	tc.choice_inline = t.choice_inline[:inline_count]
+	tc.choice_extra = t.choice_extra[:]
+	tc.choice_count = t.choice_count
+}
+
+borrowed_choice_at :: proc(tc: Borrowed_Test_Case, index: int) -> u64 {
+	if index < 0 || index >= tc.choice_count {
+		return 0
+	}
+	if index < len(tc.choice_inline) {
+		return tc.choice_inline[index]
+	}
+	extra_index := index - len(tc.choice_inline)
+	if extra_index < 0 || extra_index >= len(tc.choice_extra) {
+		return 0
+	}
+	return tc.choice_extra[extra_index]
 }
 
 run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false, move_events: bool = false, capture_choices: bool = true) -> Test_Case {

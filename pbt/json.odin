@@ -282,6 +282,18 @@ replay_choices_csv :: proc(replay: Replay) -> string {
 	return u64_list_csv(replay.choices[:])
 }
 
+borrowed_choices_csv :: proc(tc: Borrowed_Test_Case) -> string {
+	builder: strings.Builder
+	strings.builder_init(&builder)
+	for i in 0 ..< tc.choice_count {
+		if i > 0 {
+			strings.write_string(&builder, ",")
+		}
+		strings.write_string(&builder, fmt.tprintf("%d", borrowed_choice_at(tc, i)))
+	}
+	return strings.to_string(builder)
+}
+
 u64_list_csv :: proc(values: []u64) -> string {
 	builder: strings.Builder
 	strings.builder_init(&builder)

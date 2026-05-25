@@ -1365,7 +1365,32 @@ test_case_runner_keeps_captured_case_events_after_reuse :: proc(t: ^testing.T) {
 }
 
 @(test)
-test_case_runner_can_borrow_captured_events :: proc(t: ^testing.T) {
+test_case_runner_can_borrow_captured_events_and_choices :: proc(t: ^testing.T) {
+	runner: Case_Runner
+	case_runner_init(&runner)
+	defer case_runner_destroy(&runner)
+
+	choices := [?]u64{0, 0, 0}
+	result := case_runner_run_borrowed(&runner, counter_stateful_limited_success_property, 1, 10, choices[:], true, {
+		capture_pass = true,
+		capture_events = true,
+	})
+	choices_csv := borrowed_choices_csv(result)
+	defer delete(choices_csv)
+
+	testing.expect_value(t, result.result.status, Status.Pass)
+	testing.expect_value(t, result.choice_count, 3)
+	testing.expect_value(t, borrowed_choice_at(result, 0), u64(0))
+	testing.expect_value(t, choices_csv, "0,0,0")
+	testing.expect_value(t, len(result.events), 1)
+	if len(result.events) > 0 {
+		testing.expect(t, strings.contains(result.events[0].name, "step 0 inc"))
+		testing.expect_value(t, result.events[0].status, "ok")
+	}
+}
+
+@(test)
+test_case_runner_can_skip_borrowed_pass_choices :: proc(t: ^testing.T) {
 	runner: Case_Runner
 	case_runner_init(&runner)
 	defer case_runner_destroy(&runner)
@@ -1378,11 +1403,25 @@ test_case_runner_can_borrow_captured_events :: proc(t: ^testing.T) {
 	})
 
 	testing.expect_value(t, result.result.status, Status.Pass)
+	testing.expect_value(t, result.choice_count, 0)
 	testing.expect_value(t, len(result.events), 1)
-	if len(result.events) > 0 {
-		testing.expect(t, strings.contains(result.events[0].name, "step 0 inc"))
-		testing.expect_value(t, result.events[0].status, "ok")
-	}
+}
+
+@(test)
+test_case_runner_keeps_borrowed_failure_choices_when_skip_requested :: proc(t: ^testing.T) {
+	runner: Case_Runner
+	case_runner_init(&runner)
+	defer case_runner_destroy(&runner)
+
+	choices := [?]u64{50}
+	result := case_runner_run_borrowed(&runner, fails_for_large_values, 1, 10, choices[:], true, {
+		capture_events = true,
+		skip_choices = true,
+	})
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.choice_count, 1)
+	testing.expect_value(t, borrowed_choice_at(result, 0), u64(50))
 }
 
 @(test)
