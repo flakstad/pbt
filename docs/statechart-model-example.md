@@ -9,8 +9,11 @@ property compares the target's observed state with the model state.
 
 The example uses `pbt_statechart` helpers to generate triggers that are enabled
 from the current model state and to record statechart dispatch events in the PBT
-trace. The adapter package is separate from core `pbt` so projects can use the
-core library without depending on `statecharts`.
+trace. It skips generic successful stateful-step events, because the statechart
+dispatch events already describe successful transitions and the stateful runner
+still records full failure/precondition/invariant evidence. The adapter package
+is separate from core `pbt` so projects can use the core library without
+depending on `statecharts`.
 
 Build it:
 

@@ -65,7 +65,7 @@ door_property :: proc(t: ^pbt.T) -> pbt.Result {
 		postcondition = door_postcondition,
 		command_name = door_event_name,
 	}
-	return pbt.run_commands(t, model, {min_len = 1, max_len = 20})
+	return pbt.run_commands(t, model, {min_len = 1, max_len = 20, skip_success_events = true})
 }
 
 main :: proc() {
