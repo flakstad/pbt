@@ -341,6 +341,20 @@ record_event_static_kind_status :: proc(t: ^T, kind, name, status, detail: strin
 	})
 }
 
+record_event_transient_static_kind_status :: proc(t: ^T, kind, name, status, detail: string) {
+	if !t.capture_events {
+		return
+	}
+	append(&t.events, Event {
+		kind = kind,
+		name = name,
+		status = status,
+		detail = detail,
+		name_copy = name != "",
+		detail_copy = detail != "",
+	})
+}
+
 record_event_static :: proc(t: ^T, kind, name, status, detail: string) {
 	if !t.capture_events {
 		return

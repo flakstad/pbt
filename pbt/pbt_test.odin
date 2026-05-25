@@ -1867,6 +1867,33 @@ test_copy_events_to_test_case_recopies_pooled_fields :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_transient_event_fields_are_copied_to_test_case :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	name := strings.clone("step 0 inc", context.temp_allocator)
+	detail := strings.clone("state=0 value=1 next=1", context.temp_allocator)
+	record_event_transient_static_kind_status(&ctx, "stateful", name, "ok", detail)
+	testing.expect(t, ctx.events[0].name_copy)
+	testing.expect(t, ctx.events[0].detail_copy)
+	testing.expect(t, !ctx.events[0].name_owned)
+	testing.expect(t, !ctx.events[0].detail_owned)
+
+	tc: Test_Case
+	copy_events_to_test_case(&tc, ctx.events[:])
+	defer destroy_test_case(&tc)
+
+	testing.expect_value(t, len(tc.events), 1)
+	testing.expect_value(t, tc.events[0].kind, "stateful")
+	testing.expect_value(t, tc.events[0].name, "step 0 inc")
+	testing.expect_value(t, tc.events[0].status, "ok")
+	testing.expect_value(t, tc.events[0].detail, "state=0 value=1 next=1")
+	testing.expect(t, tc.events[0].name_copy)
+	testing.expect(t, tc.events[0].detail_copy)
+}
+
+@(test)
 test_copy_events_preserves_fully_static_fields :: proc(t: ^testing.T) {
 	ctx: T
 	test_init(&ctx, 1, 1, nil, false, true)

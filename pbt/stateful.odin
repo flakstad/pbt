@@ -77,7 +77,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 				break
 			}
 			if t.capture_events {
-				record_event_static_kind_status(t, "stateful", stateful_step_name(model, step, command, "precondition"), "discard", fmt.tprintf("attempt %d", attempt))
+				record_event_transient_static_kind_status(t, "stateful", stateful_step_name(model, step, command, "precondition"), "discard", fmt.tprintf("attempt %d", attempt))
 			}
 		}
 
@@ -91,7 +91,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			post_result := model.postcondition(state, command, value)
 			if post_result.status != .Pass {
 				if t.capture_events {
-					record_event_static_kind_status(t, "stateful", stateful_step_name(model, step, command, "postcondition"), status_string(post_result.status), stateful_value_detail(model, state_before, value, post_result.message))
+					record_event_transient_static_kind_status(t, "stateful", stateful_step_name(model, step, command, "postcondition"), status_string(post_result.status), stateful_value_detail(model, state_before, value, post_result.message))
 				}
 				return post_result
 			}
@@ -105,7 +105,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			invariant_result := model.invariant(t, state)
 			if invariant_result.status != .Pass {
 				if t.capture_events {
-					record_event_static_kind_status(t, "stateful", stateful_step_name(model, step, command, "invariant"), status_string(invariant_result.status), stateful_state_detail(model, state, invariant_result.message))
+					record_event_transient_static_kind_status(t, "stateful", stateful_step_name(model, step, command, "invariant"), status_string(invariant_result.status), stateful_state_detail(model, state, invariant_result.message))
 				}
 				return invariant_result
 			}
@@ -115,7 +115,7 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			if opts.compact_success_events {
 				record_event_static(t, "stateful", stateful_command_name(model, command), "ok", "")
 			} else {
-				record_event_static_kind_status(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
+				record_event_transient_static_kind_status(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
 			}
 		}
 	}
