@@ -73,6 +73,8 @@ The current core is in a reasonable place:
 - external target adapters now cover one-shot process calls, one-shot
   request-file protocol calls, persistent line protocol calls, and curl-backed
   HTTP calls.
+- reusable `Case_Runner` supports repeated replay/capture loops without
+  reinitializing the per-case PBT context every time.
 - process and protocol target calls have basic generated-input guardrails:
   timeouts, process output caps, line-protocol response caps, and
   line-protocol per-call timeouts.
@@ -162,6 +164,8 @@ The current fast path is promising:
   captured
 - command-only, bounded-success, and skip-success stateful traces are available
   when rich successful-step traces would add noise or cost
+- reusable case runners keep scratch PBT state hot across repeated captured-case
+  runs
 
 Known performance work:
 
@@ -174,7 +178,8 @@ Known performance work:
   can skip replay-choice copying when callers only need events. Bounded success
   event capture keeps a short rich prefix without paying for every successful
   step. Command-only success traces remain much cheaper when stable command names
-  are enough
+  are enough. Reusable `Case_Runner` avoids reinitializing the test context for
+  repeated captured/replayed cases
 - one-shot process adapters are orders of magnitude slower than the persistent
   line protocol path and should be reserved for simple targets
 - guarded process execution adds some overhead versus bare `os.process_exec`,

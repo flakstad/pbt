@@ -143,6 +143,25 @@ Generated slices and strings should be allocated in a per-case arena owned by
 diagnostics. Failing and errored cases still retain replay choices even when
 `skip_choices` is set, so counterexamples remain replayable.
 
+For repeated replay/capture loops, use a reusable case runner:
+
+```odin
+runner: pbt.Case_Runner
+pbt.case_runner_init(&runner)
+defer pbt.case_runner_destroy(&runner)
+
+tc := pbt.case_runner_run(&runner, property, seed, size, choices, true, {
+    capture_pass = true,
+    capture_events = true,
+    skip_choices = true,
+})
+defer pbt.destroy_test_case(&tc)
+```
+
+`Case_Runner` keeps the internal PBT context and scratch storage alive across
+cases. Returned `Test_Case` values still own their captured diagnostics, so they
+remain valid after the runner is reused or destroyed.
+
 ## Result Helpers
 
 ```odin

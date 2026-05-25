@@ -273,6 +273,11 @@ Case_Capture_Options :: struct {
 	capture_choice_marks: bool,
 }
 
+Case_Runner :: struct {
+	t:           T,
+	initialized: bool,
+}
+
 default_case_capture_options :: proc(options: Case_Capture_Options) -> Case_Capture_Options {
 	o := options
 	if !o.capture_events {
@@ -297,6 +302,30 @@ run_case_with_options :: proc(property: Property, seed: u64, size: int, replay_c
 	defer test_destroy(&t)
 
 	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, opts.capture_pass, opts.capture_events, coverage, opts.capture_choice_marks, true, !opts.skip_choices)
+}
+
+case_runner_init :: proc(runner: ^Case_Runner, allocator := context.allocator) {
+	if runner.initialized {
+		return
+	}
+	test_init(&runner.t, 0, 0, nil, false, true, allocator)
+	runner.initialized = true
+}
+
+case_runner_destroy :: proc(runner: ^Case_Runner) {
+	if !runner.initialized {
+		return
+	}
+	test_destroy(&runner.t)
+	runner.initialized = false
+}
+
+case_runner_run :: proc(runner: ^Case_Runner, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, options: Case_Capture_Options, coverage: ^[dynamic]Coverage_Label = nil) -> Test_Case {
+	if !runner.initialized {
+		case_runner_init(runner)
+	}
+	opts := default_case_capture_options(options)
+	return run_case_with_context(&runner.t, property, seed, size, replay_choices, replay_strict, opts.capture_pass, opts.capture_events, coverage, opts.capture_choice_marks, false, !opts.skip_choices)
 }
 
 run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false, move_events: bool = false, capture_choices: bool = true) -> Test_Case {

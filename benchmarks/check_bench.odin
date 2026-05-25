@@ -293,8 +293,10 @@ measure_captured_cases :: proc(
 
 		start := time.tick_now()
 		checksum := 0
+		runner: pbt.Case_Runner
+		pbt.case_runner_init(&runner)
 		for case_index in 0 ..< case_count {
-			tc := pbt.run_case_with_options(property, u64(2_000 + sample_index * case_count + case_index), 20, nil, false, {
+			tc := pbt.case_runner_run(&runner, property, u64(2_000 + sample_index * case_count + case_index), 20, nil, false, {
 				capture_pass = true,
 				capture_events = true,
 				skip_choices = skip_choices,
@@ -302,6 +304,7 @@ measure_captured_cases :: proc(
 			checksum += len(tc.events) + len(tc.choices)
 			pbt.destroy_test_case(&tc)
 		}
+		pbt.case_runner_destroy(&runner)
 		duration := time.tick_diff(start, time.tick_now())
 
 		context.allocator = old_allocator

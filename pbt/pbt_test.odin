@@ -1335,6 +1335,36 @@ test_stateful_success_event_limit_keeps_failure_event :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_case_runner_keeps_captured_case_events_after_reuse :: proc(t: ^testing.T) {
+	runner: Case_Runner
+	case_runner_init(&runner)
+	defer case_runner_destroy(&runner)
+
+	first_choices := [?]u64{0, 0, 0}
+	first := case_runner_run(&runner, counter_stateful_limited_success_property, 1, 10, first_choices[:], true, {
+		capture_pass = true,
+		capture_events = true,
+	})
+	defer destroy_test_case(&first)
+
+	second_choices := [?]u64{2, 2, 2}
+	second := case_runner_run(&runner, counter_stateful_limited_success_property, 2, 10, second_choices[:], true, {
+		capture_pass = true,
+		capture_events = true,
+	})
+	defer destroy_test_case(&second)
+
+	testing.expect_value(t, first.result.status, Status.Pass)
+	testing.expect_value(t, second.result.status, Status.Pass)
+	testing.expect_value(t, len(first.events), 1)
+	testing.expect_value(t, len(second.events), 1)
+	if len(first.events) > 0 && len(second.events) > 0 {
+		testing.expect(t, strings.contains(first.events[0].name, "step 0 inc"))
+		testing.expect(t, strings.contains(second.events[0].name, "step 0 reset"))
+	}
+}
+
+@(test)
 test_process_adapter_runs_cli :: proc(t: ^testing.T) {
 	result := check("process adapter", process_property, {num_tests = 3, seed = 1})
 	defer destroy_check_result(&result)
