@@ -45,6 +45,8 @@ The benchmark includes these modes:
   sequence
 - `stateful 20-step captured trace`: the same model run with explicit event
   capture, measuring rich successful-step trace cost
+- `stateful 20-step borrowed trace`: the same rich captured run using borrowed
+  diagnostics that are valid until the next runner call
 - `stateful 20-step event-only trace`: the same rich captured run without
   copying pass-case replay choices, for diagnostic/event-only callers
 - `stateful 20-step command trace`: the same captured run with
@@ -137,8 +139,8 @@ odin run benchmarks/check_bench.odin -file -o:speed
 two integer draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           36.21
-  avg ns/unit:            36.66
+  best ns/unit:           36.98
+  avg ns/unit:            38.31
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -147,8 +149,8 @@ two integer draws
 array and string draws
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           154.60
-  avg ns/unit:            155.42
+  best ns/unit:           155.32
+  avg ns/unit:            156.70
   alloc calls max:        3
   resize calls max:       1
   free calls max:         3
@@ -157,8 +159,8 @@ array and string draws
 cli command data
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           406.71
-  avg ns/unit:            409.02
+  best ns/unit:           402.51
+  avg ns/unit:            405.85
   alloc calls max:        3
   resize calls max:       3
   free calls max:         3
@@ -167,8 +169,8 @@ cli command data
 protocol request data
   generated tests/sample: 100000
   samples:                5
-  best ns/unit:           5172.55
-  avg ns/unit:            5181.51
+  best ns/unit:           5145.85
+  avg ns/unit:            5159.85
   alloc calls max:        6
   resize calls max:       5
   free calls max:         6
@@ -177,8 +179,8 @@ protocol request data
 stateful 20-step model
   generated tests/sample: 10000
   samples:                5
-  best ns/unit:           179.70
-  avg ns/unit:            184.93
+  best ns/unit:           179.62
+  avg ns/unit:            181.16
   alloc calls max:        0
   resize calls max:       0
   free calls max:         0
@@ -187,18 +189,28 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3517.94
-  avg ns/unit:            3574.41
+  best ns/unit:           3474.10
+  avg ns/unit:            3531.36
   alloc calls max:        30001
   resize calls max:       0
   free calls max:         30001
   bytes req max:          18101440
 
+stateful 20-step borrowed trace
+  borrowed cases/sample:  10000
+  samples:                5
+  best ns/unit:           2153.88
+  avg ns/unit:            2174.67
+  alloc calls max:        1
+  resize calls max:       0
+  free calls max:         1
+  bytes req max:          1440
+
 stateful 20-step event-only trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3443.70
-  avg ns/unit:            3480.10
+  best ns/unit:           3401.91
+  avg ns/unit:            3461.33
   alloc calls max:        20001
   resize calls max:       0
   free calls max:         20001
@@ -207,8 +219,8 @@ stateful 20-step event-only trace
 stateful 20-step command trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           704.59
-  avg ns/unit:            722.58
+  best ns/unit:           703.52
+  avg ns/unit:            717.50
   alloc calls max:        20001
   resize calls max:       0
   free calls max:         20001
@@ -217,8 +229,8 @@ stateful 20-step command trace
 stateful 20-step limited trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           891.03
-  avg ns/unit:            912.35
+  best ns/unit:           896.50
+  avg ns/unit:            911.14
   alloc calls max:        20001
   resize calls max:       0
   free calls max:         20001
@@ -227,8 +239,8 @@ stateful 20-step limited trace
 stateful 20-step compact trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           296.15
-  avg ns/unit:            296.47
+  best ns/unit:           287.86
+  avg ns/unit:            292.00
   alloc calls max:        10000
   resize calls max:       0
   free calls max:         10000
@@ -237,8 +249,8 @@ stateful 20-step compact trace
 failing property with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           3166.00
-  avg ns/unit:            4141.60
+  best ns/unit:           3042.00
+  avg ns/unit:            4066.80
   alloc calls max:        37
   resize calls max:       0
   free calls max:         37
@@ -247,8 +259,8 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           14667.00
-  avg ns/unit:            20258.20
+  best ns/unit:           14541.00
+  avg ns/unit:            16316.40
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124
@@ -257,8 +269,8 @@ payload failure with shrink
 sample array values
   samples/run:            10000
   samples:                5
-  best ns/unit:           45.40
-  avg ns/unit:            50.31
+  best ns/unit:           44.52
+  avg ns/unit:            50.65
   alloc calls max:        316
   resize calls max:       10
   free calls max:         316
@@ -279,7 +291,9 @@ calls while preserving owned diagnostics in the returned result. Stateful runs
 preallocate event storage when the generated sequence length is known, avoiding
 dynamic-array resize churn. Captured-case benchmarks use `Case_Runner`, which
 keeps runner scratch storage alive across repeated captures while returned
-`Test_Case` values keep owning their diagnostics. The command trace path shows
+`Test_Case` values keep owning their diagnostics. Borrowed trace capture keeps
+that scratch evidence in the runner and avoids per-case materialization when the
+caller can consume diagnostics before the next run. The command trace path shows
 the cheaper full sequence when stable command names are enough. The limited trace
 path shows the middle ground: keep a bounded prefix of rich successful-step
 evidence without paying for the whole successful sequence. The compact trace path

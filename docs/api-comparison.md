@@ -75,6 +75,8 @@ The current core is in a reasonable place:
   HTTP calls.
 - reusable `Case_Runner` supports repeated replay/capture loops without
   reinitializing the per-case PBT context every time.
+- borrowed case capture supports immediate diagnostic consumption without
+  materializing owned `Test_Case` evidence.
 - process and protocol target calls have basic generated-input guardrails:
   timeouts, process output caps, line-protocol response caps, and
   line-protocol per-call timeouts.
@@ -166,6 +168,8 @@ The current fast path is promising:
   when rich successful-step traces would add noise or cost
 - reusable case runners keep scratch PBT state hot across repeated captured-case
   runs
+- borrowed rich stateful traces keep allocation nearly flat when diagnostics are
+  consumed before the next run
 
 Known performance work:
 
@@ -179,7 +183,8 @@ Known performance work:
   event capture keeps a short rich prefix without paying for every successful
   step. Command-only success traces remain much cheaper when stable command names
   are enough. Reusable `Case_Runner` avoids reinitializing the test context for
-  repeated captured/replayed cases
+  repeated captured/replayed cases, and borrowed capture avoids materializing
+  owned `Test_Case` diagnostics when immediate consumption is enough
 - one-shot process adapters are orders of magnitude slower than the persistent
   line protocol path and should be reserved for simple targets
 - guarded process execution adds some overhead versus bare `os.process_exec`,

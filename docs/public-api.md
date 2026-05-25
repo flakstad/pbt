@@ -162,6 +162,26 @@ defer pbt.destroy_test_case(&tc)
 cases. Returned `Test_Case` values still own their captured diagnostics, so they
 remain valid after the runner is reused or destroyed.
 
+When diagnostics will be consumed immediately, use borrowed capture to avoid
+materializing an owned `Test_Case`:
+
+```odin
+borrowed := pbt.case_runner_run_borrowed(&runner, property, seed, size, choices, true, {
+    capture_pass = true,
+    capture_events = true,
+    skip_choices = true,
+})
+
+for event in borrowed.events {
+    fmt.println(event.name)
+}
+```
+
+Borrowed events, notes, and labels are owned by the runner and are valid only
+until the next `case_runner_run`, `case_runner_run_borrowed`, or
+`case_runner_destroy` call. Use owned `Test_Case` capture for failures,
+persisted reports, or anything that must outlive the next run.
+
 ## Result Helpers
 
 ```odin

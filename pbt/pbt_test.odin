@@ -1365,6 +1365,27 @@ test_case_runner_keeps_captured_case_events_after_reuse :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_case_runner_can_borrow_captured_events :: proc(t: ^testing.T) {
+	runner: Case_Runner
+	case_runner_init(&runner)
+	defer case_runner_destroy(&runner)
+
+	choices := [?]u64{0, 0, 0}
+	result := case_runner_run_borrowed(&runner, counter_stateful_limited_success_property, 1, 10, choices[:], true, {
+		capture_pass = true,
+		capture_events = true,
+		skip_choices = true,
+	})
+
+	testing.expect_value(t, result.result.status, Status.Pass)
+	testing.expect_value(t, len(result.events), 1)
+	if len(result.events) > 0 {
+		testing.expect(t, strings.contains(result.events[0].name, "step 0 inc"))
+		testing.expect_value(t, result.events[0].status, "ok")
+	}
+}
+
+@(test)
 test_process_adapter_runs_cli :: proc(t: ^testing.T) {
 	result := check("process adapter", process_property, {num_tests = 3, seed = 1})
 	defer destroy_check_result(&result)

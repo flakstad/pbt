@@ -278,6 +278,14 @@ Case_Runner :: struct {
 	initialized: bool,
 }
 
+Borrowed_Test_Case :: struct {
+	events:        []Event,
+	notes:         []string,
+	labels:        []string,
+	shrink_labels: []string,
+	result:        Result,
+}
+
 default_case_capture_options :: proc(options: Case_Capture_Options) -> Case_Capture_Options {
 	o := options
 	if !o.capture_events {
@@ -326,6 +334,37 @@ case_runner_run :: proc(runner: ^Case_Runner, property: Property, seed: u64, siz
 	}
 	opts := default_case_capture_options(options)
 	return run_case_with_context(&runner.t, property, seed, size, replay_choices, replay_strict, opts.capture_pass, opts.capture_events, coverage, opts.capture_choice_marks, false, !opts.skip_choices)
+}
+
+case_runner_run_borrowed :: proc(runner: ^Case_Runner, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, options: Case_Capture_Options, coverage: ^[dynamic]Coverage_Label = nil) -> Borrowed_Test_Case {
+	if !runner.initialized {
+		case_runner_init(runner)
+	}
+	opts := default_case_capture_options(options)
+	test_reset(&runner.t, seed, size, replay_choices, replay_strict, opts.capture_events)
+	runner.t.capture_choice_marks = opts.capture_choice_marks
+	runner.t.capture_shrink_hints = opts.capture_choice_marks
+
+	result := property(&runner.t)
+	if runner.t.force_discard && result.status == .Pass {
+		result = discard(runner.t.discard_message)
+	}
+	if runner.t.replay_overrun {
+		result = discard("replay choice stream exhausted")
+	}
+	if coverage != nil && result.status == .Pass && (len(runner.t.labels) > 0 || len(runner.t.coverage_requirements) > 0) {
+		merge_case_coverage(coverage, runner.t.labels[:], runner.t.coverage_requirements[:])
+	}
+	if !(opts.capture_pass || result.status == .Fail || result.status == .Error) {
+		return {result = result}
+	}
+	return {
+		events = runner.t.events[:],
+		notes = runner.t.notes[:],
+		labels = runner.t.labels[:],
+		shrink_labels = runner.t.shrink_labels[:],
+		result = result,
+	}
 }
 
 run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false, move_events: bool = false, capture_choices: bool = true) -> Test_Case {

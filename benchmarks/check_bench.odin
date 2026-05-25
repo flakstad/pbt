@@ -323,6 +323,51 @@ measure_captured_cases :: proc(
 	return summary
 }
 
+measure_borrowed_cases :: proc(
+	label: string,
+	property: pbt.Property,
+	case_count: int,
+	sample_count: int,
+	skip_choices: bool = false,
+) -> Bench_Summary {
+	summary := Bench_Summary{}
+
+	for sample_index in 0 ..< sample_count {
+		counter := Counting_Allocator{backing = context.allocator}
+		old_allocator := context.allocator
+		context.allocator = counting_allocator(&counter)
+
+		start := time.tick_now()
+		checksum := 0
+		runner: pbt.Case_Runner
+		pbt.case_runner_init(&runner)
+		for case_index in 0 ..< case_count {
+			tc := pbt.case_runner_run_borrowed(&runner, property, u64(2_000 + sample_index * case_count + case_index), 20, nil, false, {
+				capture_pass = true,
+				capture_events = true,
+				skip_choices = skip_choices,
+			})
+			checksum += len(tc.events)
+		}
+		pbt.case_runner_destroy(&runner)
+		duration := time.tick_diff(start, time.tick_now())
+
+		context.allocator = old_allocator
+
+		summarize_sample(&summary, Bench_Sample {
+			ns_total = time.duration_nanoseconds(duration),
+			alloc_calls = counter.alloc_calls,
+			resize_calls = counter.resize_calls,
+			free_calls = counter.free_calls,
+			bytes_requested = counter.bytes_requested,
+			checksum = checksum,
+		}, sample_index)
+	}
+
+	print_summary(label, case_count, "borrowed cases/sample", sample_count, summary)
+	return summary
+}
+
 measure_sample_arrays :: proc(sample_count_per_run: int, sample_count: int) -> Bench_Summary {
 	summary := Bench_Summary{}
 
@@ -416,6 +461,7 @@ main :: proc() {
 	protocol := measure_check("protocol request data", protocol_property, tests, samples, {no_shrink = true})
 	stateful := measure_check("stateful 20-step model", stateful_property, tests / 10, samples, {no_shrink = true})
 	stateful_trace := measure_captured_cases("stateful 20-step captured trace", stateful_property, 10_000, samples)
+	stateful_borrowed_trace := measure_borrowed_cases("stateful 20-step borrowed trace", stateful_property, 10_000, samples)
 	stateful_event_trace := measure_captured_cases("stateful 20-step event-only trace", stateful_property, 10_000, samples, true)
 	stateful_command_trace := measure_captured_cases("stateful 20-step command trace", stateful_command_trace_property, 10_000, samples)
 	stateful_limited_trace := measure_captured_cases("stateful 20-step limited trace", stateful_limited_trace_property, 10_000, samples, true)
@@ -431,6 +477,7 @@ main :: proc() {
 	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 5_500, max_avg_ns = 6_500}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
+	ok = check_limit(stateful_borrowed_trace, 10_000, samples, {label = "stateful 20-step borrowed trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
 	ok = check_limit(stateful_event_trace, 10_000, samples, {label = "stateful 20-step event-only trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
 	ok = check_limit(stateful_command_trace, 10_000, samples, {label = "stateful 20-step command trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(stateful_limited_trace, 10_000, samples, {label = "stateful 20-step limited trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
