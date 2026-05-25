@@ -8,6 +8,9 @@ stateful systems.
 
 Current status: public API design draft. See [docs/public-api.md](docs/public-api.md).
 
+See [docs/gransk-runner-contract.md](docs/gransk-runner-contract.md) for the
+executable contract Gransk uses to discover, run, and replay `pbt` properties.
+
 ## First Slice
 
 The current implementation includes:
