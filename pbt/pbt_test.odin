@@ -1087,6 +1087,42 @@ counter_stateful_compact_success_property :: proc(t: ^T) -> Result {
 	return run_commands(t, model, {min_len = 2, max_len = 2, compact_success_events = true})
 }
 
+counter_stateful_limited_success_property :: proc(t: ^T) -> Result {
+	target := Counter_Target{}
+	model := State_Model(int, Counter_Command, int) {
+		target = &target,
+		initial = counter_initial,
+		command = counter_command,
+		precondition = counter_precondition,
+		run = counter_run_correct,
+		next_state = counter_next_state,
+		postcondition = counter_postcondition,
+		invariant = counter_invariant,
+		command_name = counter_command_name,
+		state_detail = counter_state_detail,
+		value_detail = counter_value_detail,
+	}
+	return run_commands(t, model, {min_len = 3, max_len = 3, max_success_events = 1})
+}
+
+counter_stateful_limited_success_failure_property :: proc(t: ^T) -> Result {
+	target := Counter_Target{}
+	model := State_Model(int, Counter_Command, int) {
+		target = &target,
+		initial = counter_initial,
+		command = counter_command_inc_then_reset,
+		precondition = counter_precondition,
+		run = counter_run_buggy,
+		next_state = counter_next_state,
+		postcondition = counter_postcondition,
+		invariant = counter_invariant,
+		command_name = counter_command_name,
+		state_detail = counter_state_detail,
+		value_detail = counter_value_detail,
+	}
+	return run_commands(t, model, {min_len = 2, max_len = 2, max_success_events = 1})
+}
+
 process_property :: proc(t: ^T) -> Result {
 	command := [?]string{"/bin/sh", "-c", "printf ok"}
 	result := process_run(t, command[:])
@@ -1265,6 +1301,36 @@ test_stateful_runner_can_record_compact_success_events :: proc(t: ^testing.T) {
 		testing.expect_value(t, result.events[0].status, "ok")
 		testing.expect_value(t, result.events[0].detail, "")
 		testing.expect(t, !event_name_owned(result.events[0]))
+	}
+}
+
+@(test)
+test_stateful_runner_can_limit_success_events :: proc(t: ^testing.T) {
+	choices := [?]u64{0, 0, 0}
+	result := run_case(counter_stateful_limited_success_property, 1, 10, choices[:], true, true, true)
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Pass)
+	testing.expect_value(t, len(result.events), 1)
+	if len(result.events) > 0 {
+		testing.expect_value(t, result.events[0].kind, "stateful")
+		testing.expect(t, strings.contains(result.events[0].name, "step 0 inc"))
+		testing.expect_value(t, result.events[0].status, "ok")
+	}
+}
+
+@(test)
+test_stateful_success_event_limit_keeps_failure_event :: proc(t: ^testing.T) {
+	choices := [?]u64{0}
+	result := run_case(counter_stateful_limited_success_failure_property, 1, 10, choices[:], true, true, true)
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, len(result.events), 2)
+	if len(result.events) == 2 {
+		testing.expect_value(t, result.events[0].status, "ok")
+		testing.expect_value(t, result.events[1].status, "fail")
+		testing.expect(t, strings.contains(result.events[1].name, "reset postcondition"))
 	}
 }
 

@@ -155,13 +155,13 @@ The benchmark harnesses are in `benchmarks/check_bench.odin` and
 
 The current fast path is promising:
 
-- two integer draws: roughly `22 ns/generated test`
+- two integer draws: roughly `36 ns/generated test`
 - zero allocations for short choice streams
 - collection generation reuses per-check storage for passing cases
 - normal passing stateful checks avoid event allocation unless diagnostics are
   captured
-- command-only and skip-success stateful traces are available when rich
-  successful-step traces would add noise or cost
+- command-only, bounded-success, and skip-success stateful traces are available
+  when rich successful-step traces would add noise or cost
 
 Known performance work:
 
@@ -171,8 +171,10 @@ Known performance work:
   one-shot captured runs also move the event array into the returned
   `Test_Case` instead of allocating a second event array. Event ownership/copy
   bookkeeping is packed into a compact flag byte. Pass-case diagnostic captures
-  can skip replay-choice copying when callers only need events. Command-only
-  success traces remain much cheaper when stable command names are enough
+  can skip replay-choice copying when callers only need events. Bounded success
+  event capture keeps a short rich prefix without paying for every successful
+  step. Command-only success traces remain much cheaper when stable command names
+  are enough
 - one-shot process adapters are orders of magnitude slower than the persistent
   line protocol path and should be reserved for simple targets
 - guarded process execution adds some overhead versus bare `os.process_exec`,

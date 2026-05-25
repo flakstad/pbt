@@ -21,6 +21,7 @@ State_Run_Options :: struct {
 	min_len:                  int,
 	max_len:                  int,
 	max_precondition_retries: int,
+	max_success_events:       int,
 	skip_success_events:      bool,
 	compact_success_events:   bool,
 }
@@ -39,6 +40,9 @@ state_run_options :: proc(options: State_Run_Options) -> State_Run_Options {
 	if o.max_precondition_retries <= 0 {
 		o.max_precondition_retries = 100
 	}
+	if o.max_success_events < 0 {
+		o.max_success_events = 0
+	}
 	return o
 }
 
@@ -53,8 +57,9 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 		length_index = -1
 	}
 	if t.capture_events && !opts.skip_success_events {
-		reserve_events_empty(t, length)
+		reserve_events_empty(t, stateful_success_event_capacity(length, opts.max_success_events))
 	}
+	success_events := 0
 
 	if model.invariant != nil {
 		invariant_result := model.invariant(t, state)
@@ -111,16 +116,28 @@ run_commands :: proc(t: ^T, model: State_Model($State, $Command, $Value), option
 			}
 		}
 
-		if t.capture_events && !opts.skip_success_events {
+		if t.capture_events && !opts.skip_success_events && stateful_should_record_success_event(success_events, opts.max_success_events) {
 			if opts.compact_success_events {
 				record_event_static(t, "stateful", stateful_command_name(model, command), "ok", "")
 			} else {
 				record_event_transient_static_kind_status(t, "stateful", stateful_step_name(model, step, command, ""), "ok", stateful_step_detail(model, state_before, value, state))
 			}
+			success_events += 1
 		}
 	}
 
 	return pass()
+}
+
+stateful_success_event_capacity :: proc(length, max_success_events: int) -> int {
+	if max_success_events <= 0 || max_success_events > length {
+		return length
+	}
+	return max_success_events
+}
+
+stateful_should_record_success_event :: proc(recorded, max_success_events: int) -> bool {
+	return max_success_events <= 0 || recorded < max_success_events
 }
 
 stateful_command_name :: proc(model: State_Model($State, $Command, $Value), command: Command) -> string {
