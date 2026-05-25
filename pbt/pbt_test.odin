@@ -781,6 +781,18 @@ triple_middle_irrelevant_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+one_of_payload_irrelevant_failure_property :: proc(t: ^T) -> Result {
+	low := array(int_range(0, 9), 2, 2)
+	high := array(int_range(10, 19), 2, 2)
+	branches := [?]Gen(Array_Input(Int_Range_Input, int), []int){low, high}
+	values := draw(t, one_of(branches[:]))
+	marker := draw(t, int_range(0, 9))
+	if len(values) > 0 && values[0] >= 10 && marker == 7 {
+		return fail("one_of branch and marker expose bug")
+	}
+	return pass()
+}
+
 string_contains_failure_property :: proc(t: ^T) -> Result {
 	value := draw(t, string_alphabet("az", 0, 4))
 	for ch in value {
@@ -1993,6 +2005,21 @@ test_shrinker_zeroes_irrelevant_tuple_component_with_hint :: proc(t: ^testing.T)
 	testing.expect_value(t, result.result.message, "triple boundary values expose bug")
 	testing.expect_value(t, len(result.choices), 4)
 	testing.expect_value(t, result.choices[0], u64(3))
+	testing.expect_value(t, result.choices[1], u64(0))
+	testing.expect_value(t, result.choices[2], u64(0))
+	testing.expect_value(t, result.choices[3], u64(7))
+}
+
+@(test)
+test_shrinker_zeroes_irrelevant_one_of_payload_with_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 9, 8, 7}
+	result := shrink_case(one_of_payload_irrelevant_failure_property, choices[:], 1, 10, default_options({max_shrinks = 2}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "one_of branch and marker expose bug")
+	testing.expect_value(t, len(result.choices), 4)
+	testing.expect_value(t, result.choices[0], u64(1))
 	testing.expect_value(t, result.choices[1], u64(0))
 	testing.expect_value(t, result.choices[2], u64(0))
 	testing.expect_value(t, result.choices[3], u64(7))

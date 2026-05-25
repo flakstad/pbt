@@ -209,8 +209,15 @@ one_of :: proc(gens: []Gen($Gen_Input, $Value)) -> Gen(One_Of_Input(Gen_Input, V
 	return {
 		input = {gens = gens},
 		produce = proc(t: ^T, input: One_Of_Input(Gen_Input, Value)) -> Value {
+			start := choice_cursor(t)
 			index := int(choice(t, u64(len(input.gens))))
-			return draw(t, input.gens[index])
+			value_start := choice_cursor(t)
+			value := draw(t, input.gens[index])
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, value_start, end)
+			}
+			return value
 		},
 	}
 }
@@ -235,8 +242,15 @@ frequency :: proc(gens: []Weighted_Gen($Gen_Input, $Value)) -> Gen(Frequency_Inp
 				}
 			}
 
+			start := choice_cursor(t)
 			if total <= 0 {
-				return draw(t, input.gens[0].gen)
+				value_start := choice_cursor(t)
+				value := draw(t, input.gens[0].gen)
+				end := choice_cursor(t)
+				if t.capture_shrink_hints {
+					record_choice_zero_subrange_hint(t, start, end, value_start, end)
+				}
+				return value
 			}
 
 			pick := int(choice(t, u64(total)))
@@ -248,11 +262,23 @@ frequency :: proc(gens: []Weighted_Gen($Gen_Input, $Value)) -> Gen(Frequency_Inp
 
 				running += weighted.weight
 				if pick < running {
-					return draw(t, weighted.gen)
+					value_start := choice_cursor(t)
+					value := draw(t, weighted.gen)
+					end := choice_cursor(t)
+					if t.capture_shrink_hints {
+						record_choice_zero_subrange_hint(t, start, end, value_start, end)
+					}
+					return value
 				}
 			}
 
-			return draw(t, input.gens[len(input.gens) - 1].gen)
+			value_start := choice_cursor(t)
+			value := draw(t, input.gens[len(input.gens) - 1].gen)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, value_start, end)
+			}
+			return value
 		},
 	}
 }
