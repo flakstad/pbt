@@ -1287,6 +1287,8 @@ test_http_post_json_adds_json_headers :: proc(t: ^testing.T) {
 	testing.expect(t, http_events_contain(ctx.events[:], "Content-Type: application/json"))
 	testing.expect(t, http_events_contain(ctx.events[:], "Accept: application/json"))
 	testing.expect(t, http_events_contain(ctx.events[:], "--max-time 0.500"))
+	testing.expect(t, http_events_contain(ctx.events[:], "--data-binary @-"))
+	testing.expect(t, http_events_contain(ctx.events[:], "stdin_bytes=13"))
 }
 
 @(test)

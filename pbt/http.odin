@@ -315,33 +315,16 @@ http_request :: proc(t: ^T, request: Http_Request) -> Http_Response {
 		append(&command, fmt.tprintf("%s: %s", header.name, header.value))
 	}
 
-	body_path: string
+	process_options: Process_Options
 	if len(request.body) > 0 {
-		body_path = strings.clone(fmt.tprintf("/tmp/pbt-http-body-%d-%d", os.get_pid(), uintptr(t)), t.allocator)
-		defer delete(body_path)
-		defer os.remove(body_path)
-
-		file, create_err := os.create(body_path)
-		if create_err != nil {
-			duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
-			record_event(t, "http", http_event_name(request), "error", fmt.tprintf("body create error: %v", create_err))
-			return {success = false, duration_ns = duration_ns, error = clone_non_empty(fmt.tprintf("%v", create_err), t.value_allocator)}
-		}
-		_, write_err := os.write_string(file, request.body)
-		os.close(file)
-		if write_err != nil {
-			duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
-			record_event(t, "http", http_event_name(request), "error", fmt.tprintf("body write error: %v", write_err))
-			return {success = false, duration_ns = duration_ns, error = clone_non_empty(fmt.tprintf("%v", write_err), t.value_allocator)}
-		}
-
 		append(&command, "--data-binary")
-		append(&command, fmt.tprintf("@%s", body_path))
+		append(&command, "@-")
+		process_options.stdin = request.body
 	}
 
 	append(&command, request.url)
 
-	process_result := process_run(t, command[:])
+	process_result := process_run_with_options(t, command[:], process_options)
 	response := Http_Response {
 		exit_code = process_result.exit_code,
 		success = process_result.success,

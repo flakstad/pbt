@@ -76,6 +76,9 @@ minimal Gransk-facing runner executable.
 See [docs/external-target-examples.md](docs/external-target-examples.md) for
 CLI argv and stdin protocol examples against external targets.
 
+See [docs/http-target-runner.md](docs/http-target-runner.md) for an HTTP API
+runner that posts generated schema-shaped JSON to a target endpoint.
+
 See [docs/statechart-model-example.md](docs/statechart-model-example.md) for a
 statechart-backed stateful model example.
 
