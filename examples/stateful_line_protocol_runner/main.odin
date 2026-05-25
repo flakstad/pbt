@@ -30,7 +30,7 @@ counter_line_protocol_property :: proc(t: ^pbt.T) -> pbt.Result {
 	command := [?]string {
 		"/bin/sh",
 		"-c",
-		"n=0; while IFS= read -r line; do case \"$line\" in inc) n=$((n+1));; dec) n=$((n-1));; reset) n=0;; get) n=$n;; *) printf 'ERR unknown\\n'; continue;; esac; printf \"%d\\n\" \"$n\"; done",
+		"n=0; while IFS= read -r line; do case \"$line\" in inc) n=$((n+1));; dec) n=$((n-1));; reset) if [ \"${PBT_COUNTER_BUG:-}\" = reset ]; then n=1; else n=0; fi;; get) n=$n;; *) printf 'ERR unknown\\n'; continue;; esac; printf \"%d\\n\" \"$n\"; done",
 	}
 	client, err := pbt.line_protocol_start(command[:])
 	if err != nil {
