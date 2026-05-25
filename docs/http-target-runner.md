@@ -26,10 +26,13 @@ configuration through environment variables.
 
 The property generates schema-shaped JSON with:
 
+- `id`: UUID v4 string
 - `sku`: generated string
+- `owner`: generated `.test` email address
 - `status`: one of `draft`, `active`, or `archived`
 - `quantity`: integer from 1 through 100
 - `active`: generated boolean
+- `created_on`: generated `YYYY-MM-DD` date from 2020 through 2030
 
 The request uses `http_post_json`, a 1 second timeout, and a 64 KiB response cap.
 Failures include the generated request body as counterexample context plus the

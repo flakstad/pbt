@@ -15,10 +15,13 @@ http_post_schema_property :: proc(t: ^pbt.T) -> pbt.Result {
 
 	statuses := [?]string{"draft", "active", "archived"}
 	fields := [?]pbt.JSON_Field_ASCII {
+		pbt.json_uuid_v4_field_ascii("id"),
 		pbt.json_string_field_ascii("sku", 16),
+		pbt.json_email_field_ascii("owner", 1, 16, 1, 12),
 		pbt.json_string_enum_field_ascii("status", statuses[:]),
 		pbt.json_int_field_ascii("quantity", 1, 100),
 		pbt.json_bool_field_ascii("active"),
+		pbt.json_date_ymd_field_ascii("created_on", 2020, 2030),
 	}
 	body := pbt.draw(t, pbt.json_object_schema_ascii(fields[:]))
 
