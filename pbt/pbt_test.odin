@@ -710,6 +710,12 @@ json_array_of_failure_property :: proc(t: ^T) -> Result {
 	return assert(!strings.contains(body, "7"), "json array contains seven")
 }
 
+dict_entry_failure_property :: proc(t: ^T) -> Result {
+	values := draw(t, dict(int_range(0, 9), int_range(0, 9), 0, 3))
+	_, found := values[7]
+	return assert(!found, "dict contains bad key")
+}
+
 labelled_failure_property :: proc(t: ^T) -> Result {
 	marker := choice(t, 2)
 	_ = choice(t, 10)
@@ -1861,6 +1867,20 @@ test_shrinker_removes_json_array_items_with_hints :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(result.choices), 2)
 	testing.expect_value(t, result.choices[0], u64(0))
 	testing.expect_value(t, result.choices[1], u64(7))
+}
+
+@(test)
+test_shrinker_removes_dict_entries_with_hints :: proc(t: ^testing.T) {
+	choices := [?]u64{2, 1, 1, 7, 7}
+	result := shrink_case(dict_entry_failure_property, choices[:], 1, 10, default_options({max_shrinks = 12}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "dict contains bad key")
+	testing.expect_value(t, len(result.choices), 3)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(7))
+	testing.expect_value(t, result.choices[2], u64(0))
 }
 
 @(test)

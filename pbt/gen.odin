@@ -1745,12 +1745,35 @@ dict :: proc(key: Gen($Key_Input, $Key), value: Gen($Value_Input, $Value), min_l
 				max_len = math.max(input.min_len, t.size)
 			}
 
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			target_len := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
 			values := make(map[Key]Value, target_len, t.value_allocator)
+			entry_ends: [dynamic]int
+			can_shrink_entries := t.capture_shrink_hints && target_len > input.min_len
+			if can_shrink_entries {
+				entry_ends = make([dynamic]int, 0, target_len + 1, t.value_allocator)
+				append(&entry_ends, choice_cursor(t))
+			}
 			max_attempts := target_len * 4 + 8
 			for len(values) < target_len && max_attempts > 0 {
-				values[draw(t, input.key)] = draw(t, input.value)
+				key := draw(t, input.key)
+				value := draw(t, input.value)
+				_, existed := values[key]
+				values[key] = value
+				if can_shrink_entries {
+					if existed {
+						can_shrink_entries = false
+					} else {
+						append(&entry_ends, choice_cursor(t))
+					}
+				}
 				max_attempts -= 1
+			}
+			if can_shrink_entries && len(values) == target_len {
+				record_collection_shrink_hints(t, start, input.min_len, len(values), entry_ends[:])
 			}
 			return values
 		},
