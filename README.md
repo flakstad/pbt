@@ -43,7 +43,8 @@ The current implementation includes:
   and `cover`
 - coverage/classification aggregation in `Check_Result` and JSON output
 - text coverage reports mark required labels as ok or missing
-- strict or warning-only coverage requirement handling
+- strict or warning-only coverage requirement handling, with an optional
+  extra-test budget for near-miss coverage goals
 - richer failure context with `counterexample` and value-printing `equal`
 - structured event capture for HTTP/process/statechart adapters
 - JSON result output for Gransk, including duration and shrink metadata

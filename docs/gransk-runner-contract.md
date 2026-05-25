@@ -66,6 +66,7 @@ Supported runner flags:
 - `--max-size`
 - `--max-discards`
 - `--max-shrinks`
+- `--coverage-extra-tests`
 - `--shrink` / `--no-shrink`
 - `--coverage-warning-only`
 - `--preserve-shrink-labels`
