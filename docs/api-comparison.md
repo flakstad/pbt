@@ -71,7 +71,8 @@ The current core is in a reasonable place:
   request-file protocol calls, persistent line protocol calls, and curl-backed
   HTTP calls.
 - process and protocol target calls have basic generated-input guardrails:
-  timeouts, process output caps, and line-protocol response caps.
+  timeouts, process output caps, line-protocol response caps, and
+  line-protocol per-call timeouts.
 - one-shot process calls can feed generated stdin, which covers CLIs and small
   wrapper programs that read JSON or commands from standard input.
 - `protocol_stdin_call_with_options` provides a named one-shot stdin protocol

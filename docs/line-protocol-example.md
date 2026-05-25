@@ -22,3 +22,16 @@ Run it:
 This is the same shape a Go, Python, JavaScript/TypeScript, Clojure, or Odin
 wrapper can use: keep the target process alive, send one request line, read one
 response line, and return normal `pbt.Result` values from the property.
+
+Use `line_protocol_call_with_options` when a target needs tighter per-call
+guardrails:
+
+```odin
+res := pbt.line_protocol_call_with_options(t, &client, request_json, {
+    timeout_ms = 500,
+    max_response_bytes = 65_536,
+})
+```
+
+Timeouts stop the client, because a late response could otherwise be read as
+the response for a later generated command.

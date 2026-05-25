@@ -47,6 +47,7 @@ Line_Protocol_Result :: struct {
 
 Line_Protocol_Call_Options :: struct {
 	max_response_bytes: int,
+	timeout_ms:         int,
 }
 
 CLI_Arg_ASCII_Input :: struct {
@@ -320,12 +321,12 @@ line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, re
 		}
 	}
 
-	response, read_error, response_too_long := line_protocol_read_line(client.stdout, line_protocol_max_response_bytes(options), t.allocator)
+	response, read_error, response_too_long, timed_out := line_protocol_read_line(client.stdout, line_protocol_max_response_bytes(options), options.timeout_ms, t.allocator)
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	if read_error != "" {
 		err_text := read_error
 		record_event(t, "protocol", "line", "error", fmt.tprintf("%s duration_ns=%d", err_text, duration_ns))
-		if response_too_long {
+		if response_too_long || timed_out {
 			line_protocol_stop(client)
 		}
 		return {
@@ -553,19 +554,43 @@ process_drain_pipe :: proc(file: ^os.File, out: ^[dynamic]byte, done: ^bool, max
 	}
 }
 
-line_protocol_read_line :: proc(file: ^os.File, max_response_bytes: int, allocator := context.allocator) -> (string, string, bool) {
+line_protocol_read_line :: proc(file: ^os.File, max_response_bytes, timeout_ms: int, allocator := context.allocator) -> (string, string, bool, bool) {
 	builder := strings.builder_make(allocator)
 	byte_count := 0
 	buffer: [1]byte
+	start := time.tick_now()
 	for {
+		if timeout_ms > 0 {
+			has_data, data_err := os.pipe_has_data(file)
+			if data_err == .Broken_Pipe || data_err == .EOF {
+				strings.builder_destroy(&builder)
+				return "", "read error: EOF", false, false
+			}
+			if data_err != nil {
+				strings.builder_destroy(&builder)
+				return "", fmt.tprintf("read error: %v", data_err), false, false
+			}
+			if !has_data {
+				if time.duration_milliseconds(time.tick_diff(start, time.tick_now())) >= f64(timeout_ms) {
+					strings.builder_destroy(&builder)
+					return "", fmt.tprintf("line protocol response timed out after %d ms", timeout_ms), false, true
+				}
+				time.sleep(1 * time.Millisecond)
+				continue
+			}
+		}
 		n, err := os.read(file, buffer[:])
 		if err != nil {
 			strings.builder_destroy(&builder)
-			return "", fmt.tprintf("read error: %v", err), false
+			return "", fmt.tprintf("read error: %v", err), false, false
 		}
 		if n == 0 {
+			if timeout_ms > 0 && time.duration_milliseconds(time.tick_diff(start, time.tick_now())) >= f64(timeout_ms) {
+				strings.builder_destroy(&builder)
+				return "", fmt.tprintf("line protocol response timed out after %d ms", timeout_ms), false, true
+			}
 			strings.builder_destroy(&builder)
-			return "", "read error: EOF", false
+			return "", "read error: EOF", false, false
 		}
 		if buffer[0] == '\n' {
 			break
@@ -573,13 +598,13 @@ line_protocol_read_line :: proc(file: ^os.File, max_response_bytes: int, allocat
 		if buffer[0] != '\r' {
 			if byte_count >= max_response_bytes {
 				strings.builder_destroy(&builder)
-				return "", fmt.tprintf("line protocol response exceeded %d bytes", max_response_bytes), true
+				return "", fmt.tprintf("line protocol response exceeded %d bytes", max_response_bytes), true, false
 			}
 			strings.write_byte(&builder, buffer[0])
 			byte_count += 1
 		}
 	}
-	return strings.to_string(builder), "", false
+	return strings.to_string(builder), "", false, false
 }
 
 protocol_write_request_file :: proc(t: ^T, request: string) -> (string, bool) {

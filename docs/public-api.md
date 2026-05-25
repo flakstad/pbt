@@ -527,8 +527,8 @@ generated or untrusted target calls so a property fails instead of hanging
 indefinitely. Process stdout and stderr are capped at 1 MiB per stream by
 default; use `max_output_bytes` to set a tighter cap for noisy targets.
 
-The first process adapter is a one-shot command runner. A persistent process
-protocol should come next for faster cross-language library adapters.
+The process adapter supports one-shot command runners and a persistent line
+protocol for faster cross-language library adapters.
 
 ### HTTP Target
 
@@ -654,7 +654,9 @@ Each response is one newline-terminated line from target stdout. This is the
 first persistent adapter path and is intended for small wrappers around
 libraries in Go, Python, JavaScript/TypeScript, Clojure, Odin, and shell.
 Response lines are capped at 1 MiB by default; use
-`line_protocol_call_with_options` to set a tighter per-call cap for a target.
+`line_protocol_call_with_options` to set a tighter per-call cap or timeout for
+a target. A line-protocol timeout stops the client because an unread late
+response would otherwise desynchronize later generated calls.
 See `examples/line_protocol_runner` for a runnable property using this shape.
 See `examples/external_targets` for runnable one-shot CLI argv and stdin
 protocol properties.

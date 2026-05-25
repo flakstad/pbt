@@ -1203,6 +1203,27 @@ test_line_protocol_rejects_oversized_response :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_line_protocol_times_out_waiting_for_response :: proc(t: ^testing.T) {
+	command := [?]string{"/bin/sh", "-c", "while IFS= read -r line; do sleep 1; done"}
+	client, start_error := line_protocol_start(command[:])
+	defer line_protocol_stop(&client)
+
+	testing.expect(t, start_error == nil)
+
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	result := line_protocol_call_with_options(&ctx, &client, "anything", {timeout_ms = 10})
+
+	testing.expect(t, !result.success)
+	testing.expect(t, !client.alive)
+	testing.expect(t, strings.contains(result.error, "line protocol response timed out after 10 ms"))
+	testing.expect(t, len(ctx.events) > 0)
+	testing.expect_value(t, ctx.events[0].status, "error")
+}
+
+@(test)
 test_http_adapter_fetches_url :: proc(t: ^testing.T) {
 	file, err := os.create("/tmp/pbt-http-adapter-ok")
 	testing.expect(t, err == nil)
