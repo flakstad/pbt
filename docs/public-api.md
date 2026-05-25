@@ -797,6 +797,7 @@ The result payload should include:
 - shrunk failure
 - notes
 - labels/classification stats
+- first missing coverage requirement fields for direct report extraction
 - adapter events
 - stateful trace when present
 

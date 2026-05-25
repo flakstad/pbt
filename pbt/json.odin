@@ -25,6 +25,7 @@ check_result_json :: proc(result: Check_Result) -> string {
 	json_field_string(&builder, "message", result.message, false)
 	strings.write_string(&builder, ",\"coverage\":")
 	json_write_coverage(&builder, result.coverage[:], result.num_tests)
+	json_write_coverage_missing_fields(&builder, result.coverage[:], result.num_tests, "")
 
 	strings.write_string(&builder, ",\"replay\":{")
 	json_field_u64(&builder, "seed", result.replay.seed, true)
@@ -175,6 +176,7 @@ check_suite_result_json :: proc(result: Check_Suite_Result) -> string {
 	json_field_string(&builder, "failing_property", failing.name, false)
 	json_field_string(&builder, "failing_code", failing.code, false)
 	json_field_string(&builder, "failing_message", failing.message, false)
+	json_write_coverage_missing_fields(&builder, failing.coverage[:], failing.num_tests, "failing_")
 	strings.write_string(&builder, ",\"failing_notes\":")
 	json_write_strings(&builder, failing.shrunk_test.notes[:])
 	strings.write_string(&builder, ",\"failing_events\":")
@@ -378,6 +380,23 @@ json_write_coverage :: proc(builder: ^strings.Builder, coverage: []Coverage_Labe
 		strings.write_string(builder, "}")
 	}
 	strings.write_string(builder, "]")
+}
+
+json_write_coverage_missing_fields :: proc(builder: ^strings.Builder, coverage: []Coverage_Label, num_tests: int, prefix: string) {
+	index := coverage_unmet_index(coverage, num_tests)
+	if index < 0 {
+		json_field_bool(builder, fmt.tprintf("%scoverage_missing", prefix), false, false)
+		json_field_string(builder, fmt.tprintf("%scoverage_missing_label", prefix), "", false)
+		json_field_f64(builder, fmt.tprintf("%scoverage_observed_percent", prefix), 0, false)
+		json_field_f64(builder, fmt.tprintf("%scoverage_required_percent", prefix), 0, false)
+		return
+	}
+
+	item := coverage[index]
+	json_field_bool(builder, fmt.tprintf("%scoverage_missing", prefix), true, false)
+	json_field_string(builder, fmt.tprintf("%scoverage_missing_label", prefix), item.label, false)
+	json_field_f64(builder, fmt.tprintf("%scoverage_observed_percent", prefix), coverage_percent(item, num_tests), false)
+	json_field_f64(builder, fmt.tprintf("%scoverage_required_percent", prefix), item.required_percent, false)
 }
 
 json_field_string :: proc(builder: ^strings.Builder, name, value: string, first: bool) {

@@ -1572,6 +1572,7 @@ test_coverage_is_aggregated_and_written_to_json :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"label\":\"all\""))
 	testing.expect(t, strings.contains(json, "\"required_percent\":100.00"))
 	testing.expect(t, strings.contains(json, "\"ok\":true"))
+	testing.expect(t, strings.contains(json, "\"coverage_missing\":false"))
 
 	text := check_result_text(result)
 	defer delete(text)
@@ -1590,6 +1591,13 @@ test_unmet_coverage_requirement_fails_check :: proc(t: ^testing.T) {
 	testing.expect(t, impossible_index >= 0)
 	testing.expect_value(t, result.coverage[impossible_index].count, 0)
 	testing.expect_value(t, result.coverage[impossible_index].required_percent, 1.0)
+
+	json := check_result_json(result)
+	defer delete(json)
+	testing.expect(t, strings.contains(json, "\"coverage_missing\":true"))
+	testing.expect(t, strings.contains(json, "\"coverage_missing_label\":\"impossible\""))
+	testing.expect(t, strings.contains(json, "\"coverage_observed_percent\":0.00"))
+	testing.expect(t, strings.contains(json, "\"coverage_required_percent\":1.00"))
 
 	text := check_result_text(result)
 	defer delete(text)
@@ -1610,6 +1618,8 @@ test_coverage_warning_only_keeps_check_passing :: proc(t: ^testing.T) {
 	defer delete(json)
 	testing.expect(t, strings.contains(json, "\"label\":\"impossible\""))
 	testing.expect(t, strings.contains(json, "\"ok\":false"))
+	testing.expect(t, strings.contains(json, "\"coverage_missing\":true"))
+	testing.expect(t, strings.contains(json, "\"coverage_missing_label\":\"impossible\""))
 }
 
 @(test)
@@ -2135,6 +2145,28 @@ test_check_properties_from_args_reports_suite_failure :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(result.results), 2)
 	testing.expect_value(t, result.results[1].name, "always fails")
 	testing.expect_value(t, result.results[1].status, Status.Fail)
+}
+
+@(test)
+test_check_properties_from_args_promotes_suite_coverage_failure :: proc(t: ^testing.T) {
+	properties := [?]Property_Case{
+		{name = "coverage failure", property = coverage_failure_property},
+	}
+	args := [?]string{"--num-tests", "5", "--seed", "88"}
+
+	result := check_properties_from_args(properties[:], args[:])
+	defer destroy_check_suite_result(&result)
+
+	testing.expect_value(t, result.status, Status.Error)
+	testing.expect_value(t, result.code, "suite_error")
+	testing.expect_value(t, result.results[0].code, "coverage_not_met")
+
+	json := check_suite_result_json(result)
+	defer delete(json)
+	testing.expect(t, strings.contains(json, "\"failing_coverage_missing\":true"))
+	testing.expect(t, strings.contains(json, "\"failing_coverage_missing_label\":\"impossible\""))
+	testing.expect(t, strings.contains(json, "\"failing_coverage_observed_percent\":0.00"))
+	testing.expect(t, strings.contains(json, "\"failing_coverage_required_percent\":1.00"))
 }
 
 @(test)

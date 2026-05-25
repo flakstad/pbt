@@ -103,6 +103,10 @@ fields so Gransk does not need to scan every nested result:
 - `failing_property`
 - `failing_code`
 - `failing_message`
+- `failing_coverage_missing`
+- `failing_coverage_missing_label`
+- `failing_coverage_observed_percent`
+- `failing_coverage_required_percent`
 - `failing_notes`
 - `failing_events`
 - `failing_shrink_attempts`
@@ -119,6 +123,10 @@ Individual property results also include:
 - `num_discards`
 - `duration_ns`
 - `coverage`
+- `coverage_missing`
+- `coverage_missing_label`
+- `coverage_observed_percent`
+- `coverage_required_percent`
 - `replay`
 - `events`
 - `notes`
