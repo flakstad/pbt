@@ -18,9 +18,11 @@ List properties:
 Run it against an endpoint that accepts JSON `POST` requests:
 
 ```sh
-PBT_HTTP_BASE_URL=http://127.0.0.1:8080/items \
-  /tmp/pbt-http-target-runner --num-tests 100 --seed 123
+/tmp/pbt-http-target-runner --target http://127.0.0.1:8080/items --num-tests 100 --seed 123
 ```
+
+`PBT_HTTP_BASE_URL` is also accepted for environments that prefer target
+configuration through environment variables.
 
 The property generates schema-shaped JSON with:
 

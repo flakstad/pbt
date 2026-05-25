@@ -60,6 +60,7 @@ Supported runner flags:
 - `--json` and `--text`
 - `--property` / `-p`
 - `--tag` / `-t`
+- `--target`
 - `--num-tests` / `-n`
 - `--seed`
 - `--max-size`

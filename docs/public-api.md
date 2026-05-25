@@ -619,7 +619,8 @@ HTTP targets are the main cross-language path: the system under test can be
 written in any language as long as the property can drive and observe it over
 HTTP.
 See `examples/http_target_runner` for a Gransk-facing runner that posts
-generated schema-shaped JSON to a target URL from `PBT_HTTP_BASE_URL`.
+generated schema-shaped JSON to a target URL from `--target` or
+`PBT_HTTP_BASE_URL`.
 
 The first implementation is curl-backed. That keeps the adapter portable enough
 for Gransk immediately while avoiding a custom HTTP client in the PBT core.

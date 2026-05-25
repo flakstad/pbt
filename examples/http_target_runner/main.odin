@@ -8,9 +8,9 @@ import pbt "../../pbt"
 HTTP_TAGS := [?]string{"external", "http", "api"}
 
 http_post_schema_property :: proc(t: ^pbt.T) -> pbt.Result {
-	base_url, found := os.lookup_env("PBT_HTTP_BASE_URL", context.temp_allocator)
-	if !found || base_url == "" {
-		return pbt.error("set PBT_HTTP_BASE_URL to the HTTP endpoint under test")
+	base_url := http_target_url()
+	if base_url == "" {
+		return pbt.error("set --target or PBT_HTTP_BASE_URL to the HTTP endpoint under test")
 	}
 
 	statuses := [?]string{"draft", "active", "archived"}
@@ -31,6 +31,20 @@ http_post_schema_property :: proc(t: ^pbt.T) -> pbt.Result {
 		return pbt.counterexample(fmt.tprintf("request body: %s", body), result)
 	}
 	return pbt.pass()
+}
+
+http_target_url :: proc() -> string {
+	for i := 1; i < len(os.args); i += 1 {
+		if os.args[i] == "--target" && i + 1 < len(os.args) {
+			return os.args[i + 1]
+		}
+	}
+
+	base_url, found := os.lookup_env("PBT_HTTP_BASE_URL", context.temp_allocator)
+	if found {
+		return base_url
+	}
+	return ""
 }
 
 main :: proc() {
