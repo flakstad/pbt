@@ -122,10 +122,11 @@ field-subset generators also record hints that remove optional fields while
 preserving retained value choices. Dict generators record entry-removal hints
 when generated keys are unique, avoiding ambiguous duplicate-key overwrites. It
 also removes chunks from the choice stream, tries zeroed suffixes for simpler
-array/string/payload contents, and lowers individual choice values. When a
-replay candidate consumes fewer choices than it was given, the shrinker keeps
-only the consumed choices, producing cleaner replay strings. `Check_Result` also
-records shrink attempts and shrink duration.
+array/string/payload contents, records component-range zeroing hints for
+tuple/map/bind combinators, and lowers individual choice values. When a replay
+candidate consumes fewer choices than it was given, the shrinker keeps only the
+consumed choices, producing cleaner replay strings. `Check_Result` also records
+shrink attempts and shrink duration.
 
 Useful additions:
 

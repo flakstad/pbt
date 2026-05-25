@@ -314,8 +314,9 @@ choice-range hints, uses built-in length hints to remove array/string ranges
 while preserving retained element choices, tries marked command-boundary ranges
 for stateful properties, reduces the generated command sequence length when
 removing a whole stateful command, removes contiguous choice chunks, tries
-zeroed suffixes to simplify generated payload contents, and then lowers
-individual choice values.
+zeroed suffixes to simplify generated payload contents, applies component-range
+zeroing hints from tuple/map/bind combinators without shifting later replay
+choices, and then lowers individual choice values.
 
 Deterministic choices, such as a fixed-size generator whose bound has only one
 possible value, are not recorded in the replay stream. This keeps replay choices

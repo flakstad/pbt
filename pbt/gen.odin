@@ -1810,6 +1810,19 @@ clear_first_included_field :: proc(values: []bool) -> bool {
 	return false
 }
 
+record_choice_zero_subrange_hint :: proc(t: ^T, group_start, group_end, zero_start, zero_end: int) {
+	if zero_start < group_start || zero_end > group_end || zero_start >= zero_end {
+		return
+	}
+	replacement := make([dynamic]u64, 0, group_end - group_start, t.value_allocator)
+	append_choice_range(&replacement, t, group_start, zero_start - group_start)
+	for _ in zero_start ..< zero_end {
+		append(&replacement, 0)
+	}
+	append_choice_range(&replacement, t, zero_end, group_end - zero_end)
+	record_choice_shrink_hint(t, group_start, group_end - group_start, replacement[:])
+}
+
 Optional :: struct(Value: typeid) {
 	ok:    bool,
 	value: Value,
@@ -1854,10 +1867,18 @@ pair :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Secon
 	return {
 		input = {first = first, second = second},
 		produce = proc(t: ^T, input: Pair_Input(First_Input, First, Second_Input, Second)) -> Pair(First, Second) {
-			return {
-				first = draw(t, input.first),
-				second = draw(t, input.second),
+			start := choice_cursor(t)
+			first_start := choice_cursor(t)
+			first_value := draw(t, input.first)
+			first_end := choice_cursor(t)
+			second_start := choice_cursor(t)
+			second_value := draw(t, input.second)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, first_start, first_end)
+				record_choice_zero_subrange_hint(t, start, end, second_start, end)
 			}
+			return {first = first_value, second = second_value}
 		},
 	}
 }
@@ -1878,11 +1899,22 @@ triple :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Sec
 	return {
 		input = {first = first, second = second, third = third},
 		produce = proc(t: ^T, input: Triple_Input(First_Input, First, Second_Input, Second, Third_Input, Third)) -> Triple(First, Second, Third) {
-			return {
-				first = draw(t, input.first),
-				second = draw(t, input.second),
-				third = draw(t, input.third),
+			start := choice_cursor(t)
+			first_start := choice_cursor(t)
+			first_value := draw(t, input.first)
+			first_end := choice_cursor(t)
+			second_start := choice_cursor(t)
+			second_value := draw(t, input.second)
+			second_end := choice_cursor(t)
+			third_start := choice_cursor(t)
+			third_value := draw(t, input.third)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, first_start, first_end)
+				record_choice_zero_subrange_hint(t, start, end, second_start, second_end)
+				record_choice_zero_subrange_hint(t, start, end, third_start, end)
 			}
+			return {first = first_value, second = second_value, third = third_value}
 		},
 	}
 }
@@ -1905,12 +1937,26 @@ tuple4 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Sec
 	return {
 		input = {first = first, second = second, third = third, fourth = fourth},
 		produce = proc(t: ^T, input: Tuple4_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Fourth_Input, Fourth)) -> Tuple4(First, Second, Third, Fourth) {
-			return {
-				first = draw(t, input.first),
-				second = draw(t, input.second),
-				third = draw(t, input.third),
-				fourth = draw(t, input.fourth),
+			start := choice_cursor(t)
+			first_start := choice_cursor(t)
+			first_value := draw(t, input.first)
+			first_end := choice_cursor(t)
+			second_start := choice_cursor(t)
+			second_value := draw(t, input.second)
+			second_end := choice_cursor(t)
+			third_start := choice_cursor(t)
+			third_value := draw(t, input.third)
+			third_end := choice_cursor(t)
+			fourth_start := choice_cursor(t)
+			fourth_value := draw(t, input.fourth)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, first_start, first_end)
+				record_choice_zero_subrange_hint(t, start, end, second_start, second_end)
+				record_choice_zero_subrange_hint(t, start, end, third_start, third_end)
+				record_choice_zero_subrange_hint(t, start, end, fourth_start, end)
 			}
+			return {first = first_value, second = second_value, third = third_value, fourth = fourth_value}
 		},
 	}
 }
@@ -1935,13 +1981,30 @@ tuple5 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Sec
 	return {
 		input = {first = first, second = second, third = third, fourth = fourth, fifth = fifth},
 		produce = proc(t: ^T, input: Tuple5_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Fourth_Input, Fourth, Fifth_Input, Fifth)) -> Tuple5(First, Second, Third, Fourth, Fifth) {
-			return {
-				first = draw(t, input.first),
-				second = draw(t, input.second),
-				third = draw(t, input.third),
-				fourth = draw(t, input.fourth),
-				fifth = draw(t, input.fifth),
+			start := choice_cursor(t)
+			first_start := choice_cursor(t)
+			first_value := draw(t, input.first)
+			first_end := choice_cursor(t)
+			second_start := choice_cursor(t)
+			second_value := draw(t, input.second)
+			second_end := choice_cursor(t)
+			third_start := choice_cursor(t)
+			third_value := draw(t, input.third)
+			third_end := choice_cursor(t)
+			fourth_start := choice_cursor(t)
+			fourth_value := draw(t, input.fourth)
+			fourth_end := choice_cursor(t)
+			fifth_start := choice_cursor(t)
+			fifth_value := draw(t, input.fifth)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, first_start, first_end)
+				record_choice_zero_subrange_hint(t, start, end, second_start, second_end)
+				record_choice_zero_subrange_hint(t, start, end, third_start, third_end)
+				record_choice_zero_subrange_hint(t, start, end, fourth_start, fourth_end)
+				record_choice_zero_subrange_hint(t, start, end, fifth_start, end)
 			}
+			return {first = first_value, second = second_value, third = third_value, fourth = fourth_value, fifth = fifth_value}
 		},
 	}
 }
@@ -2006,7 +2069,13 @@ map_gen :: proc(gen: Gen($Gen_Input, $Value), f: proc(value: Value) -> $Mapped) 
 	return {
 		input = {gen = gen, f = f},
 		produce = proc(t: ^T, input: Map_Input(Gen_Input, Value, Mapped)) -> Mapped {
-			return input.f(draw(t, input.gen))
+			start := choice_cursor(t)
+			value := draw(t, input.gen)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, start, end)
+			}
+			return input.f(value)
 		},
 	}
 }
@@ -2021,7 +2090,18 @@ map2 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Secon
 	return {
 		input = {first = first, second = second, f = f},
 		produce = proc(t: ^T, input: Map2_Input(First_Input, First, Second_Input, Second, Mapped)) -> Mapped {
-			return input.f(draw(t, input.first), draw(t, input.second))
+			start := choice_cursor(t)
+			first_start := choice_cursor(t)
+			first_value := draw(t, input.first)
+			first_end := choice_cursor(t)
+			second_start := choice_cursor(t)
+			second_value := draw(t, input.second)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, first_start, first_end)
+				record_choice_zero_subrange_hint(t, start, end, second_start, end)
+			}
+			return input.f(first_value, second_value)
 		},
 	}
 }
@@ -2037,7 +2117,22 @@ map3 :: proc(first: Gen($First_Input, $First), second: Gen($Second_Input, $Secon
 	return {
 		input = {first = first, second = second, third = third, f = f},
 		produce = proc(t: ^T, input: Map3_Input(First_Input, First, Second_Input, Second, Third_Input, Third, Mapped)) -> Mapped {
-			return input.f(draw(t, input.first), draw(t, input.second), draw(t, input.third))
+			start := choice_cursor(t)
+			first_start := choice_cursor(t)
+			first_value := draw(t, input.first)
+			first_end := choice_cursor(t)
+			second_start := choice_cursor(t)
+			second_value := draw(t, input.second)
+			second_end := choice_cursor(t)
+			third_start := choice_cursor(t)
+			third_value := draw(t, input.third)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, first_start, first_end)
+				record_choice_zero_subrange_hint(t, start, end, second_start, second_end)
+				record_choice_zero_subrange_hint(t, start, end, third_start, end)
+			}
+			return input.f(first_value, second_value, third_value)
 		},
 	}
 }
@@ -2051,8 +2146,19 @@ bind :: proc(gen: Gen($Gen_Input, $Value), f: proc(value: Value) -> Gen($Next_In
 	return {
 		input = {gen = gen, f = f},
 		produce = proc(t: ^T, input: Bind_Input(Gen_Input, Value, Next_Input, Next)) -> Next {
-			next := input.f(draw(t, input.gen))
-			return draw(t, next)
+			start := choice_cursor(t)
+			value_start := choice_cursor(t)
+			value := draw(t, input.gen)
+			value_end := choice_cursor(t)
+			next := input.f(value)
+			next_start := choice_cursor(t)
+			result := draw(t, next)
+			end := choice_cursor(t)
+			if t.capture_shrink_hints {
+				record_choice_zero_subrange_hint(t, start, end, value_start, value_end)
+				record_choice_zero_subrange_hint(t, start, end, next_start, end)
+			}
+			return result
 		},
 	}
 }

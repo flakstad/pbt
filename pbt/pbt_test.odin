@@ -773,6 +773,14 @@ array_middle_irrelevant_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+triple_middle_irrelevant_failure_property :: proc(t: ^T) -> Result {
+	values := draw(t, triple(int_range(0, 9), array(int_range(0, 9), 2, 2), int_range(0, 9)))
+	if values.first == 3 && values.third == 7 {
+		return fail("triple boundary values expose bug")
+	}
+	return pass()
+}
+
 string_contains_failure_property :: proc(t: ^T) -> Result {
 	value := draw(t, string_alphabet("az", 0, 4))
 	for ch in value {
@@ -1973,6 +1981,21 @@ test_shrinker_removes_array_middle_range_with_length_hint :: proc(t: ^testing.T)
 	testing.expect_value(t, result.choices[0], u64(2))
 	testing.expect_value(t, result.choices[1], u64(1))
 	testing.expect_value(t, result.choices[2], u64(7))
+}
+
+@(test)
+test_shrinker_zeroes_irrelevant_tuple_component_with_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{3, 9, 8, 7}
+	result := shrink_case(triple_middle_irrelevant_failure_property, choices[:], 1, 10, default_options({max_shrinks = 3}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "triple boundary values expose bug")
+	testing.expect_value(t, len(result.choices), 4)
+	testing.expect_value(t, result.choices[0], u64(3))
+	testing.expect_value(t, result.choices[1], u64(0))
+	testing.expect_value(t, result.choices[2], u64(0))
+	testing.expect_value(t, result.choices[3], u64(7))
 }
 
 @(test)
