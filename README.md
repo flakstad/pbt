@@ -86,7 +86,8 @@ See [docs/http-target-runner.md](docs/http-target-runner.md) for an HTTP API
 runner that posts generated schema-shaped JSON to a target endpoint.
 
 See [docs/stateful-http-runner.md](docs/stateful-http-runner.md) for a
-stateful CRUD-style HTTP runner with create/delete/list model checks.
+stateful CRUD-style HTTP runner with create/delete/list model checks, including
+embedded and `--target` service modes.
 
 See [docs/statechart-model-example.md](docs/statechart-model-example.md) for a
 statechart-backed stateful model example.

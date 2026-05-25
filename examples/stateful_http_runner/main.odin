@@ -43,7 +43,17 @@ Todo_Observation :: struct {
 }
 
 todo_stateful_http_property :: proc(t: ^pbt.T) -> pbt.Result {
-	target, ok := todo_target_start(t)
+	target: Todo_Target
+	ok := false
+	base_url := todo_target_url()
+	if base_url != "" {
+		target, ok = todo_target_from_url(t, base_url)
+		if !ok {
+			return pbt.error("could not reset external todo HTTP target")
+		}
+	} else {
+		target, ok = todo_target_start(t)
+	}
 	if !ok {
 		return pbt.error("could not start todo HTTP target")
 	}
@@ -93,6 +103,14 @@ todo_target_start :: proc(t: ^pbt.T) -> (Todo_Target, bool) {
 	return target, true
 }
 
+todo_target_from_url :: proc(t: ^pbt.T, base_url: string) -> (Todo_Target, bool) {
+	cloned_url := strings.clone(strings.trim_right(base_url, "/"), t.value_allocator)
+	if !todo_reset_external(cloned_url) {
+		return {}, false
+	}
+	return Todo_Target{base_url = cloned_url}, true
+}
+
 todo_target_stop :: proc(target: ^Todo_Target) {
 	if target == nil || !target.started {
 		return
@@ -119,6 +137,32 @@ todo_wait_ready :: proc(base_url: string) -> bool {
 	return false
 }
 
+todo_reset_external :: proc(base_url: string) -> bool {
+	url := strings.concatenate({base_url, "/todos"}, context.temp_allocator)
+	command := [?]string{"curl", "-sS", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "0.500", "-X", "DELETE", url}
+	state, stdout, stderr, err := os.process_exec(os.Process_Desc{command = command[:]}, context.temp_allocator)
+	_ = stderr
+	if err != nil || !state.success {
+		return false
+	}
+	status := strings.trim_space(string(stdout))
+	return status == "200" || status == "204"
+}
+
+todo_target_url :: proc() -> string {
+	for i := 1; i < len(os.args); i += 1 {
+		if os.args[i] == "--target" && i + 1 < len(os.args) {
+			return os.args[i + 1]
+		}
+	}
+
+	base_url, found := os.lookup_env("PBT_TODO_BASE_URL", context.temp_allocator)
+	if found {
+		return base_url
+	}
+	return ""
+}
+
 todo_server_code :: proc() -> string {
 	return strings.concatenate({
 		"import os,sys\n",
@@ -137,7 +181,8 @@ todo_server_code :: proc() -> string {
 		"  n=int(self.headers.get('Content-Length','0')); self.rfile.read(n) if n else None\n",
 		"  item=next_id; next_id+=1; todos.add(item); b=str(item).encode(); self.send_response(201); self.send_header('Content-Type','text/plain'); self.send_header('Content-Length',str(len(b))); self.end_headers(); self.wfile.write(b)\n",
 		" def do_DELETE(self):\n",
-		"  global todos,bug\n",
+		"  global todos,next_id,bug\n",
+		"  if self.path=='/todos': todos.clear(); next_id=1; self.send_response(204); self.end_headers(); return\n",
 		"  if not self.path.startswith('/todos/'): self.send_response(404); self.end_headers(); return\n",
 		"  try: item=int(self.path.rsplit('/',1)[1])\n",
 		"  except Exception: item=-1\n",

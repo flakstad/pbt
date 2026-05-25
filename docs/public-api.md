@@ -624,7 +624,9 @@ See `examples/http_target_runner` for a Gransk-facing runner that posts
 generated schema-shaped JSON to a target URL from `--target` or
 `PBT_HTTP_BASE_URL`.
 See `examples/stateful_http_runner` for a CRUD-style HTTP API model where
-generated command sequences are checked against a compact list endpoint.
+generated command sequences are checked against a compact list endpoint. It can
+start its own demo service or drive a compatible service supplied with
+`--target` or `PBT_TODO_BASE_URL`.
 
 The first implementation is curl-backed. That keeps the adapter portable enough
 for Gransk immediately while avoiding a custom HTTP client in the PBT core.

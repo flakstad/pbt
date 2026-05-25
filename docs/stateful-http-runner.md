@@ -3,9 +3,10 @@
 `examples/stateful_http_runner` demonstrates model-based testing against a
 real HTTP API boundary.
 
-The runner starts a tiny local todo HTTP service, generates command sequences,
-keeps an independent model of expected todo IDs, and checks `GET /todos` after
-each generated command.
+By default the runner starts a tiny local todo HTTP service. When `--target` or
+`PBT_TODO_BASE_URL` is supplied, it drives that external service instead. In
+both modes it generates command sequences, keeps an independent model of
+expected todo IDs, and checks `GET /todos` after each generated command.
 
 Build it:
 
@@ -25,11 +26,21 @@ Run it through Gransk:
 gransk spec check --engine odin/pbt --runner /tmp/pbt-stateful-http-runner --tag stateful --seed 123 --num-tests 25 --format text
 ```
 
+Run it against an existing compatible service:
+
+```sh
+gransk spec check --engine odin/pbt --runner /tmp/pbt-stateful-http-runner --tag stateful --target http://127.0.0.1:8080 --seed 123 --num-tests 25 --format text
+```
+
 The example uses these operations:
 
 - `create`: `POST /todos`, expecting `201` and a new ID
 - `delete <id>`: `DELETE /todos/<id>`, expecting `204`
 - `list`: `GET /todos`, returning the current IDs
+
+External target mode also expects `DELETE /todos` to reset the target before
+each generated test case. That keeps independent generated cases isolated while
+still letting Gransk run the model against a real service boundary.
 
 The useful pattern is not the tiny todo service. The pattern is:
 
@@ -39,6 +50,8 @@ The useful pattern is not the tiny todo service. The pattern is:
 3. Apply one command to the HTTP target.
 4. Observe a compact snapshot endpoint after each command.
 5. Compare the snapshot to the independent model.
+6. Reset or namespace the target between generated cases so shrinking and
+   replay are deterministic.
 
 To see the failure/replay flow, enable the intentionally buggy delete mode:
 
