@@ -1264,7 +1264,7 @@ test_stateful_runner_can_record_compact_success_events :: proc(t: ^testing.T) {
 		testing.expect_value(t, result.events[0].name, "inc")
 		testing.expect_value(t, result.events[0].status, "ok")
 		testing.expect_value(t, result.events[0].detail, "")
-		testing.expect(t, !result.events[0].name_owned)
+		testing.expect(t, !event_name_owned(result.events[0]))
 	}
 }
 
@@ -1808,10 +1808,10 @@ test_copy_events_preserves_static_fields :: proc(t: ^testing.T) {
 	defer test_destroy(&ctx)
 
 	record_event_static_kind_status(&ctx, "stateful", "step 0", "ok", "detail")
-	testing.expect(t, !ctx.events[0].name_owned)
-	testing.expect(t, !ctx.events[0].detail_owned)
-	testing.expect(t, ctx.events[0].name_copy)
-	testing.expect(t, ctx.events[0].detail_copy)
+	testing.expect(t, !event_name_owned(ctx.events[0]))
+	testing.expect(t, !event_detail_owned(ctx.events[0]))
+	testing.expect(t, event_name_copy(ctx.events[0]))
+	testing.expect(t, event_detail_copy(ctx.events[0]))
 
 	copied := copy_events(ctx.events[:])
 	defer destroy_events(&copied)
@@ -1819,10 +1819,10 @@ test_copy_events_preserves_static_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(copied), 1)
 	testing.expect_value(t, copied[0].kind, "stateful")
 	testing.expect_value(t, copied[0].status, "ok")
-	testing.expect(t, !copied[0].kind_owned)
-	testing.expect(t, !copied[0].status_owned)
-	testing.expect(t, copied[0].name_owned)
-	testing.expect(t, copied[0].detail_owned)
+	testing.expect(t, !event_kind_owned(copied[0]))
+	testing.expect(t, !event_status_owned(copied[0]))
+	testing.expect(t, event_name_owned(copied[0]))
+	testing.expect(t, event_detail_owned(copied[0]))
 }
 
 @(test)
@@ -1842,10 +1842,10 @@ test_copy_events_to_test_case_pools_dynamic_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, tc.events[0].name, "step 0")
 	testing.expect_value(t, tc.events[0].status, "ok")
 	testing.expect_value(t, tc.events[0].detail, "detail")
-	testing.expect(t, !tc.events[0].name_owned)
-	testing.expect(t, !tc.events[0].detail_owned)
-	testing.expect(t, tc.events[0].name_copy)
-	testing.expect(t, tc.events[0].detail_copy)
+	testing.expect(t, !event_name_owned(tc.events[0]))
+	testing.expect(t, !event_detail_owned(tc.events[0]))
+	testing.expect(t, event_name_copy(tc.events[0]))
+	testing.expect(t, event_detail_copy(tc.events[0]))
 	testing.expect_value(t, len(tc.event_string_storage), len("step 0") + len("detail"))
 }
 
@@ -1880,10 +1880,10 @@ test_transient_event_fields_are_copied_to_test_case :: proc(t: ^testing.T) {
 	name := strings.clone("step 0 inc", context.temp_allocator)
 	detail := strings.clone("state=0 value=1 next=1", context.temp_allocator)
 	record_event_transient_static_kind_status(&ctx, "stateful", name, "ok", detail)
-	testing.expect(t, ctx.events[0].name_copy)
-	testing.expect(t, ctx.events[0].detail_copy)
-	testing.expect(t, !ctx.events[0].name_owned)
-	testing.expect(t, !ctx.events[0].detail_owned)
+	testing.expect(t, event_name_copy(ctx.events[0]))
+	testing.expect(t, event_detail_copy(ctx.events[0]))
+	testing.expect(t, !event_name_owned(ctx.events[0]))
+	testing.expect(t, !event_detail_owned(ctx.events[0]))
 
 	tc: Test_Case
 	copy_events_to_test_case(&tc, ctx.events[:])
@@ -1894,8 +1894,8 @@ test_transient_event_fields_are_copied_to_test_case :: proc(t: ^testing.T) {
 	testing.expect_value(t, tc.events[0].name, "step 0 inc")
 	testing.expect_value(t, tc.events[0].status, "ok")
 	testing.expect_value(t, tc.events[0].detail, "state=0 value=1 next=1")
-	testing.expect(t, tc.events[0].name_copy)
-	testing.expect(t, tc.events[0].detail_copy)
+	testing.expect(t, event_name_copy(tc.events[0]))
+	testing.expect(t, event_detail_copy(tc.events[0]))
 }
 
 @(test)
@@ -1908,8 +1908,8 @@ test_run_case_moves_events_with_copied_transient_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, tc.events[0].name, "step 0 inc")
 	testing.expect_value(t, tc.events[0].status, "ok")
 	testing.expect_value(t, tc.events[0].detail, "state=0 value=1 next=1")
-	testing.expect(t, tc.events[0].name_copy)
-	testing.expect(t, tc.events[0].detail_copy)
+	testing.expect(t, event_name_copy(tc.events[0]))
+	testing.expect(t, event_detail_copy(tc.events[0]))
 }
 
 @(test)
@@ -1919,14 +1919,14 @@ test_copy_events_preserves_fully_static_fields :: proc(t: ^testing.T) {
 	defer test_destroy(&ctx)
 
 	record_event_static(&ctx, "stateful", "inc", "ok", "")
-	testing.expect(t, !ctx.events[0].kind_owned)
-	testing.expect(t, !ctx.events[0].name_owned)
-	testing.expect(t, !ctx.events[0].status_owned)
-	testing.expect(t, !ctx.events[0].detail_owned)
-	testing.expect(t, !ctx.events[0].kind_copy)
-	testing.expect(t, !ctx.events[0].name_copy)
-	testing.expect(t, !ctx.events[0].status_copy)
-	testing.expect(t, !ctx.events[0].detail_copy)
+	testing.expect(t, !event_kind_owned(ctx.events[0]))
+	testing.expect(t, !event_name_owned(ctx.events[0]))
+	testing.expect(t, !event_status_owned(ctx.events[0]))
+	testing.expect(t, !event_detail_owned(ctx.events[0]))
+	testing.expect(t, !event_kind_copy(ctx.events[0]))
+	testing.expect(t, !event_name_copy(ctx.events[0]))
+	testing.expect(t, !event_status_copy(ctx.events[0]))
+	testing.expect(t, !event_detail_copy(ctx.events[0]))
 
 	copied := copy_events(ctx.events[:])
 	defer destroy_events(&copied)
@@ -1935,10 +1935,10 @@ test_copy_events_preserves_fully_static_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, copied[0].kind, "stateful")
 	testing.expect_value(t, copied[0].name, "inc")
 	testing.expect_value(t, copied[0].status, "ok")
-	testing.expect(t, !copied[0].kind_owned)
-	testing.expect(t, !copied[0].name_owned)
-	testing.expect(t, !copied[0].status_owned)
-	testing.expect(t, !copied[0].detail_owned)
+	testing.expect(t, !event_kind_owned(copied[0]))
+	testing.expect(t, !event_name_owned(copied[0]))
+	testing.expect(t, !event_status_owned(copied[0]))
+	testing.expect(t, !event_detail_owned(copied[0]))
 }
 
 @(test)

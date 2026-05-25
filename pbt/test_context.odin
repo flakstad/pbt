@@ -73,15 +73,17 @@ Event :: struct {
 	name:   string,
 	status: string,
 	detail: string,
-	kind_owned:   bool,
-	name_owned:   bool,
-	status_owned: bool,
-	detail_owned: bool,
-	kind_copy:    bool,
-	name_copy:    bool,
-	status_copy:  bool,
-	detail_copy:  bool,
+	flags:  u8,
 }
+
+EVENT_KIND_OWNED :: u8(1 << 0)
+EVENT_NAME_OWNED :: u8(1 << 1)
+EVENT_STATUS_OWNED :: u8(1 << 2)
+EVENT_DETAIL_OWNED :: u8(1 << 3)
+EVENT_KIND_COPY :: u8(1 << 4)
+EVENT_NAME_COPY :: u8(1 << 5)
+EVENT_STATUS_COPY :: u8(1 << 6)
+EVENT_DETAIL_COPY :: u8(1 << 7)
 
 Coverage_Requirement :: struct {
 	label:            string,
@@ -311,6 +313,55 @@ copy_choice_shrink_candidates :: proc(src: []Choice_Shrink_Candidate, allocator 
 	return dst
 }
 
+event_flags :: proc(kind_owned, name_owned, status_owned, detail_owned, kind_copy, name_copy, status_copy, detail_copy: bool) -> u8 {
+	flags: u8
+	if kind_owned do flags |= EVENT_KIND_OWNED
+	if name_owned do flags |= EVENT_NAME_OWNED
+	if status_owned do flags |= EVENT_STATUS_OWNED
+	if detail_owned do flags |= EVENT_DETAIL_OWNED
+	if kind_copy do flags |= EVENT_KIND_COPY
+	if name_copy do flags |= EVENT_NAME_COPY
+	if status_copy do flags |= EVENT_STATUS_COPY
+	if detail_copy do flags |= EVENT_DETAIL_COPY
+	return flags
+}
+
+event_has_flag :: proc(event: Event, flag: u8) -> bool {
+	return (event.flags & flag) != 0
+}
+
+event_kind_owned :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_KIND_OWNED)
+}
+
+event_name_owned :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_NAME_OWNED)
+}
+
+event_status_owned :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_STATUS_OWNED)
+}
+
+event_detail_owned :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_DETAIL_OWNED)
+}
+
+event_kind_copy :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_KIND_COPY)
+}
+
+event_name_copy :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_NAME_COPY)
+}
+
+event_status_copy :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_STATUS_COPY)
+}
+
+event_detail_copy :: proc(event: Event) -> bool {
+	return event_has_flag(event, EVENT_DETAIL_COPY)
+}
+
 record_event :: proc(t: ^T, kind, name, status, detail: string) {
 	if !t.capture_events {
 		return
@@ -320,10 +371,7 @@ record_event :: proc(t: ^T, kind, name, status, detail: string) {
 		name = clone_non_empty(name, t.value_allocator),
 		status = clone_non_empty(status, t.value_allocator),
 		detail = clone_non_empty(detail, t.value_allocator),
-		kind_copy = kind != "",
-		name_copy = name != "",
-		status_copy = status != "",
-		detail_copy = detail != "",
+		flags = event_flags(false, false, false, false, kind != "", name != "", status != "", detail != ""),
 	})
 }
 
@@ -336,8 +384,7 @@ record_event_static_kind_status :: proc(t: ^T, kind, name, status, detail: strin
 		name = clone_non_empty(name, t.value_allocator),
 		status = status,
 		detail = clone_non_empty(detail, t.value_allocator),
-		name_copy = name != "",
-		detail_copy = detail != "",
+		flags = event_flags(false, false, false, false, false, name != "", false, detail != ""),
 	})
 }
 
@@ -350,8 +397,7 @@ record_event_transient_static_kind_status :: proc(t: ^T, kind, name, status, det
 		name = name,
 		status = status,
 		detail = detail,
-		name_copy = name != "",
-		detail_copy = detail != "",
+		flags = event_flags(false, false, false, false, false, name != "", false, detail != ""),
 	})
 }
 
@@ -414,19 +460,16 @@ cover :: proc(t: ^T, condition: bool, required_percent: f64, name: string) {
 copy_events :: proc(src: []Event, allocator := context.allocator) -> [dynamic]Event {
 	dst := make([dynamic]Event, 0, len(src), allocator)
 	for event in src {
-		kind, kind_owned := copy_event_string(event.kind, event.kind_owned || event.kind_copy, allocator)
-		name, name_owned := copy_event_string(event.name, event.name_owned || event.name_copy, allocator)
-		status, status_owned := copy_event_string(event.status, event.status_owned || event.status_copy, allocator)
-		detail, detail_owned := copy_event_string(event.detail, event.detail_owned || event.detail_copy, allocator)
+		kind, kind_owned := copy_event_string(event.kind, event_kind_owned(event) || event_kind_copy(event), allocator)
+		name, name_owned := copy_event_string(event.name, event_name_owned(event) || event_name_copy(event), allocator)
+		status, status_owned := copy_event_string(event.status, event_status_owned(event) || event_status_copy(event), allocator)
+		detail, detail_owned := copy_event_string(event.detail, event_detail_owned(event) || event_detail_copy(event), allocator)
 		append(&dst, Event {
 			kind = kind,
 			name = name,
 			status = status,
 			detail = detail,
-			kind_owned = kind_owned,
-			name_owned = name_owned,
-			status_owned = status_owned,
-			detail_owned = detail_owned,
+			flags = event_flags(kind_owned, name_owned, status_owned, detail_owned, false, false, false, false),
 		})
 	}
 	return dst
@@ -439,19 +482,16 @@ copy_events_to_test_case :: proc(tc: ^Test_Case, src: []Event, allocator := cont
 		tc.event_string_storage = make([dynamic]byte, 0, storage_size, allocator)
 	}
 	for event in src {
-		kind_copy := event.kind_owned || event.kind_copy
-		name_copy := event.name_owned || event.name_copy
-		status_copy := event.status_owned || event.status_copy
-		detail_copy := event.detail_owned || event.detail_copy
+		kind_copy := event_kind_owned(event) || event_kind_copy(event)
+		name_copy := event_name_owned(event) || event_name_copy(event)
+		status_copy := event_status_owned(event) || event_status_copy(event)
+		detail_copy := event_detail_owned(event) || event_detail_copy(event)
 		append(&tc.events, Event {
 			kind = copy_event_string_to_test_case(tc, event.kind, kind_copy),
 			name = copy_event_string_to_test_case(tc, event.name, name_copy),
 			status = copy_event_string_to_test_case(tc, event.status, status_copy),
 			detail = copy_event_string_to_test_case(tc, event.detail, detail_copy),
-			kind_copy = kind_copy,
-			name_copy = name_copy,
-			status_copy = status_copy,
-			detail_copy = detail_copy,
+			flags = event_flags(false, false, false, false, kind_copy, name_copy, status_copy, detail_copy),
 		})
 	}
 }
@@ -462,22 +502,15 @@ move_events_to_test_case :: proc(tc: ^Test_Case, events: ^[dynamic]Event, alloca
 		tc.event_string_storage = make([dynamic]byte, 0, storage_size, allocator)
 	}
 	for i := 0; i < len(events^); i += 1 {
-		kind_copy := events^[i].kind_owned || events^[i].kind_copy
-		name_copy := events^[i].name_owned || events^[i].name_copy
-		status_copy := events^[i].status_owned || events^[i].status_copy
-		detail_copy := events^[i].detail_owned || events^[i].detail_copy
+		kind_copy := event_kind_owned(events^[i]) || event_kind_copy(events^[i])
+		name_copy := event_name_owned(events^[i]) || event_name_copy(events^[i])
+		status_copy := event_status_owned(events^[i]) || event_status_copy(events^[i])
+		detail_copy := event_detail_owned(events^[i]) || event_detail_copy(events^[i])
 		events^[i].kind = copy_event_string_to_test_case(tc, events^[i].kind, kind_copy)
 		events^[i].name = copy_event_string_to_test_case(tc, events^[i].name, name_copy)
 		events^[i].status = copy_event_string_to_test_case(tc, events^[i].status, status_copy)
 		events^[i].detail = copy_event_string_to_test_case(tc, events^[i].detail, detail_copy)
-		events^[i].kind_owned = false
-		events^[i].name_owned = false
-		events^[i].status_owned = false
-		events^[i].detail_owned = false
-		events^[i].kind_copy = kind_copy
-		events^[i].name_copy = name_copy
-		events^[i].status_copy = status_copy
-		events^[i].detail_copy = detail_copy
+		events^[i].flags = event_flags(false, false, false, false, kind_copy, name_copy, status_copy, detail_copy)
 	}
 	tc.events = events^
 	events^ = nil
@@ -486,16 +519,16 @@ move_events_to_test_case :: proc(tc: ^Test_Case, events: ^[dynamic]Event, alloca
 event_storage_size :: proc(src: []Event) -> int {
 	total := 0
 	for event in src {
-		if event.kind_owned || event.kind_copy {
+		if event_kind_owned(event) || event_kind_copy(event) {
 			total += len(event.kind)
 		}
-		if event.name_owned || event.name_copy {
+		if event_name_owned(event) || event_name_copy(event) {
 			total += len(event.name)
 		}
-		if event.status_owned || event.status_copy {
+		if event_status_owned(event) || event_status_copy(event) {
 			total += len(event.status)
 		}
-		if event.detail_owned || event.detail_copy {
+		if event_detail_owned(event) || event_detail_copy(event) {
 			total += len(event.detail)
 		}
 	}
@@ -553,16 +586,16 @@ destroy_strings_keep_storage :: proc(values: ^[dynamic]string) {
 
 destroy_events :: proc(events: ^[dynamic]Event) {
 	for event in events^ {
-		if event.kind_owned && len(event.kind) > 0 {
+		if event_kind_owned(event) && len(event.kind) > 0 {
 			delete(event.kind)
 		}
-		if event.name_owned && len(event.name) > 0 {
+		if event_name_owned(event) && len(event.name) > 0 {
 			delete(event.name)
 		}
-		if event.status_owned && len(event.status) > 0 {
+		if event_status_owned(event) && len(event.status) > 0 {
 			delete(event.status)
 		}
-		if event.detail_owned && len(event.detail) > 0 {
+		if event_detail_owned(event) && len(event.detail) > 0 {
 			delete(event.detail)
 		}
 	}
@@ -571,16 +604,16 @@ destroy_events :: proc(events: ^[dynamic]Event) {
 
 destroy_events_keep_storage :: proc(events: ^[dynamic]Event) {
 	for event in events^ {
-		if event.kind_owned && len(event.kind) > 0 {
+		if event_kind_owned(event) && len(event.kind) > 0 {
 			delete(event.kind)
 		}
-		if event.name_owned && len(event.name) > 0 {
+		if event_name_owned(event) && len(event.name) > 0 {
 			delete(event.name)
 		}
-		if event.status_owned && len(event.status) > 0 {
+		if event_status_owned(event) && len(event.status) > 0 {
 			delete(event.status)
 		}
-		if event.detail_owned && len(event.detail) > 0 {
+		if event_detail_owned(event) && len(event.detail) > 0 {
 			delete(event.detail)
 		}
 	}
