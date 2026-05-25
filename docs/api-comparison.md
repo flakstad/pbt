@@ -170,8 +170,9 @@ Known performance work:
   formatting avoids an intermediate arena copy before that final evidence copy;
   one-shot captured runs also move the event array into the returned
   `Test_Case` instead of allocating a second event array. Event ownership/copy
-  bookkeeping is packed into a compact flag byte. Command-only success traces
-  remain much cheaper when stable command names are enough
+  bookkeeping is packed into a compact flag byte. Pass-case diagnostic captures
+  can skip replay-choice copying when callers only need events. Command-only
+  success traces remain much cheaper when stable command names are enough
 - one-shot process adapters are orders of magnitude slower than the persistent
   line protocol path and should be reserved for simple targets
 - guarded process execution adds some overhead versus bare `os.process_exec`,

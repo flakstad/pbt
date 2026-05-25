@@ -1913,6 +1913,34 @@ test_run_case_moves_events_with_copied_transient_fields :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_run_case_with_options_can_skip_pass_choices :: proc(t: ^testing.T) {
+	tc := run_case_with_options(transient_event_property, 1, 1, nil, false, {
+		capture_pass = true,
+		capture_events = true,
+		skip_choices = true,
+	})
+	defer destroy_test_case(&tc)
+
+	testing.expect_value(t, tc.result.status, Status.Pass)
+	testing.expect_value(t, len(tc.choices), 0)
+	testing.expect_value(t, len(tc.events), 1)
+}
+
+@(test)
+test_run_case_with_options_keeps_failure_choices_when_skip_requested :: proc(t: ^testing.T) {
+	choices := [?]u64{50}
+	tc := run_case_with_options(fails_for_large_values, 1, 10, choices[:], true, {
+		capture_pass = true,
+		capture_events = true,
+		skip_choices = true,
+	})
+	defer destroy_test_case(&tc)
+
+	testing.expect_value(t, tc.result.status, Status.Fail)
+	testing.expect(t, len(tc.choices) > 0)
+}
+
+@(test)
 test_copy_events_preserves_fully_static_fields :: proc(t: ^testing.T) {
 	ctx: T
 	test_init(&ctx, 1, 1, nil, false, true)

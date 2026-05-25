@@ -270,6 +270,7 @@ measure_captured_cases :: proc(
 	property: pbt.Property,
 	case_count: int,
 	sample_count: int,
+	skip_choices: bool = false,
 ) -> Bench_Summary {
 	summary := Bench_Summary{}
 
@@ -281,7 +282,11 @@ measure_captured_cases :: proc(
 		start := time.tick_now()
 		checksum := 0
 		for case_index in 0 ..< case_count {
-			tc := pbt.run_case(property, u64(2_000 + sample_index * case_count + case_index), 20, nil, false, true, true)
+			tc := pbt.run_case_with_options(property, u64(2_000 + sample_index * case_count + case_index), 20, nil, false, {
+				capture_pass = true,
+				capture_events = true,
+				skip_choices = skip_choices,
+			})
 			checksum += len(tc.events) + len(tc.choices)
 			pbt.destroy_test_case(&tc)
 		}
@@ -396,6 +401,7 @@ main :: proc() {
 	protocol := measure_check("protocol request data", protocol_property, tests, samples, {no_shrink = true})
 	stateful := measure_check("stateful 20-step model", stateful_property, tests / 10, samples, {no_shrink = true})
 	stateful_trace := measure_captured_cases("stateful 20-step captured trace", stateful_property, 10_000, samples)
+	stateful_event_trace := measure_captured_cases("stateful 20-step event-only trace", stateful_property, 10_000, samples, true)
 	stateful_command_trace := measure_captured_cases("stateful 20-step command trace", stateful_command_trace_property, 10_000, samples)
 	stateful_compact_trace := measure_captured_cases("stateful 20-step compact trace", stateful_compact_trace_property, 10_000, samples)
 	failing := measure_check_units("failing property with shrink", failure_property, 100, 1, "checks/sample", samples)
@@ -409,6 +415,7 @@ main :: proc() {
 	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 5_500, max_avg_ns = 6_500}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
+	ok = check_limit(stateful_event_trace, 10_000, samples, {label = "stateful 20-step event-only trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
 	ok = check_limit(stateful_command_trace, 10_000, samples, {label = "stateful 20-step command trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(stateful_compact_trace, 10_000, samples, {label = "stateful 20-step compact trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(failing, 100, samples, {label = "failing property with shrink", max_best_ns = 250_000, max_avg_ns = 350_000}) && ok

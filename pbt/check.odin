@@ -266,16 +266,40 @@ require_pass :: proc(t: ^testing.T, result: Check_Result) {
 	testing.expect(t, false)
 }
 
-run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false) -> Test_Case {
-	t: T
-	test_init(&t, seed, size, replay_choices, replay_strict, capture_events)
-	t.capture_choice_marks = capture_choice_marks
-	defer test_destroy(&t)
-
-	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, capture_pass, capture_events, coverage, capture_choice_marks, true)
+Case_Capture_Options :: struct {
+	capture_pass:         bool,
+	capture_events:       bool,
+	skip_choices:         bool,
+	capture_choice_marks: bool,
 }
 
-run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false, move_events: bool = false) -> Test_Case {
+default_case_capture_options :: proc(options: Case_Capture_Options) -> Case_Capture_Options {
+	o := options
+	if !o.capture_events {
+		o.capture_events = true
+	}
+	return o
+}
+
+run_case :: proc(property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false) -> Test_Case {
+	return run_case_with_options(property, seed, size, replay_choices, replay_strict, {
+		capture_pass = capture_pass,
+		capture_events = capture_events,
+		capture_choice_marks = capture_choice_marks,
+	}, coverage)
+}
+
+run_case_with_options :: proc(property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, options: Case_Capture_Options, coverage: ^[dynamic]Coverage_Label = nil) -> Test_Case {
+	opts := default_case_capture_options(options)
+	t: T
+	test_init(&t, seed, size, replay_choices, replay_strict, opts.capture_events)
+	t.capture_choice_marks = opts.capture_choice_marks
+	defer test_destroy(&t)
+
+	return run_case_with_context(&t, property, seed, size, replay_choices, replay_strict, opts.capture_pass, opts.capture_events, coverage, opts.capture_choice_marks, true, !opts.skip_choices)
+}
+
+run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, replay_choices: []u64, replay_strict: bool, capture_pass: bool, capture_events: bool = true, coverage: ^[dynamic]Coverage_Label = nil, capture_choice_marks: bool = false, move_events: bool = false, capture_choices: bool = true) -> Test_Case {
 	test_reset(t, seed, size, replay_choices, replay_strict, capture_events)
 	t.capture_choice_marks = capture_choice_marks
 	t.capture_shrink_hints = capture_choice_marks
@@ -292,7 +316,9 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 	}
 	tc := Test_Case{result = result}
 	if capture_pass || result.status == .Fail || result.status == .Error {
-		tc.choices = copy_current_choices(t)
+		if capture_choices || result.status == .Fail || result.status == .Error {
+			tc.choices = copy_current_choices(t)
+		}
 		if result.status == .Fail || result.status == .Error {
 			tc.choice_marks = copy_current_choice_marks(t)
 			tc.choice_shrink_hints = copy_current_choice_shrink_hints(t)

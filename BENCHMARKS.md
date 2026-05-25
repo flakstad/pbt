@@ -43,6 +43,8 @@ The benchmark includes these modes:
   sequence
 - `stateful 20-step captured trace`: the same model run with explicit event
   capture, measuring rich successful-step trace cost
+- `stateful 20-step event-only trace`: the same rich captured run without
+  copying pass-case replay choices, for diagnostic/event-only callers
 - `stateful 20-step command trace`: the same captured run with
   `compact_success_events`, recording stable command names without rich
   per-step detail
@@ -181,18 +183,28 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3476.58
-  avg ns/unit:            3550.85
+  best ns/unit:           3613.27
+  avg ns/unit:            3667.87
   alloc calls max:        30000
   resize calls max:       0
   free calls max:         30000
   bytes req max:          18100000
 
+stateful 20-step event-only trace
+  captured cases/sample:  10000
+  samples:                5
+  best ns/unit:           3490.28
+  avg ns/unit:            3541.93
+  alloc calls max:        20000
+  resize calls max:       0
+  free calls max:         20000
+  bytes req max:          16500000
+
 stateful 20-step command trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           683.62
-  avg ns/unit:            687.84
+  best ns/unit:           683.90
+  avg ns/unit:            690.20
   alloc calls max:        20000
   resize calls max:       0
   free calls max:         20000

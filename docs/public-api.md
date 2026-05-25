@@ -138,6 +138,11 @@ size, choice stream, replay prefix, labels, notes, and cleanup hooks.
 Generated slices and strings should be allocated in a per-case arena owned by
 `T`, so properties do not need to manually free ordinary generated values.
 
+`run_case` captures replay choices by default. `run_case_with_options` accepts
+`Case_Capture_Options`, including `skip_choices`, for event-only pass-case
+diagnostics. Failing and errored cases still retain replay choices even when
+`skip_choices` is set, so counterexamples remain replayable.
+
 ## Result Helpers
 
 ```odin
