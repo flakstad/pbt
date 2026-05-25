@@ -405,6 +405,8 @@ property.
 exit codes, and suite result cleanup. Lower-level runners can still call
 `check_properties_from_args` directly when they need to own process exit or
 embed the suite result in another protocol.
+See `examples/runner_starter` for a compact copyable runner with pure and
+persistent line-protocol property shapes.
 
 Discovery can be handled by checking `pbt.has_list_properties_flag(os.args[1:])`
 and printing `pbt.properties_json(properties[:])`.

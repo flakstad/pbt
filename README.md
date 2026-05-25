@@ -76,6 +76,9 @@ odin test pbt
 See [docs/gransk-runner-example.md](docs/gransk-runner-example.md) for a
 minimal Gransk-facing runner executable.
 
+See [docs/runner-starter.md](docs/runner-starter.md) for a small copyable
+starter runner with pure and persistent line-protocol property shapes.
+
 See [docs/external-target-examples.md](docs/external-target-examples.md) for
 CLI argv and stdin protocol examples against external targets.
 
