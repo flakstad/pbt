@@ -105,7 +105,7 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 	discards := 0
 	for test_index < opts.num_tests {
 		size := size_for_test(test_index, opts)
-		case_seed := opts.seed + u64(test_index)
+		case_seed := opts.seed + u64(test_index + discards)
 		tc := run_case_with_context(&runner, property, case_seed, size, nil, false, false, false, &result.coverage)
 		switch tc.result.status {
 		case .Pass:

@@ -680,6 +680,14 @@ coverage_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+discard_one_property :: proc(t: ^T) -> Result {
+	value := draw(t, int_range(0, 1))
+	if value == 1 {
+		return discard("one")
+	}
+	return pass()
+}
+
 counterexample_property :: proc(t: ^T) -> Result {
 	value := draw(t, constant(12))
 	return counterexample("while checking invoice total", equal(value, 13))
@@ -1746,6 +1754,16 @@ test_coverage_warning_only_keeps_check_passing :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(json, "\"ok\":false"))
 	testing.expect(t, strings.contains(json, "\"coverage_missing\":true"))
 	testing.expect(t, strings.contains(json, "\"coverage_missing_label\":\"impossible\""))
+}
+
+@(test)
+test_check_advances_seed_after_discard :: proc(t: ^testing.T) {
+	result := check("discard retry", discard_one_property, {num_tests = 1, max_discards = 1, seed = 1})
+	defer destroy_check_result(&result)
+
+	testing.expect_value(t, result.status, Status.Pass)
+	testing.expect_value(t, result.num_tests, 1)
+	testing.expect_value(t, result.num_discards, 1)
 }
 
 @(test)
