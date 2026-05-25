@@ -7,14 +7,15 @@ import "core:time"
 Property :: proc(t: ^T) -> Result
 
 Check_Options :: struct {
-	num_tests:    int,
-	max_discards: int,
-	seed:         u64,
-	max_size:     int,
-	shrink:       bool,
-	no_shrink:    bool,
-	max_shrinks:  int,
-	coverage_warning_only: bool,
+	num_tests:              int,
+	max_discards:           int,
+	seed:                   u64,
+	max_size:               int,
+	shrink:                 bool,
+	no_shrink:              bool,
+	max_shrinks:            int,
+	coverage_extra_tests:   int,
+	coverage_warning_only:  bool,
 	preserve_shrink_labels: bool,
 }
 
@@ -83,6 +84,9 @@ default_options :: proc(options: Check_Options) -> Check_Options {
 	if o.max_shrinks <= 0 {
 		o.max_shrinks = 1_000
 	}
+	if o.coverage_extra_tests < 0 {
+		o.coverage_extra_tests = 0
+	}
 	return o
 }
 
@@ -103,7 +107,9 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 
 	test_index := 0
 	discards := 0
-	for test_index < opts.num_tests {
+	target_tests := opts.num_tests
+	max_tests := opts.num_tests + opts.coverage_extra_tests
+	for test_index < target_tests {
 		size := size_for_test(test_index, opts)
 		case_seed := opts.seed + u64(test_index + discards)
 		tc := run_case_with_context(&runner, property, case_seed, size, nil, false, false, false, &result.coverage)
@@ -111,6 +117,9 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 		case .Pass:
 			result.num_tests += 1
 			test_index += 1
+			if test_index >= target_tests && target_tests < max_tests && !coverage_requirements_met(result.coverage[:], result.num_tests) {
+				target_tests += 1
+			}
 			destroy_test_case(&tc)
 		case .Discard:
 			result.num_discards += 1
@@ -612,6 +621,9 @@ choices_without_marked_range :: proc(src: []u64, mark: Choice_Mark, start, count
 
 size_for_test :: proc(test_index: int, options: Check_Options) -> int {
 	if options.num_tests <= 1 {
+		return options.max_size
+	}
+	if test_index >= options.num_tests - 1 {
 		return options.max_size
 	}
 

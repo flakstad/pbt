@@ -59,6 +59,13 @@ parse_check_options :: proc(args: []string, defaults: Check_Options = {}) -> Che
 				}
 				i += 1
 			}
+		case "--coverage-extra-tests":
+			if i + 1 < len(args) {
+				if value, ok := strconv.parse_int(args[i + 1], 10); ok {
+					options.coverage_extra_tests = value
+				}
+				i += 1
+			}
 		case "--shrink":
 			options.shrink = true
 			options.no_shrink = false
@@ -337,6 +344,7 @@ help_text :: proc(properties: []Property_Case) -> string {
 	strings.write_string(&builder, "  --max-size <n>             Maximum generated size\n")
 	strings.write_string(&builder, "  --max-discards <n>         Maximum discarded cases\n")
 	strings.write_string(&builder, "  --max-shrinks <n>          Maximum shrink attempts\n")
+	strings.write_string(&builder, "  --coverage-extra-tests <n> Extra generated tests to satisfy coverage\n")
 	strings.write_string(&builder, "  --shrink                   Enable shrinking\n")
 	strings.write_string(&builder, "  --no-shrink                Disable shrinking\n")
 	strings.write_string(&builder, "  --coverage-warning-only    Report coverage misses without failing\n")

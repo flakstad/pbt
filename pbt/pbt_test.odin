@@ -680,6 +680,12 @@ coverage_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+coverage_extra_property :: proc(t: ^T) -> Result {
+	value := draw(t, int_range(0, 2))
+	cover(t, value == 2, 30.0, "two")
+	return pass()
+}
+
 discard_one_property :: proc(t: ^T) -> Result {
 	value := draw(t, int_range(0, 1))
 	if value == 1 {
@@ -1757,6 +1763,20 @@ test_coverage_warning_only_keeps_check_passing :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_coverage_extra_tests_can_satisfy_requirement :: proc(t: ^testing.T) {
+	result := check("coverage extra", coverage_extra_property, {num_tests = 2, seed = 7, coverage_extra_tests = 1})
+	defer destroy_check_result(&result)
+
+	testing.expect_value(t, result.status, Status.Pass)
+	testing.expect_value(t, result.code, "ok")
+	testing.expect_value(t, result.num_tests, 3)
+	two_index := coverage_index(result.coverage[:], "two")
+	testing.expect(t, two_index >= 0)
+	testing.expect_value(t, result.coverage[two_index].count, 1)
+	testing.expect_value(t, result.coverage[two_index].required_percent, 30.0)
+}
+
+@(test)
 test_check_advances_seed_after_discard :: proc(t: ^testing.T) {
 	result := check("discard retry", discard_one_property, {num_tests = 1, max_discards = 1, seed = 1})
 	defer destroy_check_result(&result)
@@ -2154,6 +2174,8 @@ test_parse_check_options :: proc(t: ^testing.T) {
 		"20",
 		"--max-shrinks",
 		"30",
+		"--coverage-extra-tests",
+		"40",
 		"--no-shrink",
 		"--coverage-warning-only",
 		"--preserve-shrink-labels",
@@ -2165,6 +2187,7 @@ test_parse_check_options :: proc(t: ^testing.T) {
 	testing.expect_value(t, options.max_size, 80)
 	testing.expect_value(t, options.max_discards, 20)
 	testing.expect_value(t, options.max_shrinks, 30)
+	testing.expect_value(t, options.coverage_extra_tests, 40)
 	testing.expect(t, options.no_shrink)
 	testing.expect(t, options.coverage_warning_only)
 	testing.expect(t, options.preserve_shrink_labels)
@@ -2190,6 +2213,7 @@ test_runner_help_text_lists_options_and_properties :: proc(t: ^testing.T) {
 	defer delete(text)
 
 	testing.expect(t, strings.contains(text, "Usage: pbt-runner"))
+	testing.expect(t, strings.contains(text, "--coverage-extra-tests"))
 	testing.expect(t, strings.contains(text, "--coverage-warning-only"))
 	testing.expect(t, strings.contains(text, "--preserve-shrink-labels"))
 	testing.expect(t, strings.contains(text, "--list-properties"))

@@ -91,6 +91,7 @@ has the first useful version of this:
 - label counts in `Check_Result`
 - `cover(t, condition, percent, label)`
 - coverage requirement enforcement at the end of a successful check
+- bounded extra generated tests for runs that are close to satisfying coverage
 - warning-only coverage mode for exploratory runs
 - coverage failure messages name the first unmet label and observed percentage
 - JSON coverage summaries for Gransk reports
@@ -130,8 +131,8 @@ keeps only the consumed choices, producing cleaner replay strings.
 
 Useful additions:
 
-- deeper structure-aware shrinking for nested generated values
-- coverage-goal guided generation or shrinking
+- richer value-specific shrink hints for more domain generators
+- coverage-goal guided generation, beyond the current extra-test budget
 
 ### Result And Counterexample Diagnostics
 
