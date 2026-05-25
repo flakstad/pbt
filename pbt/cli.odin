@@ -331,6 +331,7 @@ help_text :: proc(properties: []Property_Case) -> string {
 	strings.write_string(&builder, "  --list-tags                Print registered tags as JSON\n")
 	strings.write_string(&builder, "  --property, -p <name>      Run one property by exact or unique substring match\n")
 	strings.write_string(&builder, "  --tag, -t <tag>            Run properties with an exact tag\n")
+	strings.write_string(&builder, "  --target <url>             Forward a target URL or endpoint to runner-specific properties\n")
 	strings.write_string(&builder, "  --num-tests, -n <n>        Number of generated tests\n")
 	strings.write_string(&builder, "  --seed <n>                 Deterministic seed\n")
 	strings.write_string(&builder, "  --max-size <n>             Maximum generated size\n")

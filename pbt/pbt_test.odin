@@ -1776,6 +1776,7 @@ test_runner_help_text_lists_options_and_properties :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(text, "--coverage-warning-only"))
 	testing.expect(t, strings.contains(text, "--preserve-shrink-labels"))
 	testing.expect(t, strings.contains(text, "--list-properties"))
+	testing.expect(t, strings.contains(text, "--target <url>"))
 	testing.expect(t, strings.contains(text, "sum [integer,shrinking] - adds numbers"))
 }
 
