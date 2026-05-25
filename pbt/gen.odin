@@ -1451,6 +1451,7 @@ record_collection_shrink_hints :: proc(t: ^T, start, min_len, length: int, eleme
 	if length > 1 {
 		record_collection_remove_range_hint(t, start, min_len, length, 0, 1, element_ends)
 	}
+	record_collection_middle_range_hints(t, start, min_len, length, element_ends)
 }
 
 record_collection_prefix_hint :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
@@ -1480,6 +1481,19 @@ record_collection_remove_range_hint :: proc(t: ^T, start, min_len, length, remov
 	append_choice_range(&replacement, t, element_ends[0], retained_prefix_count)
 	append_choice_range(&replacement, t, element_ends[remove_start + remove_count], retained_suffix_count)
 	record_choice_shrink_hint(t, start, end - start, replacement[:])
+}
+
+record_collection_middle_range_hints :: proc(t: ^T, start, min_len, length: int, element_ends: []int) {
+	chunk_size := length / 2
+	for chunk_size > 0 {
+		for remove_start := 1; remove_start + chunk_size < length; remove_start += chunk_size {
+			record_collection_remove_range_hint(t, start, min_len, length, remove_start, chunk_size, element_ends)
+		}
+		if chunk_size == 1 {
+			break
+		}
+		chunk_size /= 2
+	}
 }
 
 record_json_subset_shrink_hints :: proc(t: ^T, start, min_fields, max_fields: int, included: []bool, value_starts, value_ends: []int) {

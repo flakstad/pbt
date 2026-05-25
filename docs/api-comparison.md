@@ -112,8 +112,9 @@ record domain-specific choice-range shrink hints for values that have a simpler
 alternate replay encoding.
 
 It now tries domain-specific choice hints, built-in length hints for removing
-array/string ranges while preserving retained element choices, and marked
-command-boundary ranges for stateful properties, reducing the generated
+array/string ranges while preserving retained element choices, including
+irrelevant middle ranges when both prefix and suffix matter. Marked
+command-boundary ranges for stateful properties reduce the generated
 command-sequence length when a whole command is removed. JSON field-subset
 generators also record hints that remove optional fields while preserving
 retained value choices. It also removes chunks from the choice stream, tries
@@ -124,7 +125,7 @@ the shrinker keeps only the consumed choices, producing cleaner replay strings.
 
 Useful additions:
 
-- deeper structure-aware collection shrinking
+- deeper structure-aware shrinking for nested generated values
 - coverage-goal guided generation or shrinking
 
 ### Result And Counterexample Diagnostics

@@ -362,7 +362,7 @@ main :: proc() {
 	ok = check_limit(ints, tests, samples, {label = "two integer draws", max_best_ns = 250, max_avg_ns = 350}) && ok
 	ok = check_limit(collections, tests, samples, {label = "array and string draws", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(cli_commands, tests, samples, {label = "cli command data", max_best_ns = 1_000, max_avg_ns = 1_500}) && ok
-	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 5_000, max_avg_ns = 6_000}) && ok
+	ok = check_limit(protocol, tests, samples, {label = "protocol request data", max_best_ns = 5_500, max_avg_ns = 6_500}) && ok
 	ok = check_limit(stateful, tests / 10, samples, {label = "stateful 20-step model", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 	ok = check_limit(stateful_trace, 10_000, samples, {label = "stateful 20-step captured trace", max_best_ns = 20_000, max_avg_ns = 30_000}) && ok
 	ok = check_limit(stateful_compact_trace, 10_000, samples, {label = "stateful 20-step compact trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok

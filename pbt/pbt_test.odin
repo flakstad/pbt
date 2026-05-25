@@ -643,6 +643,14 @@ array_contains_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+array_middle_irrelevant_failure_property :: proc(t: ^T) -> Result {
+	values := draw(t, array(int_range(0, 9), 0, 4))
+	if len(values) >= 2 && values[0] == 1 && values[len(values) - 1] == 7 {
+		return fail("array boundary values expose bug")
+	}
+	return pass()
+}
+
 string_contains_failure_property :: proc(t: ^T) -> Result {
 	value := draw(t, string_alphabet("az", 0, 4))
 	for ch in value {
@@ -1678,6 +1686,20 @@ test_shrinker_removes_string_prefix_with_length_hint :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(result.choices), 2)
 	testing.expect_value(t, result.choices[0], u64(1))
 	testing.expect_value(t, result.choices[1], u64(1))
+}
+
+@(test)
+test_shrinker_removes_array_middle_range_with_length_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{4, 1, 2, 3, 7}
+	result := shrink_case(array_middle_irrelevant_failure_property, choices[:], 1, 10, default_options({max_shrinks = 12}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "array boundary values expose bug")
+	testing.expect_value(t, len(result.choices), 3)
+	testing.expect_value(t, result.choices[0], u64(2))
+	testing.expect_value(t, result.choices[1], u64(1))
+	testing.expect_value(t, result.choices[2], u64(7))
 }
 
 @(test)
