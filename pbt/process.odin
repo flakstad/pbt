@@ -298,6 +298,7 @@ line_protocol_call :: proc(t: ^T, client: ^Line_Protocol_Client, request: string
 
 line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, request: string, options: Line_Protocol_Call_Options = {}) -> Line_Protocol_Result {
 	start_time := time.tick_now()
+	max_response_bytes := line_protocol_max_response_bytes(options)
 	if client == nil || !client.alive || client.stdin == nil || client.stdout == nil {
 		return {
 			success = false,
@@ -313,7 +314,7 @@ line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, re
 	if write_err != nil {
 		duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 		err_text := fmt.tprintf("write error: %v", write_err)
-		record_event(t, "protocol", "line", "error", fmt.tprintf("%s duration_ns=%d", err_text, duration_ns))
+		record_event(t, "protocol", "line", "error", line_protocol_event_detail(err_text, duration_ns, options.timeout_ms, max_response_bytes))
 		return {
 			success = false,
 			duration_ns = duration_ns,
@@ -321,11 +322,11 @@ line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, re
 		}
 	}
 
-	response, read_error, response_too_long, timed_out := line_protocol_read_line(client.stdout, line_protocol_max_response_bytes(options), options.timeout_ms, t.allocator)
+	response, read_error, response_too_long, timed_out := line_protocol_read_line(client.stdout, max_response_bytes, options.timeout_ms, t.allocator)
 	duration_ns := time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	if read_error != "" {
 		err_text := read_error
-		record_event(t, "protocol", "line", "error", fmt.tprintf("%s duration_ns=%d", err_text, duration_ns))
+		record_event(t, "protocol", "line", "error", line_protocol_event_detail(err_text, duration_ns, options.timeout_ms, max_response_bytes))
 		if response_too_long || timed_out {
 			line_protocol_stop(client)
 		}
@@ -336,7 +337,7 @@ line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, re
 		}
 	}
 
-	record_event(t, "protocol", "line", "ok", fmt.tprintf("duration_ns=%d", duration_ns))
+	record_event(t, "protocol", "line", "ok", line_protocol_event_detail("", duration_ns, options.timeout_ms, max_response_bytes))
 	result_response := clone_non_empty(response, t.value_allocator)
 	if len(response) > 0 {
 		delete(response, t.allocator)
@@ -346,6 +347,13 @@ line_protocol_call_with_options :: proc(t: ^T, client: ^Line_Protocol_Client, re
 		response = result_response,
 		duration_ns = duration_ns,
 	}
+}
+
+line_protocol_event_detail :: proc(error: string, duration_ns: i64, timeout_ms, max_response_bytes: int) -> string {
+	if error != "" {
+		return fmt.tprintf("%s duration_ns=%d timeout_ms=%d max_response_bytes=%d", error, duration_ns, timeout_ms, max_response_bytes)
+	}
+	return fmt.tprintf("duration_ns=%d timeout_ms=%d max_response_bytes=%d", duration_ns, timeout_ms, max_response_bytes)
 }
 
 line_protocol_stop :: proc(client: ^Line_Protocol_Client) {

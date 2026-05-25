@@ -1179,6 +1179,7 @@ test_line_protocol_reuses_process :: proc(t: ^testing.T) {
 	testing.expect(t, second.duration_ns > 0)
 	testing.expect(t, len(ctx.events) >= 2)
 	testing.expect(t, strings.contains(ctx.events[0].detail, "duration_ns="))
+	testing.expect(t, strings.contains(ctx.events[0].detail, "max_response_bytes=1048576"))
 }
 
 @(test)
@@ -1221,6 +1222,8 @@ test_line_protocol_times_out_waiting_for_response :: proc(t: ^testing.T) {
 	testing.expect(t, strings.contains(result.error, "line protocol response timed out after 10 ms"))
 	testing.expect(t, len(ctx.events) > 0)
 	testing.expect_value(t, ctx.events[0].status, "error")
+	testing.expect(t, strings.contains(ctx.events[0].detail, "timeout_ms=10"))
+	testing.expect(t, strings.contains(ctx.events[0].detail, "max_response_bytes=1048576"))
 }
 
 @(test)
