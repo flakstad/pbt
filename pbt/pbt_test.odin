@@ -649,6 +649,16 @@ array_contains_failure_property :: proc(t: ^T) -> Result {
 	return pass()
 }
 
+unique_array_contains_failure_property :: proc(t: ^T) -> Result {
+	values := draw(t, unique_array(int_range(0, 9), 0, 4))
+	for value in values {
+		if value == 7 {
+			return fail("unique array contains bad value")
+		}
+	}
+	return pass()
+}
+
 array_middle_irrelevant_failure_property :: proc(t: ^T) -> Result {
 	values := draw(t, array(int_range(0, 9), 0, 4))
 	if len(values) >= 2 && values[0] == 1 && values[len(values) - 1] == 7 {
@@ -1782,6 +1792,19 @@ test_shrinker_removes_array_prefix_with_length_hint :: proc(t: ^testing.T) {
 
 	testing.expect_value(t, result.result.status, Status.Fail)
 	testing.expect_value(t, result.result.message, "array contains bad value")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(7))
+}
+
+@(test)
+test_shrinker_removes_unique_array_values_with_length_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{2, 1, 7}
+	result := shrink_case(unique_array_contains_failure_property, choices[:], 1, 10, default_options({max_shrinks = 8}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "unique array contains bad value")
 	testing.expect_value(t, len(result.choices), 2)
 	testing.expect_value(t, result.choices[0], u64(1))
 	testing.expect_value(t, result.choices[1], u64(7))

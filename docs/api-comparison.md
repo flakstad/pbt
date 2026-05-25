@@ -113,14 +113,15 @@ alternate replay encoding.
 
 It now tries domain-specific choice hints, built-in length hints for removing
 array/string ranges while preserving retained element choices, including
-irrelevant middle ranges when both prefix and suffix matter. Optional values
-record an absent-value hint when the present payload is irrelevant. Marked
-command-boundary ranges for stateful properties reduce the generated
-command-sequence length when a whole command is removed. JSON field-subset
-generators also record hints that remove optional fields while preserving
-retained value choices. Dict generators record entry-removal hints when
-generated keys are unique, avoiding ambiguous duplicate-key overwrites. It also
-removes chunks from the choice stream, tries zeroed suffixes for simpler
+irrelevant middle ranges when both prefix and suffix matter. Unique arrays
+record the same hints when generated values are unique without retry ambiguity.
+Optional values record an absent-value hint when the present payload is
+irrelevant. Marked command-boundary ranges for stateful properties reduce the
+generated command-sequence length when a whole command is removed. JSON
+field-subset generators also record hints that remove optional fields while
+preserving retained value choices. Dict generators record entry-removal hints
+when generated keys are unique, avoiding ambiguous duplicate-key overwrites. It
+also removes chunks from the choice stream, tries zeroed suffixes for simpler
 array/string/payload contents, and lowers individual choice values. When a
 replay candidate consumes fewer choices than it was given, the shrinker keeps
 only the consumed choices, producing cleaner replay strings. `Check_Result` also

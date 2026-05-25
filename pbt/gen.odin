@@ -356,15 +356,34 @@ unique_array :: proc(elem: Gen($Gen_Input, $Value), min_len: int = 0, max_len: i
 				max_len = math.max(input.min_len, t.size)
 			}
 
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			target_len := input.min_len + int(choice(t, u64(max_len - input.min_len + 1)))
 			values := make([dynamic]Value, 0, target_len, t.value_allocator)
+			element_ends: [dynamic]int
+			can_shrink_values := t.capture_shrink_hints && target_len > input.min_len
+			if can_shrink_values {
+				element_ends = make([dynamic]int, 0, target_len + 1, t.value_allocator)
+				append(&element_ends, choice_cursor(t))
+			}
 			max_attempts := target_len * 8 + 16
 			for len(values) < target_len && max_attempts > 0 {
 				value := draw(t, input.elem)
-				if !contains_value(values[:], value) {
+				duplicate := contains_value(values[:], value)
+				if !duplicate {
 					append(&values, value)
+					if can_shrink_values {
+						append(&element_ends, choice_cursor(t))
+					}
+				} else if can_shrink_values {
+					can_shrink_values = false
 				}
 				max_attempts -= 1
+			}
+			if can_shrink_values && len(values) == target_len {
+				record_collection_shrink_hints(t, start, input.min_len, len(values), element_ends[:])
 			}
 			return values[:]
 		},
