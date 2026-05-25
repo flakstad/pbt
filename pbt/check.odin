@@ -148,12 +148,12 @@ check :: proc(name: string, property: Property, options: Check_Options = {}) -> 
 					choice_shrink_hints = copy_choice_shrink_hints(tc.choice_shrink_hints[:]),
 					choice_shrink_candidates = copy_choice_shrink_candidates(tc.choice_shrink_candidates[:]),
 					choice_shrink_values = copy_choices(tc.choice_shrink_values[:]),
-					events = copy_events(tc.events[:]),
 					notes = copy_strings(tc.notes[:]),
 					labels = copy_strings(tc.labels[:]),
 					shrink_labels = copy_strings(tc.shrink_labels[:]),
 					result = tc.result,
 				}
+				copy_events_to_test_case(&result.shrunk_test, tc.events[:])
 			}
 			result.replay = Replay {
 				seed = case_seed,
@@ -190,7 +190,6 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 			choice_shrink_hints = copy_choice_shrink_hints(tc.choice_shrink_hints[:]),
 			choice_shrink_candidates = copy_choice_shrink_candidates(tc.choice_shrink_candidates[:]),
 			choice_shrink_values = copy_choices(tc.choice_shrink_values[:]),
-			events = copy_events(tc.events[:]),
 			notes = copy_strings(tc.notes[:]),
 			labels = copy_strings(tc.labels[:]),
 			shrink_labels = copy_strings(tc.shrink_labels[:]),
@@ -202,6 +201,7 @@ check_replay :: proc(name: string, property: Property, replay: Replay, options: 
 		},
 		message = tc.result.message,
 	}
+	copy_events_to_test_case(&result.shrunk_test, tc.events[:])
 	result.duration_ns = time.duration_nanoseconds(time.tick_diff(start_time, time.tick_now()))
 	return result
 }
@@ -290,7 +290,7 @@ run_case_with_context :: proc(t: ^T, property: Property, seed: u64, size: int, r
 			tc.choice_shrink_candidates = copy_current_choice_shrink_candidates(t)
 			tc.choice_shrink_values = copy_current_choice_shrink_values(t)
 		}
-		tc.events = copy_events(t.events[:])
+		copy_events_to_test_case(&tc, t.events[:])
 		tc.notes = copy_strings(t.notes[:])
 		tc.labels = copy_strings(t.labels[:])
 		tc.shrink_labels = copy_strings(t.shrink_labels[:])
@@ -321,12 +321,12 @@ shrink_case_with_stats :: proc(property: Property, choices: []u64, seed: u64, si
 		choice_shrink_hints = copy_choice_shrink_hints(initial.choice_shrink_hints[:]),
 		choice_shrink_candidates = copy_choice_shrink_candidates(initial.choice_shrink_candidates[:]),
 		choice_shrink_values = copy_choices(initial.choice_shrink_values[:]),
-		events = copy_events(initial.events[:]),
 		notes = copy_strings(initial.notes[:]),
 		labels = copy_strings(initial.labels[:]),
 		shrink_labels = copy_strings(initial.shrink_labels[:]),
 		result = initial.result,
 	}
+	copy_events_to_test_case(&best, initial.events[:])
 	preserved_labels: []string
 	if options.preserve_shrink_labels {
 		preserved_labels = initial.labels[:]
@@ -541,7 +541,7 @@ try_candidate_dynamic :: proc(runner: ^T, property: Property, best: ^Test_Case, 
 		best.choice_shrink_hints = actual_hints
 		best.choice_shrink_candidates = actual_hint_candidates
 		best.choice_shrink_values = actual_hint_values
-		best.events = copy_events(tc.events[:])
+		copy_events_to_test_case(best, tc.events[:])
 		best.notes = copy_strings(tc.notes[:])
 		best.labels = copy_strings(tc.labels[:])
 		best.shrink_labels = copy_strings(tc.shrink_labels[:])

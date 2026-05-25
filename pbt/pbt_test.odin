@@ -1763,6 +1763,28 @@ test_copy_events_preserves_static_fields :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_copy_events_to_test_case_pools_dynamic_fields :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	record_event_static_kind_status(&ctx, "stateful", "step 0", "ok", "detail")
+
+	tc: Test_Case
+	copy_events_to_test_case(&tc, ctx.events[:])
+	defer destroy_test_case(&tc)
+
+	testing.expect_value(t, len(tc.events), 1)
+	testing.expect_value(t, tc.events[0].kind, "stateful")
+	testing.expect_value(t, tc.events[0].name, "step 0")
+	testing.expect_value(t, tc.events[0].status, "ok")
+	testing.expect_value(t, tc.events[0].detail, "detail")
+	testing.expect(t, !tc.events[0].name_owned)
+	testing.expect(t, !tc.events[0].detail_owned)
+	testing.expect_value(t, len(tc.event_string_storage), len("step 0") + len("detail"))
+}
+
+@(test)
 test_copy_events_preserves_fully_static_fields :: proc(t: ^testing.T) {
 	ctx: T
 	test_init(&ctx, 1, 1, nil, false, true)

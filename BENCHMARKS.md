@@ -115,6 +115,8 @@ Likely optimization areas:
 - avoid creating a dynamic arena for generated tests that do not allocate values
 - make diagnostic/event capture lazy or opt-in for hot passing runs
 - separate fast `check` execution from rich failure reporting
+- keep copied failure and trace evidence compact; copied `Test_Case` events now
+  pool dynamic event strings in one per-case buffer
 - add preallocated runners for stateful command sequence testing
 
 ## Current Measurement
@@ -179,11 +181,11 @@ stateful 20-step model
 stateful 20-step captured trace
   captured cases/sample:  10000
   samples:                5
-  best ns/unit:           3745.48
-  avg ns/unit:            3782.68
-  alloc calls max:        250000
+  best ns/unit:           4267.75
+  avg ns/unit:            4328.94
+  alloc calls max:        60000
   resize calls max:       0
-  free calls max:         250000
+  free calls max:         60000
   bytes req max:          53620000
 
 stateful 20-step command trace

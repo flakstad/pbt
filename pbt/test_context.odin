@@ -44,6 +44,7 @@ Test_Case :: struct {
 	choice_shrink_candidates: [dynamic]Choice_Shrink_Candidate,
 	choice_shrink_values: [dynamic]u64,
 	events:  [dynamic]Event,
+	event_string_storage: [dynamic]byte,
 	notes:   [dynamic]string,
 	labels:  [dynamic]string,
 	shrink_labels: [dynamic]string,
@@ -417,6 +418,50 @@ copy_events :: proc(src: []Event, allocator := context.allocator) -> [dynamic]Ev
 	return dst
 }
 
+copy_events_to_test_case :: proc(tc: ^Test_Case, src: []Event, allocator := context.allocator) {
+	tc.events = make([dynamic]Event, 0, len(src), allocator)
+	storage_size := event_storage_size(src)
+	if storage_size > 0 {
+		tc.event_string_storage = make([dynamic]byte, 0, storage_size, allocator)
+	}
+	for event in src {
+		append(&tc.events, Event {
+			kind = copy_event_string_to_test_case(tc, event.kind, event.kind_owned || event.kind_copy),
+			name = copy_event_string_to_test_case(tc, event.name, event.name_owned || event.name_copy),
+			status = copy_event_string_to_test_case(tc, event.status, event.status_owned || event.status_copy),
+			detail = copy_event_string_to_test_case(tc, event.detail, event.detail_owned || event.detail_copy),
+		})
+	}
+}
+
+event_storage_size :: proc(src: []Event) -> int {
+	total := 0
+	for event in src {
+		if event.kind_owned || event.kind_copy {
+			total += len(event.kind)
+		}
+		if event.name_owned || event.name_copy {
+			total += len(event.name)
+		}
+		if event.status_owned || event.status_copy {
+			total += len(event.status)
+		}
+		if event.detail_owned || event.detail_copy {
+			total += len(event.detail)
+		}
+	}
+	return total
+}
+
+copy_event_string_to_test_case :: proc(tc: ^Test_Case, value: string, owned: bool) -> string {
+	if !owned || len(value) == 0 {
+		return value
+	}
+	start := len(tc.event_string_storage)
+	append_string_bytes(&tc.event_string_storage, value)
+	return string(tc.event_string_storage[start:len(tc.event_string_storage)])
+}
+
 copy_event_string :: proc(value: string, owned: bool, allocator := context.allocator) -> (string, bool) {
 	if !owned {
 		return value, false
@@ -495,6 +540,7 @@ destroy_events_keep_storage :: proc(events: ^[dynamic]Event) {
 
 destroy_test_case :: proc(tc: ^Test_Case) {
 	destroy_events(&tc.events)
+	delete(tc.event_string_storage)
 	destroy_strings(&tc.notes)
 	destroy_strings(&tc.labels)
 	destroy_strings(&tc.shrink_labels)
