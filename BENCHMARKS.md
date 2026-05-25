@@ -52,6 +52,8 @@ The benchmark includes these modes:
   boundary case
 - `payload failure with shrink`: a failing property that draws fixed array and
   string payload data before shrinking an independent failure marker
+- `sample array values`: generator sampling of fixed-size arrays, measuring the
+  quick exploration path rather than full `check` execution
 
 ## Adapter Benchmark
 
@@ -217,12 +219,22 @@ failing property with shrink
 payload failure with shrink
   checks/sample:          1
   samples:                5
-  best ns/unit:           14958.00
-  avg ns/unit:            18066.60
+  best ns/unit:           15375.00
+  avg ns/unit:            17958.20
   alloc calls max:        124
   resize calls max:       0
   free calls max:         124
   bytes req max:          14032
+
+sample array values
+  samples/run:            10000
+  samples:                5
+  best ns/unit:           45.33
+  avg ns/unit:            47.59
+  alloc calls max:        316
+  resize calls max:       10
+  free calls max:         316
+  bytes req max:          816384
 ```
 
 The integer hot path is now allocation-free for short choice streams because
@@ -253,3 +265,6 @@ that include fixed-size arrays or strings. Domain-specific choice-range shrink
 hints and built-in array/string range-removal hints are captured only for
 failing/shrinking runs, so normal passing checks keep the same zero-allocation
 behavior.
+Generator sampling clears replay-choice tracking between produced values while
+keeping the value arena alive, so sampled slices/strings remain valid without
+letting unused replay metadata grow with sample count.

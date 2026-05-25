@@ -303,6 +303,36 @@ measure_captured_cases :: proc(
 	return summary
 }
 
+measure_sample_arrays :: proc(sample_count_per_run: int, sample_count: int) -> Bench_Summary {
+	summary := Bench_Summary{}
+
+	for sample_index in 0 ..< sample_count {
+		counter := Counting_Allocator{backing = context.allocator}
+		old_allocator := context.allocator
+		context.allocator = counting_allocator(&counter)
+
+		start := time.tick_now()
+		samples := pbt.sample(pbt.array(pbt.int_range(0, 9), 8, 8), {count = sample_count_per_run, seed = u64(4_000 + sample_index), size = 8})
+		checksum := len(samples.values) + samples.ctx.choice_count + len(samples.ctx.choice_extra)
+		pbt.destroy_sample_result(&samples)
+		duration := time.tick_diff(start, time.tick_now())
+
+		context.allocator = old_allocator
+
+		summarize_sample(&summary, Bench_Sample {
+			ns_total = time.duration_nanoseconds(duration),
+			alloc_calls = counter.alloc_calls,
+			resize_calls = counter.resize_calls,
+			free_calls = counter.free_calls,
+			bytes_requested = counter.bytes_requested,
+			checksum = checksum,
+		}, sample_index)
+	}
+
+	print_summary("sample array values", sample_count_per_run, "samples/run", sample_count, summary)
+	return summary
+}
+
 summarize_sample :: proc(summary: ^Bench_Summary, sample: Bench_Sample, sample_index: int) {
 	if sample_index == 0 || sample.ns_total < summary.best.ns_total {
 		summary.best = sample
@@ -370,6 +400,7 @@ main :: proc() {
 	stateful_compact_trace := measure_captured_cases("stateful 20-step compact trace", stateful_compact_trace_property, 10_000, samples)
 	failing := measure_check_units("failing property with shrink", failure_property, 100, 1, "checks/sample", samples)
 	payload_failing := measure_check_units("payload failure with shrink", payload_failure_property, 100, 1, "checks/sample", samples)
+	sample_arrays := measure_sample_arrays(10_000, samples)
 
 	ok := true
 	ok = check_limit(ints, tests, samples, {label = "two integer draws", max_best_ns = 250, max_avg_ns = 350}) && ok
@@ -382,6 +413,7 @@ main :: proc() {
 	ok = check_limit(stateful_compact_trace, 10_000, samples, {label = "stateful 20-step compact trace", max_best_ns = 5_000, max_avg_ns = 10_000}) && ok
 	ok = check_limit(failing, 100, samples, {label = "failing property with shrink", max_best_ns = 250_000, max_avg_ns = 350_000}) && ok
 	ok = check_limit(payload_failing, 100, samples, {label = "payload failure with shrink", max_best_ns = 350_000, max_avg_ns = 500_000}) && ok
+	ok = check_limit(sample_arrays, 10_000, samples, {label = "sample array values", max_best_ns = 750, max_avg_ns = 1_000}) && ok
 
 	if ok {
 		fmt.println("benchmark guard: PASS")

@@ -44,9 +44,15 @@ sample :: proc(gen: Gen($Input, $Value), options: Sample_Options = {}) -> Sample
 	test_init(&result.ctx, opts.seed, opts.size, nil, false, false)
 	for i in 0 ..< opts.count {
 		result.ctx.size = 1 + (i * opts.size) / opts.count
+		sample_reset_tracking(&result.ctx)
 		append(&result.values, draw(&result.ctx, gen))
 	}
 	return result
+}
+
+sample_reset_tracking :: proc(t: ^T) {
+	t.choice_count = 0
+	clear(&t.choice_extra)
 }
 
 destroy_sample_result :: proc(result: ^Sample_Result($Value)) {

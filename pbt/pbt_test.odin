@@ -1524,6 +1524,16 @@ test_sample_exposes_generator_values :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_sample_does_not_accumulate_replay_choices :: proc(t: ^testing.T) {
+	samples := sample(array(int_range(0, 9), 8, 8), {count = 25, seed = 902, size = 8})
+	defer destroy_sample_result(&samples)
+
+	testing.expect_value(t, len(samples.values), 25)
+	testing.expect_value(t, samples.ctx.choice_count, 8)
+	testing.expect_value(t, len(samples.ctx.choice_extra), 0)
+}
+
+@(test)
 test_coverage_is_aggregated_and_written_to_json :: proc(t: ^testing.T) {
 	result := check("coverage", coverage_property, {num_tests = 25, seed = 301})
 	defer destroy_check_result(&result)
@@ -1612,6 +1622,35 @@ test_copy_events_preserves_static_fields :: proc(t: ^testing.T) {
 	testing.expect(t, !copied[0].status_owned)
 	testing.expect(t, copied[0].name_owned)
 	testing.expect(t, copied[0].detail_owned)
+}
+
+@(test)
+test_copy_events_preserves_fully_static_fields :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	record_event_static(&ctx, "stateful", "inc", "ok", "")
+	testing.expect(t, !ctx.events[0].kind_owned)
+	testing.expect(t, !ctx.events[0].name_owned)
+	testing.expect(t, !ctx.events[0].status_owned)
+	testing.expect(t, !ctx.events[0].detail_owned)
+	testing.expect(t, !ctx.events[0].kind_copy)
+	testing.expect(t, !ctx.events[0].name_copy)
+	testing.expect(t, !ctx.events[0].status_copy)
+	testing.expect(t, !ctx.events[0].detail_copy)
+
+	copied := copy_events(ctx.events[:])
+	defer destroy_events(&copied)
+
+	testing.expect_value(t, len(copied), 1)
+	testing.expect_value(t, copied[0].kind, "stateful")
+	testing.expect_value(t, copied[0].name, "inc")
+	testing.expect_value(t, copied[0].status, "ok")
+	testing.expect(t, !copied[0].kind_owned)
+	testing.expect(t, !copied[0].name_owned)
+	testing.expect(t, !copied[0].status_owned)
+	testing.expect(t, !copied[0].detail_owned)
 }
 
 @(test)
