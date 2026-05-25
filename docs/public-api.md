@@ -787,6 +787,8 @@ The result payload should include:
 - shrink attempts and shrink duration
 - replay choices
 - replay choices as `choices_csv`, directly usable with `--replay-choices`
+- service-report replay through Gransk's `--spec-replay-seed`,
+  `--spec-replay-choices`, and `--spec-no-shrink`
 - original failure
 - shrunk failure
 - notes

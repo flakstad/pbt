@@ -32,6 +32,12 @@ Run it against an existing compatible service:
 gransk spec check --engine odin/pbt --runner /tmp/pbt-stateful-http-runner --tag stateful --target http://127.0.0.1:8080 --seed 123 --num-tests 25 --format text
 ```
 
+Attach the same stateful model to a Gransk service report:
+
+```sh
+gransk report service --url http://127.0.0.1:8080 --spec-engine odin/pbt --spec-runner /tmp/pbt-stateful-http-runner --spec-tag stateful --spec-seed 123 --spec-num-tests 25
+```
+
 The example uses these operations:
 
 - `create`: `POST /todos`, expecting `201` and a new ID
@@ -75,4 +81,10 @@ PBT_TODO_BUG=delete gransk spec check --engine odin/pbt --runner /tmp/pbt-statef
 ```
 
 That reruns only the create/delete/list observations needed to reproduce the
-bug, while still keeping the HTTP request/response events in the report.
+bug, while still keeping the HTTP request/response events in the report. If the
+failure came from `report service`, replay it at the report level with the
+`--spec-` prefixed flags:
+
+```sh
+gransk report service --url http://127.0.0.1:8080 --spec-engine odin/pbt --spec-runner /tmp/pbt-stateful-http-runner --spec-tag stateful --spec-replay-seed 124 --spec-replay-choices 1,0,1 --spec-no-shrink
+```
