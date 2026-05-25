@@ -1606,10 +1606,19 @@ optional :: proc(elem: Gen($Gen_Input, $Value)) -> Gen(Optional_Input(Gen_Input,
 	return {
 		input = {elem = elem},
 		produce = proc(t: ^T, input: Optional_Input(Gen_Input, Value)) -> Optional(Value) {
+			start := 0
+			if t.capture_shrink_hints {
+				start = choice_cursor(t)
+			}
 			if !draw(t, boolean()) {
 				return {}
 			}
-			return {ok = true, value = draw(t, input.elem)}
+			value := draw(t, input.elem)
+			if t.capture_shrink_hints {
+				replacement := [?]u64{0}
+				record_choice_shrink_hint(t, start, choice_cursor(t) - start, replacement[:])
+			}
+			return {ok = true, value = value}
 		},
 	}
 }

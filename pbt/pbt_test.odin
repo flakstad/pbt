@@ -597,6 +597,12 @@ payload_irrelevant_failure_property :: proc(t: ^T) -> Result {
 	return assert(marker == 0, "marker triggers failure")
 }
 
+optional_irrelevant_failure_property :: proc(t: ^T) -> Result {
+	marker := draw(t, int_range(0, 1))
+	_ = draw(t, optional(int_range(0, 9)))
+	return assert(marker == 0, "marker triggers failure")
+}
+
 marked_command_failure_property :: proc(t: ^T) -> Result {
 	prefix := choice(t, 10)
 	for _ in 0 ..< 3 {
@@ -1676,6 +1682,19 @@ test_shrinker_zeroes_irrelevant_choice_suffix :: proc(t: ^testing.T) {
 	testing.expect_value(t, result.choices[1], u64(0))
 	testing.expect_value(t, result.choices[2], u64(0))
 	testing.expect_value(t, len(result.choices), 3)
+}
+
+@(test)
+test_shrinker_uses_optional_absent_hint :: proc(t: ^testing.T) {
+	choices := [?]u64{1, 1, 9}
+	result := shrink_case(optional_irrelevant_failure_property, choices[:], 1, 10, default_options({max_shrinks = 2}))
+	defer destroy_test_case(&result)
+
+	testing.expect_value(t, result.result.status, Status.Fail)
+	testing.expect_value(t, result.result.message, "marker triggers failure")
+	testing.expect_value(t, len(result.choices), 2)
+	testing.expect_value(t, result.choices[0], u64(1))
+	testing.expect_value(t, result.choices[1], u64(0))
 }
 
 @(test)
