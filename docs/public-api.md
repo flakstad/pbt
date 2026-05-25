@@ -653,6 +653,8 @@ libraries in Go, Python, JavaScript/TypeScript, Clojure, Odin, and shell.
 Response lines are capped at 1 MiB by default; use
 `line_protocol_call_with_options` to set a tighter per-call cap for a target.
 See `examples/line_protocol_runner` for a runnable property using this shape.
+See `examples/external_targets` for runnable one-shot CLI argv and stdin
+protocol properties.
 
 Line-delimited JSON is a good transport because it is easy to implement in Go,
 Clojure, Python, JavaScript/TypeScript, Odin, and shell wrappers.

@@ -73,6 +73,9 @@ odin test pbt
 See [docs/gransk-runner-example.md](docs/gransk-runner-example.md) for a
 minimal Gransk-facing runner executable.
 
+See [docs/external-target-examples.md](docs/external-target-examples.md) for
+CLI argv and stdin protocol examples against external targets.
+
 See [docs/statechart-model-example.md](docs/statechart-model-example.md) for a
 statechart-backed stateful model example.
 
