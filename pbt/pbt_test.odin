@@ -1839,7 +1839,31 @@ test_copy_events_to_test_case_pools_dynamic_fields :: proc(t: ^testing.T) {
 	testing.expect_value(t, tc.events[0].detail, "detail")
 	testing.expect(t, !tc.events[0].name_owned)
 	testing.expect(t, !tc.events[0].detail_owned)
+	testing.expect(t, tc.events[0].name_copy)
+	testing.expect(t, tc.events[0].detail_copy)
 	testing.expect_value(t, len(tc.event_string_storage), len("step 0") + len("detail"))
+}
+
+@(test)
+test_copy_events_to_test_case_recopies_pooled_fields :: proc(t: ^testing.T) {
+	ctx: T
+	test_init(&ctx, 1, 1, nil, false, true)
+	defer test_destroy(&ctx)
+
+	record_event_static_kind_status(&ctx, "http", "POST /items", "fail", "expected 2xx")
+
+	first: Test_Case
+	copy_events_to_test_case(&first, ctx.events[:])
+	second: Test_Case
+	copy_events_to_test_case(&second, first.events[:])
+	destroy_test_case(&first)
+	defer destroy_test_case(&second)
+
+	testing.expect_value(t, len(second.events), 1)
+	testing.expect_value(t, second.events[0].kind, "http")
+	testing.expect_value(t, second.events[0].name, "POST /items")
+	testing.expect_value(t, second.events[0].status, "fail")
+	testing.expect_value(t, second.events[0].detail, "expected 2xx")
 }
 
 @(test)

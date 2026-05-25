@@ -425,11 +425,19 @@ copy_events_to_test_case :: proc(tc: ^Test_Case, src: []Event, allocator := cont
 		tc.event_string_storage = make([dynamic]byte, 0, storage_size, allocator)
 	}
 	for event in src {
+		kind_copy := event.kind_owned || event.kind_copy
+		name_copy := event.name_owned || event.name_copy
+		status_copy := event.status_owned || event.status_copy
+		detail_copy := event.detail_owned || event.detail_copy
 		append(&tc.events, Event {
-			kind = copy_event_string_to_test_case(tc, event.kind, event.kind_owned || event.kind_copy),
-			name = copy_event_string_to_test_case(tc, event.name, event.name_owned || event.name_copy),
-			status = copy_event_string_to_test_case(tc, event.status, event.status_owned || event.status_copy),
-			detail = copy_event_string_to_test_case(tc, event.detail, event.detail_owned || event.detail_copy),
+			kind = copy_event_string_to_test_case(tc, event.kind, kind_copy),
+			name = copy_event_string_to_test_case(tc, event.name, name_copy),
+			status = copy_event_string_to_test_case(tc, event.status, status_copy),
+			detail = copy_event_string_to_test_case(tc, event.detail, detail_copy),
+			kind_copy = kind_copy,
+			name_copy = name_copy,
+			status_copy = status_copy,
+			detail_copy = detail_copy,
 		})
 	}
 }
